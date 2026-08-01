@@ -6,13 +6,25 @@
 -- ---------------------------------------------------------------------------
 -- Demo users (local only; password for all: "password123")
 -- ---------------------------------------------------------------------------
-insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, aud, role, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+insert into auth.users (
+  id, instance_id, email, encrypted_password, email_confirmed_at, aud, role,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
 values
-  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'admin@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Admin"}', now(), now()),
-  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'moderator@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Moderator"}', now(), now()),
-  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'caregiver@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Caregiver"}', now(), now()),
-  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'clinicrep@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Clinic Rep"}', now(), now())
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'admin@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Admin"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'moderator@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Moderator"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'caregiver@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Caregiver"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'clinicrep@thrivemap.test', extensions.crypt('password123', extensions.gen_salt('bf')), now(), 'authenticated', 'authenticated', '{"provider":"email","providers":["email"]}', '{"display_name":"Demo Clinic Rep"}', now(), now(), '', '', '', '')
 on conflict (id) do nothing;
+
+insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+select gen_random_uuid(), u.id, u.id::text, 'email',
+       jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+       now(), now(), now()
+from auth.users u
+where u.email like '%@thrivemap.test'
+on conflict do nothing;
 
 insert into public.user_roles (user_id, role) values
   ('00000000-0000-0000-0000-000000000001', 'administrator'),

@@ -72,7 +72,7 @@
   --border: oklch(0.905 0.015 82);
   --input: oklch(0.905 0.015 82);
   --ring: oklch(0.55 0.07 195);
-  --verified: oklch(0.55 0.1 160);
+  --verified: oklch(0.5 0.1 160);
   --verified-foreground: oklch(0.985 0.008 84);
   --chart-1: oklch(0.55 0.07 195);
   --chart-2: oklch(0.7 0.12 45);

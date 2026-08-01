@@ -444,7 +444,9 @@ export type Database = {
           id: string
           is_primary: boolean
           landmark: string | null
+          latitude: number | null
           location: unknown
+          longitude: number | null
           postal_code: string | null
           province: string
           province_slug: string
@@ -462,7 +464,9 @@ export type Database = {
           id?: string
           is_primary?: boolean
           landmark?: string | null
+          latitude?: number | null
           location: unknown
+          longitude?: number | null
           postal_code?: string | null
           province: string
           province_slug: string
@@ -480,7 +484,9 @@ export type Database = {
           id?: string
           is_primary?: boolean
           landmark?: string | null
+          latitude?: number | null
           location?: unknown
+          longitude?: number | null
           postal_code?: string | null
           province?: string
           province_slug?: string
