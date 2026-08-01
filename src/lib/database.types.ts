@@ -924,6 +924,7 @@ export type Database = {
           is_featured: boolean
           last_verified_at: string | null
           logo_url: string | null
+          merged_into_clinic_id: string | null
           name: string
           offers_in_person_services: boolean
           offers_online_services: boolean
@@ -953,6 +954,7 @@ export type Database = {
           is_featured?: boolean
           last_verified_at?: string | null
           logo_url?: string | null
+          merged_into_clinic_id?: string | null
           name: string
           offers_in_person_services?: boolean
           offers_online_services?: boolean
@@ -982,6 +984,7 @@ export type Database = {
           is_featured?: boolean
           last_verified_at?: string | null
           logo_url?: string | null
+          merged_into_clinic_id?: string | null
           name?: string
           offers_in_person_services?: boolean
           offers_online_services?: boolean
@@ -995,7 +998,15 @@ export type Database = {
           website?: string | null
           wheelchair_accessible?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clinics_merged_into_clinic_id_fkey"
+            columns: ["merged_into_clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       duplicate_match_candidates: {
         Row: {
@@ -1417,12 +1428,41 @@ export type Database = {
         Args: { p_status: Database["public"]["Enums"]["listing_status"] }
         Returns: boolean
       }
+      is_valid_listing_transition: {
+        Args: {
+          p_from: Database["public"]["Enums"]["listing_status"]
+          p_to: Database["public"]["Enums"]["listing_status"]
+        }
+        Returns: boolean
+      }
       manages_clinic: { Args: { p_clinic_id: string }; Returns: boolean }
+      merge_clinics: {
+        Args: { p_keep_id: string; p_merge_id: string; p_reason: string }
+        Returns: undefined
+      }
+      nearest_ph_city: {
+        Args: { p_lat: number; p_lng: number }
+        Returns: {
+          city: string
+          city_slug: string
+          distance_m: number
+          province: string
+          province_slug: string
+        }[]
+      }
       refresh_clinic_search_document: {
         Args: { p_clinic_id: string }
         Returns: undefined
       }
       requeue_stuck_jobs: { Args: never; Returns: number }
+      scan_duplicate_candidates: {
+        Args: {
+          p_clinic_id?: string
+          p_distance_m?: number
+          p_name_similarity?: number
+        }
+        Returns: number
+      }
       search_clinics: {
         Args: {
           p_accessible_only?: boolean

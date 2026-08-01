@@ -15,7 +15,10 @@ export async function saveFavorite(clinicId: string): Promise<{ error?: string }
   const { error } = await supabase
     .from("favorites")
     .upsert({ user_id: user.id, clinic_id: parsed.data });
-  if (error) return { error: "Could not save favorite. Please try again." };
+  if (error) {
+    console.error("saveFavorite failed:", error.message);
+    return { error: "Could not save favorite. Please try again." };
+  }
   revalidatePath("/account/favorites");
   return {};
 }
@@ -30,7 +33,10 @@ export async function removeFavorite(clinicId: string): Promise<{ error?: string
     .delete()
     .eq("user_id", user.id)
     .eq("clinic_id", parsed.data);
-  if (error) return { error: "Could not remove favorite. Please try again." };
+  if (error) {
+    console.error("removeFavorite failed:", error.message);
+    return { error: "Could not remove favorite. Please try again." };
+  }
   revalidatePath("/account/favorites");
   return {};
 }

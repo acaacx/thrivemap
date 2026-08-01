@@ -44,10 +44,17 @@ test.describe("favorites", () => {
     }
 
     const favoriteButton = page.getByRole("button", { name: /save .* to favorites/i });
+    // Wait for the saveFavorite server action (a POST back to the page) to
+    // complete before navigating — leaving early aborts it mid-flight.
+    const saveSettled = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" && response.url().includes("/clinics/"),
+    );
     await favoriteButton.click();
     await expect(
       page.getByRole("button", { name: /remove .* from favorites/i }),
     ).toBeVisible();
+    await saveSettled;
 
     await page.goto("/account/favorites");
     await expect(page.locator(`[data-clinic-id]`).first()).toBeVisible();

@@ -13,6 +13,7 @@ const accountNav = [
   { href: "/account/favorites", label: "Favorites" },
   { href: "/account/submissions", label: "Submissions" },
   { href: "/account/reports", label: "Reports" },
+  { href: "/account/claims", label: "Claims" },
 ];
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {

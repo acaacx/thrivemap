@@ -18,7 +18,9 @@ function useFavorites() {
     queryKey: ["favorites"],
     queryFn: async () => {
       const res = await fetch("/api/favorites");
-      if (!res.ok) return { clinicIds: [], signedIn: false };
+      // Throw so react-query retries — a cached failure would otherwise pin
+      // the button to "signed out / not favorited" for the whole staleTime.
+      if (!res.ok) throw new Error("favorites fetch failed");
       return res.json();
     },
     staleTime: 60_000,
