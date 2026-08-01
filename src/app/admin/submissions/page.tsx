@@ -7,7 +7,11 @@ import {
 import { ReviewActions } from "@/modules/admin/components/ReviewCard";
 import { listSubmissions } from "@/modules/admin/server";
 
-const OPEN_STATUSES = ["submitted", "under_review", "additional_information_required"];
+const OPEN_STATUSES = [
+  "submitted",
+  "under_review",
+  "additional_information_required",
+];
 
 export default async function AdminSubmissionsPage() {
   const submissions = await listSubmissions();
@@ -16,7 +20,9 @@ export default async function AdminSubmissionsPage() {
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-semibold">Clinic submissions</h1>
+      <h1 className="font-heading text-2xl font-semibold">
+        Clinic submissions
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Approving publishes the clinic as an unverified listing and runs a
         duplicate scan.
@@ -34,7 +40,9 @@ export default async function AdminSubmissionsPage() {
                 <p className="font-heading text-lg font-semibold">
                   {submission.clinic_name}
                 </p>
-                <Badge variant="outline">{submission.status.replaceAll("_", " ")}</Badge>
+                <Badge variant="outline">
+                  {submission.status.replaceAll("_", " ")}
+                </Badge>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {new Date(submission.created_at).toLocaleString("en-PH")}
                 </span>
@@ -73,7 +81,10 @@ export default async function AdminSubmissionsPage() {
               </dl>
               <ReviewActions
                 actions={[
-                  { label: "Approve & publish", run: approveSubmission.bind(null, submission.id) },
+                  {
+                    label: "Approve & publish",
+                    run: approveSubmission.bind(null, submission.id),
+                  },
                   {
                     label: "Request info",
                     variant: "outline",
@@ -99,7 +110,10 @@ export default async function AdminSubmissionsPage() {
           </summary>
           <ul className="mt-3 space-y-2 text-sm">
             {closed.map((submission) => (
-              <li key={submission.id} className="rounded-lg border bg-card px-4 py-2.5">
+              <li
+                key={submission.id}
+                className="rounded-lg border bg-card px-4 py-2.5"
+              >
                 <span className="font-medium">{submission.clinic_name}</span>{" "}
                 <Badge variant="outline" className="ml-1">
                   {submission.status}

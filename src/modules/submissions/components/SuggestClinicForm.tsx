@@ -30,7 +30,10 @@ interface SuggestClinicFormProps {
   defaultEmail?: string;
 }
 
-export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormProps) {
+export function SuggestClinicForm({
+  services,
+  defaultEmail,
+}: SuggestClinicFormProps) {
   const form = useForm<SuggestClinicInput>({
     resolver: zodResolver(suggestClinicSchema),
     defaultValues: {
@@ -42,8 +45,14 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
     },
   });
 
-  const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [mapCenter, setMapCenter] = useState({ latitude: 14.5995, longitude: 120.9842 });
+  const [pin, setPin] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [mapCenter, setMapCenter] = useState({
+    latitude: 14.5995,
+    longitude: 120.9842,
+  });
   const [duplicates, setDuplicates] = useState<DuplicateMatch[] | null>(null);
   const [phase, setPhase] = useState<"form" | "review" | "done">("form");
   const [serverError, setServerError] = useState<string | null>(null);
@@ -95,7 +104,9 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
         role="status"
         className="rounded-2xl border border-[var(--verified)]/40 bg-[var(--verified)]/10 p-8 text-center"
       >
-        <p className="font-heading text-xl font-semibold">Suggestion received</p>
+        <p className="font-heading text-xl font-semibold">
+          Suggestion received
+        </p>
         <p className="mt-2 text-sm text-muted-foreground">{successMessage}</p>
         <Button className="mt-6 rounded-full" render={<Link href="/clinics" />}>
           Back to search
@@ -136,7 +147,9 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
                     {match.name}
                   </Link>
                   {match.city && (
-                    <span className="ml-2 text-sm text-muted-foreground">{match.city}</span>
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {match.city}
+                    </span>
                   )}
                 </div>
                 <VerificationBadge status={match.status} />
@@ -157,13 +170,23 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
         )}
 
         <div className="flex flex-wrap gap-3">
-          <Button onClick={onFinalSubmit} disabled={submitting} className="rounded-full">
-            {submitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          <Button
+            onClick={onFinalSubmit}
+            disabled={submitting}
+            className="rounded-full"
+          >
+            {submitting && (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            )}
             {duplicates && duplicates.length > 0
               ? "It's not listed — submit my suggestion"
               : "Submit suggestion"}
           </Button>
-          <Button variant="outline" className="rounded-full" onClick={() => setPhase("form")}>
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => setPhase("form")}
+          >
             Back to edit
           </Button>
         </div>
@@ -174,18 +197,31 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
   const errors = form.formState.errors;
 
   return (
-    <form onSubmit={form.handleSubmit(onCheckAndReview)} className="space-y-6" noValidate>
+    <form
+      onSubmit={form.handleSubmit(onCheckAndReview)}
+      className="space-y-6"
+      noValidate
+    >
       {serverError && (
-        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           {serverError}
         </p>
       )}
 
       <div className="space-y-1.5">
         <Label htmlFor="clinic_name">Clinic name *</Label>
-        <Input id="clinic_name" {...form.register("clinic_name")} aria-invalid={!!errors.clinic_name} />
+        <Input
+          id="clinic_name"
+          {...form.register("clinic_name")}
+          aria-invalid={!!errors.clinic_name}
+        />
         {errors.clinic_name && (
-          <p className="text-sm text-destructive">{errors.clinic_name.message}</p>
+          <p className="text-sm text-destructive">
+            {errors.clinic_name.message}
+          </p>
         )}
       </div>
 
@@ -197,20 +233,33 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
           {...form.register("address")}
           aria-invalid={!!errors.address}
         />
-        {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+        {errors.address && (
+          <p className="text-sm text-destructive">{errors.address.message}</p>
+        )}
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Map pin (optional but helpful)</legend>
+        <legend className="text-sm font-medium">
+          Map pin (optional but helpful)
+        </legend>
         <p className="text-xs text-muted-foreground">
-          Search a nearby area, then click the map to place the pin on the clinic.
+          Search a nearby area, then click the map to place the pin on the
+          clinic.
         </p>
         <LocationSearchBox onLocation={(loc) => setMapCenter(loc)} />
         <div className="h-64 overflow-hidden rounded-xl border">
           <ClinicMap
             markers={
               pin
-                ? [{ id: "pin", slug: "", name: "Clinic location", verified: false, ...pin }]
+                ? [
+                    {
+                      id: "pin",
+                      slug: "",
+                      name: "Clinic location",
+                      verified: false,
+                      ...pin,
+                    },
+                  ]
                 : []
             }
             center={pin ?? mapCenter}
@@ -241,30 +290,62 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" type="tel" {...form.register("phone")} aria-invalid={!!errors.phone} />
-          {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
+          <Input
+            id="phone"
+            type="tel"
+            {...form.register("phone")}
+            aria-invalid={!!errors.phone}
+          />
+          {errors.phone && (
+            <p className="text-sm text-destructive">{errors.phone.message}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email">Clinic email</Label>
-          <Input id="email" type="email" {...form.register("email")} aria-invalid={!!errors.email} />
-          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+          <Input
+            id="email"
+            type="email"
+            {...form.register("email")}
+            aria-invalid={!!errors.email}
+          />
+          {errors.email && (
+            <p className="text-sm text-destructive">{errors.email.message}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="website">Website</Label>
-          <Input id="website" type="url" placeholder="https://…" {...form.register("website")} aria-invalid={!!errors.website} />
-          {errors.website && <p className="text-sm text-destructive">{errors.website.message}</p>}
+          <Input
+            id="website"
+            type="url"
+            placeholder="https://…"
+            {...form.register("website")}
+            aria-invalid={!!errors.website}
+          />
+          {errors.website && (
+            <p className="text-sm text-destructive">{errors.website.message}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="social_media_url">Facebook or social page</Label>
-          <Input id="social_media_url" type="url" placeholder="https://…" {...form.register("social_media_url")} aria-invalid={!!errors.social_media_url} />
+          <Input
+            id="social_media_url"
+            type="url"
+            placeholder="https://…"
+            {...form.register("social_media_url")}
+            aria-invalid={!!errors.social_media_url}
+          />
           {errors.social_media_url && (
-            <p className="text-sm text-destructive">{errors.social_media_url.message}</p>
+            <p className="text-sm text-destructive">
+              {errors.social_media_url.message}
+            </p>
           )}
         </div>
       </div>
 
       <fieldset>
-        <legend className="mb-2 text-sm font-medium">Services offered (if known)</legend>
+        <legend className="mb-2 text-sm font-medium">
+          Services offered (if known)
+        </legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {services.map((service) => (
             <div key={service.slug} className="flex items-center gap-2">
@@ -281,7 +362,10 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
                   );
                 }}
               />
-              <Label htmlFor={`suggest-svc-${service.slug}`} className="font-normal">
+              <Label
+                htmlFor={`suggest-svc-${service.slug}`}
+                className="font-normal"
+              >
                 {service.name}
               </Label>
             </div>
@@ -317,7 +401,9 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
           aria-invalid={!!errors.submitter_email}
         />
         {errors.submitter_email && (
-          <p className="text-sm text-destructive">{errors.submitter_email.message}</p>
+          <p className="text-sm text-destructive">
+            {errors.submitter_email.message}
+          </p>
         )}
       </div>
 
@@ -326,7 +412,9 @@ export function SuggestClinicForm({ services, defaultEmail }: SuggestClinicFormP
           id="consent"
           checked={form.watch("consent") === true}
           onCheckedChange={(checked) =>
-            form.setValue("consent", (checked === true) as true, { shouldValidate: true })
+            form.setValue("consent", (checked === true) as true, {
+              shouldValidate: true,
+            })
           }
           aria-describedby="consent-error"
         />

@@ -21,7 +21,11 @@ interface ClinicMapProps {
   zoom?: number;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  onMoved?: (bounds: MapBounds, center: { latitude: number; longitude: number }, zoom: number) => void;
+  onMoved?: (
+    bounds: MapBounds,
+    center: { latitude: number; longitude: number },
+    zoom: number,
+  ) => void;
   /** Click anywhere on the map (used for pin placement in forms). */
   onMapClick?: (location: { latitude: number; longitude: number }) => void;
   className?: string;
@@ -91,7 +95,10 @@ export function ClinicMap({
       console.error("[ClinicMap] map error:", event.error);
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "top-right",
+    );
     map.keyboard.enable();
 
     map.on("load", () => {
@@ -190,7 +197,10 @@ export function ClinicMap({
     });
 
     map.on("click", (e: maplibregl.MapMouseEvent) => {
-      onMapClickRef.current?.({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
+      onMapClickRef.current?.({
+        latitude: e.lngLat.lat,
+        longitude: e.lngLat.lng,
+      });
     });
 
     map.on("moveend", () => {
@@ -201,7 +211,12 @@ export function ClinicMap({
       const b = map.getBounds();
       const c = map.getCenter();
       onMovedRef.current?.(
-        { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
+        {
+          north: b.getNorth(),
+          south: b.getSouth(),
+          east: b.getEast(),
+          west: b.getWest(),
+        },
         { latitude: c.lat, longitude: c.lng },
         map.getZoom(),
       );
@@ -218,7 +233,8 @@ export function ClinicMap({
   function syncMarkers() {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    const source = map.getSource("clinics") as maplibregl.GeoJSONSource | undefined;
+    const source = map.getSource("clinics") as
+      maplibregl.GeoJSONSource | undefined;
     if (!source) return;
     source.setData({
       type: "FeatureCollection",

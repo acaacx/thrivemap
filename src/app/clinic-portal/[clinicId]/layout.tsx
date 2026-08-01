@@ -28,7 +28,10 @@ export default async function ManageClinicLayout({
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-          <nav aria-label="Clinic portal" className="text-sm text-muted-foreground">
+          <nav
+            aria-label="Clinic portal"
+            className="text-sm text-muted-foreground"
+          >
             <Link className="hover:underline" href="/clinic-portal">
               ← All managed clinics
             </Link>

@@ -55,13 +55,19 @@ export default async function ReportsPage() {
                   )}
                 </p>
                 {report.details && (
-                  <p className="mt-1 text-sm text-muted-foreground">{report.details}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {report.details}
+                  </p>
                 )}
                 {report.resolution_note && (
-                  <p className="mt-2 text-sm">Resolution: {report.resolution_note}</p>
+                  <p className="mt-2 text-sm">
+                    Resolution: {report.resolution_note}
+                  </p>
                 )}
               </div>
-              <Badge variant={report.status === "resolved" ? "default" : "secondary"}>
+              <Badge
+                variant={report.status === "resolved" ? "default" : "secondary"}
+              >
                 {report.status.replaceAll("_", " ")}
               </Badge>
             </CardContent>

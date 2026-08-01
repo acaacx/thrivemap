@@ -28,7 +28,8 @@ export default async function ReportPage({
             Report incorrect information
           </h1>
           <p className="mt-2 text-muted-foreground">
-            For <span className="font-medium text-foreground">{clinic.name}</span>.
+            For{" "}
+            <span className="font-medium text-foreground">{clinic.name}</span>.
             Your report goes to our moderators — thank you for keeping listings
             accurate for every family.
           </p>

@@ -14,7 +14,10 @@ describe("suggestClinicSchema", () => {
   });
 
   it("requires consent", () => {
-    const result = suggestClinicSchema.safeParse({ ...validSuggestion, consent: false });
+    const result = suggestClinicSchema.safeParse({
+      ...validSuggestion,
+      consent: false,
+    });
     expect(result.success).toBe(false);
   });
 
@@ -46,7 +49,10 @@ describe("suggestClinicSchema", () => {
   });
 
   it("rejects too-short names", () => {
-    const result = suggestClinicSchema.safeParse({ ...validSuggestion, clinic_name: "ab" });
+    const result = suggestClinicSchema.safeParse({
+      ...validSuggestion,
+      clinic_name: "ab",
+    });
     expect(result.success).toBe(false);
   });
 });

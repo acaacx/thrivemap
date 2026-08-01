@@ -5,6 +5,7 @@
 Build **ThriveMap** (renamed from "AuSome" mid-session — product name is ThriveMap everywhere; directory name stays `ausomeapp`): a Philippines-first, autism-focused clinic directory MVP. Phase 1 = clinic discovery only (no booking/therapist profiles/payments). Full spec lives in the first user message of the original session; condensed plan in `/Users/alaric/.claude/plans/review-this-prompt-and-dazzling-pelican.md`.
 
 **Locked decisions (do not relitigate):**
+
 - No external credentials — everything runs on local Supabase + `[DEV ADAPTER]`-marked fallbacks (maps, rate limit, email, analytics). Real providers env-gated; setup documented in `.env.example`.
 - Staged build with user checkpoint between stages: 1) foundation+DB+public directory, 2) auth+contributions, 3) claims+rep portal+admin, 4) jobs+hardening+docs+CI.
 - Background jobs = pg-based queue (`jobs` table + pg_cron + processor route; `claim_due_jobs`/`requeue_stuck_jobs` fns exist in migration 7). No Trigger.dev/Inngest.

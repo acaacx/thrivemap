@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getMapProvider } from "@/modules/maps";
+import { cachedClinicData } from "@/modules/shared/cache";
 
 const querySchema = z.object({
   q: z.string().trim().min(2).max(120).optional(),
@@ -24,7 +25,12 @@ export async function GET(request: NextRequest) {
       const location = await provider.geocodePlace(parsed.data.placeId);
       return NextResponse.json({ location });
     }
-    const suggestions = await provider.autocompleteLocation(parsed.data.q!);
+    const query = parsed.data.q!.toLowerCase();
+    const suggestions = await cachedClinicData(
+      `autocomplete|${query}`,
+      3600,
+      () => provider.autocompleteLocation(query),
+    );
     return NextResponse.json(
       { suggestions },
       { headers: { "Cache-Control": "public, max-age=60, s-maxage=300" } },
@@ -32,7 +38,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("locations api error", error);
     return NextResponse.json(
-      { error: { code: "locations_failed", message: "Location lookup failed." } },
+      {
+        error: { code: "locations_failed", message: "Location lookup failed." },
+      },
       { status: 500 },
     );
   }

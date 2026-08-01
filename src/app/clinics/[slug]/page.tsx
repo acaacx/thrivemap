@@ -38,7 +38,9 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const clinic = await getClinicBySlug(slug);
   if (!clinic) return { title: "Clinic not found" };
@@ -66,12 +68,16 @@ export default async function ClinicProfilePage({ params }: PageProps) {
   const clinic = await getClinicBySlug(slug);
   if (!clinic) notFound();
 
-  const location = clinic.clinic_locations.find((l) => l.is_primary) ?? clinic.clinic_locations[0];
+  const location =
+    clinic.clinic_locations.find((l) => l.is_primary) ??
+    clinic.clinic_locations[0];
   const isVerified = clinic.status === "published_verified";
   const services = clinic.clinic_services
     .map((cs) => cs.services)
     .filter((s): s is NonNullable<typeof s> => Boolean(s));
-  const hours = [...clinic.clinic_hours].sort((a, b) => a.day_of_week - b.day_of_week);
+  const hours = [...clinic.clinic_hours].sort(
+    (a, b) => a.day_of_week - b.day_of_week,
+  );
   const deliveryTypes = new Set(
     clinic.clinic_services.flatMap((cs) => cs.delivery ?? []),
   );
@@ -119,7 +125,12 @@ export default async function ClinicProfilePage({ params }: PageProps) {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
-      { "@type": "ListItem", position: 2, name: "Clinics", item: `${siteConfig.url}/clinics` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Clinics",
+        item: `${siteConfig.url}/clinics`,
+      },
       { "@type": "ListItem", position: 3, name: clinic.name },
     ],
   };
@@ -144,7 +155,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/clinics" />}>Clinics</BreadcrumbLink>
+                <BreadcrumbLink render={<Link href="/clinics" />}>
+                  Clinics
+                </BreadcrumbLink>
               </BreadcrumbItem>
               {location && (
                 <>
@@ -152,7 +165,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   <BreadcrumbItem>
                     <BreadcrumbLink
                       render={
-                        <Link href={`/locations/${location.province_slug}/${location.city_slug}`} />
+                        <Link
+                          href={`/locations/${location.province_slug}/${location.city_slug}`}
+                        />
                       }
                     >
                       {location.city}
@@ -170,11 +185,16 @@ export default async function ClinicProfilePage({ params }: PageProps) {
           {/* Header */}
           <header className="mt-6 flex flex-wrap items-start gap-4">
             <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-secondary">
-              <Building2 className="size-9 text-secondary-foreground" aria-hidden />
+              <Building2
+                className="size-9 text-secondary-foreground"
+                aria-hidden
+              />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-heading text-2xl font-semibold sm:text-3xl">{clinic.name}</h1>
+                <h1 className="font-heading text-2xl font-semibold sm:text-3xl">
+                  {clinic.name}
+                </h1>
                 <VerificationBadge status={clinic.status} />
               </div>
               {location && (
@@ -194,11 +214,14 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {clinic.last_verified_at && (
                 <p className="text-sm text-muted-foreground">
                   Last verified{" "}
-                  {new Date(clinic.last_verified_at).toLocaleDateString("en-PH", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {new Date(clinic.last_verified_at).toLocaleDateString(
+                    "en-PH",
+                    {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    },
+                  )}
                 </p>
               )}
             </div>
@@ -207,7 +230,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {clinic.phone && (
                 <Button
                   className="rounded-full"
-                  render={<a href={`tel:${clinic.phone.replaceAll(" ", "")}`} />}
+                  render={
+                    <a href={`tel:${clinic.phone.replaceAll(" ", "")}`} />
+                  }
                 >
                   <Phone className="size-4" aria-hidden /> Call
                 </Button>
@@ -217,7 +242,11 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   variant="outline"
                   className="rounded-full"
                   render={
-                    <a href={clinic.website} target="_blank" rel="noopener noreferrer" />
+                    <a
+                      href={clinic.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
                   }
                 >
                   <Globe className="size-4" aria-hidden /> Website
@@ -231,7 +260,12 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   render={
                     <a
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                        [location.address_line1, location.city, location.province, "Philippines"]
+                        [
+                          location.address_line1,
+                          location.city,
+                          location.province,
+                          "Philippines",
+                        ]
                           .filter(Boolean)
                           .join(", "),
                       )}`}
@@ -251,7 +285,10 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               role="note"
               className="mt-6 flex items-start gap-3 rounded-xl border border-accent bg-accent/40 p-4 text-sm"
             >
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-accent-foreground" aria-hidden />
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0 text-accent-foreground"
+                aria-hidden
+              />
               <p>
                 <span className="font-medium">Unverified listing.</span>{" "}
                 Information may be incomplete or outdated. Please confirm
@@ -260,8 +297,12 @@ export default async function ClinicProfilePage({ params }: PageProps) {
             </div>
           )}
           {clinic.status === "temporarily_closed" && (
-            <div role="note" className="mt-6 rounded-xl border bg-secondary p-4 text-sm">
-              This clinic is marked as <span className="font-medium">temporarily closed</span>.
+            <div
+              role="note"
+              className="mt-6 rounded-xl border bg-secondary p-4 text-sm"
+            >
+              This clinic is marked as{" "}
+              <span className="font-medium">temporarily closed</span>.
             </div>
           )}
 
@@ -270,7 +311,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {clinic.description && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-heading text-lg"><h2>About</h2></CardTitle>
+                    <CardTitle className="font-heading text-lg">
+                      <h2>About</h2>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
@@ -282,7 +325,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-heading text-lg"><h2>Services</h2></CardTitle>
+                  <CardTitle className="font-heading text-lg">
+                    <h2>Services</h2>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-2">
@@ -296,17 +341,22 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       </Badge>
                     ))}
                     {services.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No services listed yet.</p>
+                      <p className="text-sm text-muted-foreground">
+                        No services listed yet.
+                      </p>
                     )}
                   </div>
                   {deliveryTypes.size > 0 && (
                     <p className="flex items-center gap-2 text-sm text-muted-foreground">
                       {deliveryTypes.has("online") && (
                         <span className="inline-flex items-center gap-1">
-                          <Video className="size-4" aria-hidden /> Online sessions offered
+                          <Video className="size-4" aria-hidden /> Online
+                          sessions offered
                         </span>
                       )}
-                      {deliveryTypes.has("in_person") && <span>In-person sessions</span>}
+                      {deliveryTypes.has("in_person") && (
+                        <span>In-person sessions</span>
+                      )}
                     </p>
                   )}
                 </CardContent>
@@ -315,7 +365,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {clinic.clinic_age_groups.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-heading text-lg"><h2>Age groups served</h2></CardTitle>
+                    <CardTitle className="font-heading text-lg">
+                      <h2>Age groups served</h2>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-2">
                     {clinic.clinic_age_groups.map((ag) => (
@@ -327,10 +379,13 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                 </Card>
               )}
 
-              {(clinic.wheelchair_accessible != null || clinic.accessibility_notes) && (
+              {(clinic.wheelchair_accessible != null ||
+                clinic.accessibility_notes) && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-heading text-lg"><h2>Accessibility</h2></CardTitle>
+                    <CardTitle className="font-heading text-lg">
+                      <h2>Accessibility</h2>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-1 text-sm">
                     {clinic.wheelchair_accessible != null && (
@@ -341,7 +396,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       </p>
                     )}
                     {clinic.accessibility_notes && (
-                      <p className="text-muted-foreground">{clinic.accessibility_notes}</p>
+                      <p className="text-muted-foreground">
+                        {clinic.accessibility_notes}
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -350,7 +407,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {clinic.clinic_languages.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="font-heading text-lg"><h2>Languages</h2></CardTitle>
+                    <CardTitle className="font-heading text-lg">
+                      <h2>Languages</h2>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
                     {clinic.clinic_languages.map((l) => l.language).join(", ")}
@@ -376,16 +435,25 @@ export default async function ClinicProfilePage({ params }: PageProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-heading text-lg"><h2>Opening hours</h2></CardTitle>
+                  <CardTitle className="font-heading text-lg">
+                    <h2>Opening hours</h2>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {hours.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Hours not listed yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Hours not listed yet.
+                    </p>
                   ) : (
                     <dl className="space-y-1.5 text-sm">
                       {hours.map((h) => (
-                        <div key={h.day_of_week} className="flex justify-between gap-4">
-                          <dt className="text-muted-foreground">{dayName(h.day_of_week)}</dt>
+                        <div
+                          key={h.day_of_week}
+                          className="flex justify-between gap-4"
+                        >
+                          <dt className="text-muted-foreground">
+                            {dayName(h.day_of_week)}
+                          </dt>
                           <dd>
                             {h.is_closed
                               ? "Closed"
@@ -400,28 +468,45 @@ export default async function ClinicProfilePage({ params }: PageProps) {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-heading text-lg"><h2>Contact</h2></CardTitle>
+                  <CardTitle className="font-heading text-lg">
+                    <h2>Contact</h2>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   {clinic.phone && (
                     <p className="flex items-center gap-2">
-                      <Phone className="size-4 text-muted-foreground" aria-hidden />
-                      <a className="underline-offset-4 hover:underline" href={`tel:${clinic.phone.replaceAll(" ", "")}`}>
+                      <Phone
+                        className="size-4 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <a
+                        className="underline-offset-4 hover:underline"
+                        href={`tel:${clinic.phone.replaceAll(" ", "")}`}
+                      >
                         {clinic.phone}
                       </a>
                     </p>
                   )}
                   {clinic.email && (
                     <p className="flex items-center gap-2">
-                      <Mail className="size-4 text-muted-foreground" aria-hidden />
-                      <a className="underline-offset-4 hover:underline" href={`mailto:${clinic.email}`}>
+                      <Mail
+                        className="size-4 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <a
+                        className="underline-offset-4 hover:underline"
+                        href={`mailto:${clinic.email}`}
+                      >
                         {clinic.email}
                       </a>
                     </p>
                   )}
                   {clinic.website && (
                     <p className="flex items-center gap-2">
-                      <Globe className="size-4 text-muted-foreground" aria-hidden />
+                      <Globe
+                        className="size-4 text-muted-foreground"
+                        aria-hidden
+                      />
                       <a
                         className="truncate underline-offset-4 hover:underline"
                         href={clinic.website}
@@ -434,7 +519,10 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   )}
                   {clinic.clinic_social_links.map((social) => (
                     <p key={social.url} className="flex items-center gap-2">
-                      <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
+                      <ExternalLink
+                        className="size-4 text-muted-foreground"
+                        aria-hidden
+                      />
                       <a
                         className="capitalize underline-offset-4 hover:underline"
                         href={social.url}
@@ -468,7 +556,9 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       variant="outline"
                       size="sm"
                       className="rounded-full"
-                      render={<Link href={`/clinics/${clinic.slug}/suggest-edit`} />}
+                      render={
+                        <Link href={`/clinics/${clinic.slug}/suggest-edit`} />
+                      }
                     >
                       Suggest a correction
                     </Button>

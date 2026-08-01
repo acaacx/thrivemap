@@ -9,12 +9,33 @@ export const suggestClinicSchema = z.object({
     .string()
     .trim()
     .max(32)
-    .regex(/^[+\d\s()-]*$/, "Phone may contain digits, spaces, +, - and parentheses.")
+    .regex(
+      /^[+\d\s()-]*$/,
+      "Phone may contain digits, spaces, +, - and parentheses.",
+    )
     .optional()
     .or(z.literal("")),
-  email: z.string().trim().email("Enter a valid email.").max(254).optional().or(z.literal("")),
-  website: z.string().trim().url("Enter a full URL (https://…).").max(300).optional().or(z.literal("")),
-  social_media_url: z.string().trim().url("Enter a full URL.").max(300).optional().or(z.literal("")),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email.")
+    .max(254)
+    .optional()
+    .or(z.literal("")),
+  website: z
+    .string()
+    .trim()
+    .url("Enter a full URL (https://…).")
+    .max(300)
+    .optional()
+    .or(z.literal("")),
+  social_media_url: z
+    .string()
+    .trim()
+    .url("Enter a full URL.")
+    .max(300)
+    .optional()
+    .or(z.literal("")),
   service_slugs: z.array(z.string().max(64)).max(12),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   reference_links: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -26,7 +47,8 @@ export const suggestClinicSchema = z.object({
     .optional()
     .or(z.literal("")),
   consent: z.literal(true, {
-    message: "Please confirm the information is accurate to the best of your knowledge.",
+    message:
+      "Please confirm the information is accurate to the best of your knowledge.",
   }),
 });
 

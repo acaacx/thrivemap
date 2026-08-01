@@ -16,7 +16,9 @@ export default async function AdminDuplicatesPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-heading text-2xl font-semibold">Duplicate candidates</h1>
+        <h1 className="font-heading text-2xl font-semibold">
+          Duplicate candidates
+        </h1>
         <div className="ml-auto">
           <ScanButton />
         </div>
@@ -34,27 +36,40 @@ export default async function AdminDuplicatesPage() {
       ) : (
         <ul className="mt-6 space-y-4">
           {pending.map((candidate) => {
-            const fields = (candidate.matching_fields ?? {}) as Record<string, unknown>;
+            const fields = (candidate.matching_fields ?? {}) as Record<
+              string,
+              unknown
+            >;
             return (
               <li key={candidate.id} className="rounded-2xl border bg-card p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>
-                    {(Number(candidate.similarity_score) * 100).toFixed(0)}% match
+                    {(Number(candidate.similarity_score) * 100).toFixed(0)}%
+                    match
                   </Badge>
-                  {fields.same_phone === true && <Badge variant="outline">same phone</Badge>}
+                  {fields.same_phone === true && (
+                    <Badge variant="outline">same phone</Badge>
+                  )}
                   {fields.same_website_domain === true && (
                     <Badge variant="outline">same website</Badge>
                   )}
                   {typeof fields.distance_m === "number" && (
-                    <Badge variant="outline">{Math.round(fields.distance_m)} m apart</Badge>
+                    <Badge variant="outline">
+                      {Math.round(fields.distance_m)} m apart
+                    </Badge>
                   )}
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {([
-                    ["A", candidate.clinic_a],
-                    ["B", candidate.clinic_b],
-                  ] as const).map(([side, clinic]) => (
-                    <div key={side} className="rounded-xl border bg-background p-4">
+                  {(
+                    [
+                      ["A", candidate.clinic_a],
+                      ["B", candidate.clinic_b],
+                    ] as const
+                  ).map(([side, clinic]) => (
+                    <div
+                      key={side}
+                      className="rounded-xl border bg-background p-4"
+                    >
                       <p className="text-xs font-medium text-muted-foreground">
                         Listing {side}
                       </p>
@@ -86,7 +101,11 @@ export default async function AdminDuplicatesPage() {
                     {
                       label: "Not a duplicate",
                       variant: "outline",
-                      run: resolveDuplicateCandidate.bind(null, candidate.id, "not_duplicate"),
+                      run: resolveDuplicateCandidate.bind(
+                        null,
+                        candidate.id,
+                        "not_duplicate",
+                      ),
                     },
                   ]}
                 />
@@ -103,7 +122,10 @@ export default async function AdminDuplicatesPage() {
           </summary>
           <ul className="mt-3 space-y-2 text-sm">
             {resolved.map((candidate) => (
-              <li key={candidate.id} className="rounded-lg border bg-card px-4 py-2.5">
+              <li
+                key={candidate.id}
+                className="rounded-lg border bg-card px-4 py-2.5"
+              >
                 <span className="font-medium">
                   {candidate.clinic_a?.name} ↔ {candidate.clinic_b?.name}
                 </span>{" "}

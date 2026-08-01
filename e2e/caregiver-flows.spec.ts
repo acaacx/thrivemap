@@ -19,36 +19,50 @@ test.describe("authentication", () => {
     await expect(page.getByText("caregiver@thrivemap.test")).toBeVisible();
   });
 
-  test("signed-out visitors are redirected from account pages", async ({ page }) => {
+  test("signed-out visitors are redirected from account pages", async ({
+    page,
+  }) => {
     await page.goto("/account/favorites");
     await page.waitForURL("**/login**");
-    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /welcome back/i }),
+    ).toBeVisible();
   });
 });
 
 test.describe("favorites", () => {
-  test("caregiver can favorite and unfavorite a clinic", async ({ page }, testInfo) => {
+  test("caregiver can favorite and unfavorite a clinic", async ({
+    page,
+  }, testInfo) => {
     // Both projects share the demo caregiver account; running this mutation
     // flow concurrently in two projects races the same session. Chromium-only.
-    test.skip(testInfo.project.name !== "chromium", "chromium-only mutation flow");
+    test.skip(
+      testInfo.project.name !== "chromium",
+      "chromium-only mutation flow",
+    );
     const slug = "bloom-developmental-services";
     await signIn(page);
     await page.goto(`/clinics/${slug}`);
 
     // Reset any leftover favorited state from previous runs.
-    const anyFavoriteButton = page.getByRole("button", { name: /favorites/i }).first();
+    const anyFavoriteButton = page
+      .getByRole("button", { name: /favorites/i })
+      .first();
     await anyFavoriteButton.waitFor();
     if ((await anyFavoriteButton.getAttribute("aria-pressed")) === "true") {
       await anyFavoriteButton.click();
       await expect(anyFavoriteButton).toHaveAttribute("aria-pressed", "false");
     }
 
-    const favoriteButton = page.getByRole("button", { name: /save .* to favorites/i });
+    const favoriteButton = page.getByRole("button", {
+      name: /save .* to favorites/i,
+    });
     // Wait for the saveFavorite server action (a POST back to the page) to
     // complete before navigating — leaving early aborts it mid-flight.
     const saveSettled = page.waitForResponse(
       (response) =>
-        response.request().method() === "POST" && response.url().includes("/clinics/"),
+        response.request().method() === "POST" &&
+        response.url().includes("/clinics/"),
     );
     await favoriteButton.click();
     await expect(
@@ -61,7 +75,9 @@ test.describe("favorites", () => {
 
     // Clean up: unfavorite so the test is repeatable.
     await page.goto(`/clinics/${slug}`);
-    await page.getByRole("button", { name: /remove .* from favorites/i }).click();
+    await page
+      .getByRole("button", { name: /remove .* from favorites/i })
+      .click();
     await expect(
       page.getByRole("button", { name: /save .* to favorites/i }),
     ).toBeVisible();
@@ -69,9 +85,13 @@ test.describe("favorites", () => {
 });
 
 test.describe("suggest a clinic", () => {
-  test("duplicate check surfaces similar listings before submitting", async ({ page }) => {
+  test("duplicate check surfaces similar listings before submitting", async ({
+    page,
+  }) => {
     await page.goto("/suggest-clinic");
-    await page.getByLabel(/clinic name/i).fill("Little Steps Developmental Center");
+    await page
+      .getByLabel(/clinic name/i)
+      .fill("Little Steps Developmental Center");
     await page
       .getByLabel(/full address/i)
       .fill("123 Some Street, Barangay 1, Quezon City, Metro Manila");
@@ -80,7 +100,9 @@ test.describe("suggest a clinic", () => {
       .click();
     await page.getByRole("button", { name: /check for duplicates/i }).click();
 
-    await expect(page.getByRole("heading", { name: /is it one of these/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /is it one of these/i }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: /little steps developmental center/i }),
     ).toBeVisible();
@@ -98,7 +120,10 @@ test.describe("suggest a clinic", () => {
       .getByRole("checkbox", { name: /information i.m sharing is accurate/i })
       .click();
     await page.getByRole("button", { name: /check for duplicates/i }).click();
-    await page.getByRole("button", { name: /submit/i }).first().click();
+    await page
+      .getByRole("button", { name: /submit/i })
+      .first()
+      .click();
     await expect(page.getByText(/suggestion received/i)).toBeVisible();
   });
 });
@@ -123,10 +148,14 @@ test.describe("suggest a correction", () => {
     await page
       .getByLabel(/what should change/i)
       .fill("Playwright test — clinic now opens at 9am on weekdays.");
-    await page.getByRole("button", { name: /send correction request/i }).click();
+    await page
+      .getByRole("button", { name: /send correction request/i })
+      .click();
     await expect(page.getByText("Request sent", { exact: true })).toBeVisible();
 
     await page.goto("/account/submissions");
-    await expect(page.getByText(/clinic now opens at 9am/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/clinic now opens at 9am/i).first(),
+    ).toBeVisible();
   });
 });

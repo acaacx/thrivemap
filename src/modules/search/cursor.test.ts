@@ -16,16 +16,16 @@ describe("cursor", () => {
   });
 
   it("rejects non-uuid ids", () => {
-    const forged = Buffer.from(JSON.stringify({ v: 1, id: "1; drop table" })).toString(
-      "base64url",
-    );
+    const forged = Buffer.from(
+      JSON.stringify({ v: 1, id: "1; drop table" }),
+    ).toString("base64url");
     expect(decodeCursor(forged)).toBeNull();
   });
 
   it("rejects non-finite sort values", () => {
-    const forged = Buffer.from(JSON.stringify({ v: "Infinity", id: uuid })).toString(
-      "base64url",
-    );
+    const forged = Buffer.from(
+      JSON.stringify({ v: "Infinity", id: uuid }),
+    ).toString("base64url");
     expect(decodeCursor(forged)).toBeNull();
   });
 });

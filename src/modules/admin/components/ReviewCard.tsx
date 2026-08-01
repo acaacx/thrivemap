@@ -33,12 +33,18 @@ export function ReviewActions({
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
   const fieldId = useId();
 
   async function onRun(action: ReviewActionSpec) {
     setFeedback(null);
-    if ((action.requiresReason || action.variant === "destructive") && !reason.trim()) {
+    if (
+      (action.requiresReason || action.variant === "destructive") &&
+      !reason.trim()
+    ) {
       setFeedback({ kind: "error", text: `“${action.label}” needs a reason.` });
       return;
     }

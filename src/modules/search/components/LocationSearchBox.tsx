@@ -15,7 +15,11 @@ interface Suggestion {
 
 interface LocationSearchBoxProps {
   /** Called with a chosen location; default navigates to /clinics. */
-  onLocation?: (loc: { latitude: number; longitude: number; label: string }) => void;
+  onLocation?: (loc: {
+    latitude: number;
+    longitude: number;
+    label: string;
+  }) => void;
   autoFocus?: boolean;
   size?: "default" | "large";
 }
@@ -25,7 +29,10 @@ interface LocationSearchBoxProps {
  * "Use my location" affordance. Browser geolocation is requested only after
  * an explicit click, with a plain-language explanation shown beforehand.
  */
-export function LocationSearchBox({ onLocation, size = "default" }: LocationSearchBoxProps) {
+export function LocationSearchBox({
+  onLocation,
+  size = "default",
+}: LocationSearchBoxProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -38,28 +45,34 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
 
   useEffect(() => {
     const shortQuery = query.trim().length < 2;
-    const timeout = setTimeout(async () => {
-      if (shortQuery) {
-        setSuggestions([]);
-        setOpen(false);
-        return;
-      }
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      try {
-        const res = await fetch(`/api/locations?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { suggestions?: Suggestion[] };
-        setSuggestions(json.suggestions ?? []);
-        setOpen((json.suggestions ?? []).length > 0);
-        setActiveIndex(-1);
-      } catch {
-        // aborted or offline — ignore
-      }
-    }, shortQuery ? 0 : 250);
+    const timeout = setTimeout(
+      async () => {
+        if (shortQuery) {
+          setSuggestions([]);
+          setOpen(false);
+          return;
+        }
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        try {
+          const res = await fetch(
+            `/api/locations?q=${encodeURIComponent(query)}`,
+            {
+              signal: controller.signal,
+            },
+          );
+          if (!res.ok) return;
+          const json = (await res.json()) as { suggestions?: Suggestion[] };
+          setSuggestions(json.suggestions ?? []);
+          setOpen((json.suggestions ?? []).length > 0);
+          setActiveIndex(-1);
+        } catch {
+          // aborted or offline — ignore
+        }
+      },
+      shortQuery ? 0 : 250,
+    );
     return () => clearTimeout(timeout);
   }, [query]);
 
@@ -96,7 +109,11 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
         location?: { latitude: number; longitude: number; label: string };
       };
       if (json.location) {
-        go(json.location.latitude, json.location.longitude, json.location.label);
+        go(
+          json.location.latitude,
+          json.location.longitude,
+          json.location.label,
+        );
       } else {
         toast.error("Could not find that location. Try another search.");
       }
@@ -107,14 +124,20 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
 
   function useMyLocation() {
     if (!("geolocation" in navigator)) {
-      toast.error("Location is not supported by this browser. Try searching by city instead.");
+      toast.error(
+        "Location is not supported by this browser. Try searching by city instead.",
+      );
       return;
     }
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setBusy(false);
-        go(position.coords.latitude, position.coords.longitude, "Your location");
+        go(
+          position.coords.latitude,
+          position.coords.longitude,
+          "Your location",
+        );
       },
       () => {
         setBusy(false);
@@ -143,7 +166,9 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
   }
 
   const inputClasses =
-    size === "large" ? "h-13 rounded-full pl-11 text-base" : "h-10 rounded-full pl-10";
+    size === "large"
+      ? "h-13 rounded-full pl-11 text-base"
+      : "h-10 rounded-full pl-10";
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -159,7 +184,9 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
             aria-controls={listboxId}
             aria-autocomplete="list"
             aria-activedescendant={
-              activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+              activeIndex >= 0
+                ? `${listboxId}-option-${activeIndex}`
+                : undefined
             }
             aria-label="Search by city, province, or barangay"
             placeholder="City, province, or barangay…"
@@ -211,7 +238,10 @@ export function LocationSearchBox({ onLocation, size = "default" }: LocationSear
                 void choose(s);
               }}
             >
-              <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <MapPin
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
               <span>{s.label}</span>
               {s.kind && (
                 <span className="ml-auto text-xs capitalize text-muted-foreground">

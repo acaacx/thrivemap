@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { CheckCircle2, FileText, Loader2, ShieldCheck, Upload } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  Loader2,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -67,26 +73,36 @@ function kindLabel(kind: string) {
   return CLAIM_DOCUMENT_KINDS.find((k) => k.value === kind)?.label ?? kind;
 }
 
-export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) {
+export function ClaimWizard({
+  clinic,
+  userId,
+  initialClaim,
+}: ClaimWizardProps) {
   const router = useRouter();
   const editable =
     !initialClaim ||
     initialClaim.status === "draft" ||
     initialClaim.status === "additional_information_required";
 
-  const [claimId, setClaimId] = useState<string | null>(initialClaim?.id ?? null);
+  const [claimId, setClaimId] = useState<string | null>(
+    initialClaim?.id ?? null,
+  );
   const [step, setStep] = useState<Step>("details");
-  const [docs, setDocs] = useState<ClaimDoc[]>(initialClaim?.clinic_claim_documents ?? []);
-  const [docKind, setDocKind] = useState<ClaimDocumentKind>("proof_of_affiliation");
+  const [docs, setDocs] = useState<ClaimDoc[]>(
+    initialClaim?.clinic_claim_documents ?? [],
+  );
+  const [docKind, setDocKind] = useState<ClaimDocumentKind>(
+    "proof_of_affiliation",
+  );
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [consent, setConsent] = useState(false);
 
-  const isKnownRelationship = (CLAIM_RELATIONSHIPS as readonly string[]).includes(
-    initialClaim?.relationship ?? "",
-  );
+  const isKnownRelationship = (
+    CLAIM_RELATIONSHIPS as readonly string[]
+  ).includes(initialClaim?.relationship ?? "");
   const form = useForm<ClaimDetailsInput>({
     resolver: zodResolver(claimDetailsSchema),
     defaultValues: {
@@ -97,7 +113,8 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
       relationship: (isKnownRelationship
         ? initialClaim?.relationship
         : undefined) as ClaimDetailsInput["relationship"],
-      business_registration_info: initialClaim?.business_registration_info ?? "",
+      business_registration_info:
+        initialClaim?.business_registration_info ?? "",
     },
   });
 
@@ -107,14 +124,22 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
         role="status"
         className="rounded-2xl border border-[var(--verified)]/40 bg-[var(--verified)]/10 p-8 text-center"
       >
-        <ShieldCheck aria-hidden className="mx-auto h-10 w-10 text-[var(--verified)]" />
-        <p className="mt-3 font-heading text-xl font-semibold">Claim submitted</p>
+        <ShieldCheck
+          aria-hidden
+          className="mx-auto h-10 w-10 text-[var(--verified)]"
+        />
+        <p className="mt-3 font-heading text-xl font-semibold">
+          Claim submitted
+        </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Our moderators will review your claim and documents. You can follow its
-          status from your account.
+          Our moderators will review your claim and documents. You can follow
+          its status from your account.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Button className="rounded-full" render={<Link href="/account/claims" />}>
+          <Button
+            className="rounded-full"
+            render={<Link href="/account/claims" />}
+          >
             View my claims
           </Button>
           <Button
@@ -142,15 +167,22 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
           Claim status: {initialClaim.status.replaceAll("_", " ")}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {statusCopy[initialClaim.status] ?? "We'll email you when there's an update."}
+          {statusCopy[initialClaim.status] ??
+            "We'll email you when there's an update."}
         </p>
         <div className="mt-6 flex gap-3">
           {initialClaim.status === "approved" ? (
-            <Button className="rounded-full" render={<Link href="/clinic-portal" />}>
+            <Button
+              className="rounded-full"
+              render={<Link href="/clinic-portal" />}
+            >
               Open clinic portal
             </Button>
           ) : (
-            <Button className="rounded-full" render={<Link href="/account/claims" />}>
+            <Button
+              className="rounded-full"
+              render={<Link href="/account/claims" />}
+            >
               View my claims
             </Button>
           )}
@@ -280,7 +312,10 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
               }`}
             >
               {isDone && (
-                <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-[var(--verified)]" />
+                <CheckCircle2
+                  aria-hidden
+                  className="h-3.5 w-3.5 text-[var(--verified)]"
+                />
               )}
               {index + 1}. {s.label}
             </li>
@@ -289,17 +324,28 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
       </ol>
 
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+        >
           {error}
         </p>
       )}
 
       {step === "details" && (
-        <form onSubmit={form.handleSubmit(onDetailsNext)} className="space-y-4" noValidate>
+        <form
+          onSubmit={form.handleSubmit(onDetailsNext)}
+          className="space-y-4"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="claim-name">Full name</Label>
-              <Input id="claim-name" autoComplete="name" {...form.register("full_name")} />
+              <Input
+                id="claim-name"
+                autoComplete="name"
+                {...form.register("full_name")}
+              />
               <FieldError message={form.formState.errors.full_name?.message} />
             </div>
             <div className="space-y-1.5">
@@ -321,7 +367,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
                 placeholder="+63 917 000 0000"
                 {...form.register("mobile_number")}
               />
-              <FieldError message={form.formState.errors.mobile_number?.message} />
+              <FieldError
+                message={form.formState.errors.mobile_number?.message}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="claim-title">Job title</Label>
@@ -330,7 +378,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
             </div>
           </div>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Relationship to the clinic</legend>
+            <legend className="text-sm font-medium">
+              Relationship to the clinic
+            </legend>
             <div className="flex flex-wrap gap-2">
               {CLAIM_RELATIONSHIPS.map((relationship) => (
                 <label
@@ -356,7 +406,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
           <div className="space-y-1.5">
             <Label htmlFor="claim-registration">
               Business registration details{" "}
-              <span className="font-normal text-muted-foreground">(optional)</span>
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
             </Label>
             <Textarea
               id="claim-registration"
@@ -365,12 +417,16 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
               {...form.register("business_registration_info")}
             />
             <FieldError
-              message={form.formState.errors.business_registration_info?.message}
+              message={
+                form.formState.errors.business_registration_info?.message
+              }
             />
           </div>
           <div className="flex justify-end">
             <Button type="submit" className="rounded-full" disabled={busy}>
-              {busy && <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />}
+              {busy && (
+                <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Continue to documents
             </Button>
           </div>
@@ -381,9 +437,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Attach at least one document that shows your affiliation with{" "}
-            <span className="font-medium text-foreground">{clinic.name}</span> — a
-            business permit, employment record, or similar. Documents are stored
-            privately and only visible to our verification team.
+            <span className="font-medium text-foreground">{clinic.name}</span> —
+            a business permit, employment record, or similar. Documents are
+            stored privately and only visible to our verification team.
           </p>
           <div className="rounded-xl border bg-card p-4">
             <div className="flex flex-wrap items-end gap-3">
@@ -392,7 +448,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
                 <select
                   id="claim-doc-kind"
                   value={docKind}
-                  onChange={(e) => setDocKind(e.target.value as ClaimDocumentKind)}
+                  onChange={(e) =>
+                    setDocKind(e.target.value as ClaimDocumentKind)
+                  }
                   className="h-9 rounded-md border bg-background px-3 text-sm"
                 >
                   {CLAIM_DOCUMENT_KINDS.map((k) => (
@@ -403,7 +461,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="claim-doc-file">File (PDF or image, max 10 MB)</Label>
+                <Label htmlFor="claim-doc-file">
+                  File (PDF or image, max 10 MB)
+                </Label>
                 <Input
                   id="claim-doc-file"
                   type="file"
@@ -414,7 +474,8 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
               </div>
               {uploading && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Uploading…
+                  <Loader2 aria-hidden className="h-4 w-4 animate-spin" />{" "}
+                  Uploading…
                 </p>
               )}
             </div>
@@ -427,7 +488,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
                   className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-sm"
                 >
                   <FileText aria-hidden className="h-4 w-4 text-primary" />
-                  <span className="min-w-0 truncate">{doc.original_filename}</span>
+                  <span className="min-w-0 truncate">
+                    {doc.original_filename}
+                  </span>
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                     {kindLabel(doc.kind)}
                   </span>
@@ -436,7 +499,8 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
             </ul>
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Upload aria-hidden className="h-4 w-4" /> No documents attached yet.
+              <Upload aria-hidden className="h-4 w-4" /> No documents attached
+              yet.
             </p>
           )}
           <div className="flex justify-between">
@@ -468,10 +532,7 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
             <ReviewItem label="Mobile" value={values.mobile_number} />
             <ReviewItem label="Job title" value={values.job_title} />
             <ReviewItem label="Relationship" value={values.relationship} />
-            <ReviewItem
-              label="Documents"
-              value={`${docs.length} attached`}
-            />
+            <ReviewItem label="Documents" value={`${docs.length} attached`} />
           </dl>
           <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">
             <Checkbox
@@ -480,9 +541,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
               aria-label="Consent to verification"
             />
             <span>
-              I confirm I am authorized to represent {clinic.name}, the information
-              I provided is accurate, and I consent to ThriveMap verifying it —
-              including contacting the clinic directly.
+              I confirm I am authorized to represent {clinic.name}, the
+              information I provided is accurate, and I consent to ThriveMap
+              verifying it — including contacting the clinic directly.
             </span>
           </label>
           <div className="flex justify-between">
@@ -500,7 +561,9 @@ export function ClaimWizard({ clinic, userId, initialClaim }: ClaimWizardProps) 
               disabled={!consent || busy}
               onClick={onSubmitClaim}
             >
-              {busy && <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />}
+              {busy && (
+                <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Submit claim
             </Button>
           </div>

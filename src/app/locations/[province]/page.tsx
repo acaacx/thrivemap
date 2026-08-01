@@ -5,7 +5,10 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { slugToTitle } from "@/lib/format";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
-import { getClinicsByLocation, getLocationsDirectory } from "@/modules/clinics/queries";
+import {
+  getClinicsByLocation,
+  getLocationsDirectory,
+} from "@/modules/clinics/queries";
 
 export const revalidate = 600;
 
@@ -13,7 +16,9 @@ interface PageProps {
   params: Promise<{ province: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { province } = await params;
   const name = slugToTitle(province);
   return {

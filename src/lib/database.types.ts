@@ -918,6 +918,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           email: string | null
+          flagged_stale_at: string | null
           google_place_id: string | null
           id: string
           is_demo: boolean
@@ -948,6 +949,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           email?: string | null
+          flagged_stale_at?: string | null
           google_place_id?: string | null
           id?: string
           is_demo?: boolean
@@ -978,6 +980,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           email?: string | null
+          flagged_stale_at?: string | null
           google_place_id?: string | null
           id?: string
           is_demo?: boolean
@@ -1450,6 +1453,7 @@ export type Database = {
           province_slug: string
         }[]
       }
+      refresh_all_clinic_search_documents: { Args: never; Returns: number }
       refresh_clinic_search_document: {
         Args: { p_clinic_id: string }
         Returns: undefined

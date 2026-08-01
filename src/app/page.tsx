@@ -7,7 +7,12 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SiteFooter } from "@/components/site-footer";
@@ -69,8 +74,14 @@ export default async function HomePage() {
         </section>
 
         {/* Service categories */}
-        <section aria-labelledby="services-heading" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <h2 id="services-heading" className="font-heading text-2xl font-semibold sm:text-3xl">
+        <section
+          aria-labelledby="services-heading"
+          className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+        >
+          <h2
+            id="services-heading"
+            className="font-heading text-2xl font-semibold sm:text-3xl"
+          >
             Browse by service
           </h2>
           <p className="mt-2 text-muted-foreground">
@@ -96,9 +107,15 @@ export default async function HomePage() {
 
         {/* Featured clinics */}
         {featured.length > 0 && (
-          <section aria-labelledby="featured-heading" className="bg-secondary/30 py-14">
+          <section
+            aria-labelledby="featured-heading"
+            className="bg-secondary/30 py-14"
+          >
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
-              <h2 id="featured-heading" className="font-heading text-2xl font-semibold sm:text-3xl">
+              <h2
+                id="featured-heading"
+                className="font-heading text-2xl font-semibold sm:text-3xl"
+              >
                 Featured verified clinics
               </h2>
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -126,8 +143,14 @@ export default async function HomePage() {
         )}
 
         {/* How it works */}
-        <section aria-labelledby="how-heading" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <h2 id="how-heading" className="font-heading text-2xl font-semibold sm:text-3xl">
+        <section
+          aria-labelledby="how-heading"
+          className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+        >
+          <h2
+            id="how-heading"
+            className="font-heading text-2xl font-semibold sm:text-3xl"
+          >
             How ThriveMap works
           </h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-3">
@@ -153,7 +176,9 @@ export default async function HomePage() {
                   <span className="grid size-11 place-items-center rounded-full bg-accent text-accent-foreground">
                     <Icon className="size-5" aria-hidden />
                   </span>
-                  <h3 className="font-heading text-lg font-semibold">{title}</h3>
+                  <h3 className="font-heading text-lg font-semibold">
+                    {title}
+                  </h3>
                   <p className="text-sm text-muted-foreground">{body}</p>
                 </CardContent>
               </Card>
@@ -162,11 +187,17 @@ export default async function HomePage() {
         </section>
 
         {/* Trust */}
-        <section aria-labelledby="trust-heading" className="bg-primary text-primary-foreground">
+        <section
+          aria-labelledby="trust-heading"
+          className="bg-primary text-primary-foreground"
+        >
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-[auto_1fr] sm:px-6">
             <ShieldCheck className="size-12 shrink-0" aria-hidden />
             <div className="space-y-3">
-              <h2 id="trust-heading" className="font-heading text-2xl font-semibold sm:text-3xl">
+              <h2
+                id="trust-heading"
+                className="font-heading text-2xl font-semibold sm:text-3xl"
+              >
                 Community-checked, clinic-confirmed
               </h2>
               <p className="max-w-2xl text-primary-foreground/85">
@@ -185,12 +216,17 @@ export default async function HomePage() {
           <Card className="rounded-2xl">
             <CardContent className="flex h-full flex-col gap-3 p-6">
               <HeartHandshake className="size-8 text-primary" aria-hidden />
-              <h2 className="font-heading text-xl font-semibold">Know a clinic we&apos;re missing?</h2>
+              <h2 className="font-heading text-xl font-semibold">
+                Know a clinic we&apos;re missing?
+              </h2>
               <p className="flex-1 text-sm text-muted-foreground">
                 Help other families by suggesting a therapy center or
                 developmental clinic. Our moderators will review and publish it.
               </p>
-              <Button className="w-fit rounded-full" render={<Link href="/suggest-clinic" />}>
+              <Button
+                className="w-fit rounded-full"
+                render={<Link href="/suggest-clinic" />}
+              >
                 Suggest a clinic
               </Button>
             </CardContent>
@@ -198,7 +234,9 @@ export default async function HomePage() {
           <Card className="rounded-2xl">
             <CardContent className="flex h-full flex-col gap-3 p-6">
               <Building2 className="size-8 text-primary" aria-hidden />
-              <h2 className="font-heading text-xl font-semibold">Run a clinic?</h2>
+              <h2 className="font-heading text-xl font-semibold">
+                Run a clinic?
+              </h2>
               <p className="flex-1 text-sm text-muted-foreground">
                 Claim your listing to keep your services, hours, and contact
                 details accurate — and earn a Verified badge families trust.
@@ -215,15 +253,25 @@ export default async function HomePage() {
         </section>
 
         {/* FAQ */}
-        <section aria-labelledby="faq-heading" className="mx-auto max-w-3xl px-4 pb-20 sm:px-6">
-          <h2 id="faq-heading" className="font-heading text-2xl font-semibold sm:text-3xl">
+        <section
+          aria-labelledby="faq-heading"
+          className="mx-auto max-w-3xl px-4 pb-20 sm:px-6"
+        >
+          <h2
+            id="faq-heading"
+            className="font-heading text-2xl font-semibold sm:text-3xl"
+          >
             Frequently asked questions
           </h2>
           <Accordion multiple={false} className="mt-6">
             {faqs.map((faq) => (
               <AccordionItem key={faq.q} value={faq.q}>
-                <AccordionTrigger className="text-left">{faq.q}</AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">{faq.a}</AccordionContent>
+                <AccordionTrigger className="text-left">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {faq.a}
+                </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>

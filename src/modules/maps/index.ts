@@ -14,7 +14,9 @@ export function getMapProvider(): MapProvider {
     if (process.env.GOOGLE_MAPS_SERVER_API_KEY) {
       provider = new GoogleMapsProvider();
     } else {
-      console.info("[DEV ADAPTER] Google Maps not configured — using DevMapProvider.");
+      console.info(
+        "[DEV ADAPTER] Google Maps not configured — using DevMapProvider.",
+      );
       provider = new DevMapProvider();
     }
   }

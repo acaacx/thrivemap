@@ -25,7 +25,11 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2" aria-label={`${siteConfig.name} home`}>
+        <Link
+          href="/"
+          className="flex items-center gap-2"
+          aria-label={`${siteConfig.name} home`}
+        >
           <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
             <MapPin className="size-5" aria-hidden />
           </span>
@@ -35,7 +39,11 @@ export async function SiteHeader() {
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
           {navLinks.map((link) => (
-            <Button key={link.href} variant="ghost" render={<Link href={link.href} />}>
+            <Button
+              key={link.href}
+              variant="ghost"
+              render={<Link href={link.href} />}
+            >
               {link.label}
             </Button>
           ))}
@@ -45,7 +53,11 @@ export async function SiteHeader() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="outline" className="rounded-full" aria-label="Account menu" />
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    aria-label="Account menu"
+                  />
                 }
               >
                 <CircleUserRound className="size-4" aria-hidden />
@@ -56,7 +68,9 @@ export async function SiteHeader() {
                   {user.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link href="/account" />}>Account</DropdownMenuItem>
+                <DropdownMenuItem render={<Link href="/account" />}>
+                  Account
+                </DropdownMenuItem>
                 <DropdownMenuItem render={<Link href="/account/favorites" />}>
                   Favorites
                 </DropdownMenuItem>
@@ -78,10 +92,17 @@ export async function SiteHeader() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="ghost" className="rounded-full" render={<Link href="/login" />}>
+              <Button
+                variant="ghost"
+                className="rounded-full"
+                render={<Link href="/login" />}
+              >
                 Sign in
               </Button>
-              <Button className="rounded-full" render={<Link href="/clinics" />}>
+              <Button
+                className="rounded-full"
+                render={<Link href="/clinics" />}
+              >
                 Search
               </Button>
             </>

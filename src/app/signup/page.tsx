@@ -24,7 +24,9 @@ export default async function SignupPage({
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
-          <h1 className="font-heading text-3xl font-semibold">Create your account</h1>
+          <h1 className="font-heading text-3xl font-semibold">
+            Create your account
+          </h1>
           <p className="mt-2 text-muted-foreground">
             Save favorite clinics, suggest new ones, and track your submissions.
             Free, and only an email is needed.

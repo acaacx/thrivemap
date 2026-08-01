@@ -44,13 +44,16 @@ export default function AboutPage() {
       <p>
         ThriveMap is a directory, not a medical service. We don&apos;t provide
         diagnoses, recommendations, or medical advice, and we don&apos;t store
-        health records. Whether a service fits your child is a decision for
-        your family, ideally together with your care team.
+        health records. Whether a service fits your child is a decision for your
+        family, ideally together with your care team.
       </p>
       <h2>Get in touch</h2>
       <p>
         Questions, corrections, partnership ideas? Email{" "}
-        <a href="mailto:hello@thrivemap.ph" className="underline underline-offset-4">
+        <a
+          href="mailto:hello@thrivemap.ph"
+          className="underline underline-offset-4"
+        >
           hello@thrivemap.ph
         </a>
         .

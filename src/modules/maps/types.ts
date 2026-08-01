@@ -60,10 +60,15 @@ export interface MapProvider {
   readonly name: string;
   autocompleteLocation(query: string): Promise<LocationSuggestion[]>;
   geocodePlace(placeId: string): Promise<GeocodedLocation | null>;
-  reverseGeocode(latitude: number, longitude: number): Promise<AddressResult | null>;
+  reverseGeocode(
+    latitude: number,
+    longitude: number,
+  ): Promise<AddressResult | null>;
   getPlaceDetails(placeId: string): Promise<ExternalPlaceDetails | null>;
   /** Discovery of potential clinic records — approved admin workflows only. */
-  searchNearbyClinics(input: NearbyClinicSearchInput): Promise<ExternalPlaceCandidate[]>;
+  searchNearbyClinics(
+    input: NearbyClinicSearchInput,
+  ): Promise<ExternalPlaceCandidate[]>;
 }
 
 export interface MapBounds {

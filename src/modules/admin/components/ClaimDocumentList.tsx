@@ -30,13 +30,18 @@ export function ClaimDocumentList({ documents }: ClaimDocumentListProps) {
   }
 
   if (documents.length === 0) {
-    return <p className="text-sm text-muted-foreground">No documents attached.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">No documents attached.</p>
+    );
   }
 
   return (
     <div className="space-y-2">
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
+        >
           {error}
         </p>
       )}
@@ -47,7 +52,9 @@ export function ClaimDocumentList({ documents }: ClaimDocumentListProps) {
             className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2 text-sm"
           >
             <FileText aria-hidden className="h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 truncate">{doc.original_filename ?? doc.kind}</span>
+            <span className="min-w-0 truncate">
+              {doc.original_filename ?? doc.kind}
+            </span>
             <span className="shrink-0 text-xs text-muted-foreground">
               {doc.kind.replaceAll("_", " ")}
             </span>

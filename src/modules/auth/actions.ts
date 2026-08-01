@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { siteConfig } from "@/lib/site-config";
+import { enqueueAddressEmail } from "@/modules/jobs/notify";
 import { checkRateLimit } from "@/modules/shared/rate-limit";
 
 const credentialsSchema = z.object({
@@ -22,7 +23,8 @@ export interface AuthFormState {
 
 function safeNext(next: string | undefined): string {
   // Only allow same-site relative paths.
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/account";
+  if (!next || !next.startsWith("/") || next.startsWith("//"))
+    return "/account";
   return next;
 }
 
@@ -32,9 +34,16 @@ export async function signUp(
 ): Promise<AuthFormState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { error: "Enter a valid email and a password of at least 8 characters." };
+    return {
+      error: "Enter a valid email and a password of at least 8 characters.",
+    };
   }
-  const limited = await checkRateLimit("auth:signup", parsed.data.email, 5, 3600);
+  const limited = await checkRateLimit(
+    "auth:signup",
+    parsed.data.email,
+    5,
+    3600,
+  );
   if (!limited.allowed) {
     return { error: "Too many attempts. Please try again later." };
   }
@@ -45,6 +54,12 @@ export async function signUp(
     options: { emailRedirectTo: `${siteConfig.url}/auth/callback` },
   });
   if (error) return { error: error.message };
+  await enqueueAddressEmail(
+    parsed.data.email,
+    "welcome",
+    {},
+    `welcome-${parsed.data.email.toLowerCase()}`,
+  );
   return {
     message:
       "Check your email to confirm your account. In local development, open Mailpit at http://127.0.0.1:54324.",
@@ -59,7 +74,12 @@ export async function signIn(
   if (!parsed.success) {
     return { error: "Enter a valid email and password." };
   }
-  const limited = await checkRateLimit("auth:signin", parsed.data.email, 10, 900);
+  const limited = await checkRateLimit(
+    "auth:signin",
+    parsed.data.email,
+    10,
+    900,
+  );
   if (!limited.allowed) {
     return { error: "Too many attempts. Please try again later." };
   }
@@ -78,7 +98,12 @@ export async function sendMagicLink(
 ): Promise<AuthFormState> {
   const parsed = emailOnlySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Enter a valid email address." };
-  const limited = await checkRateLimit("auth:magic", parsed.data.email, 5, 3600);
+  const limited = await checkRateLimit(
+    "auth:magic",
+    parsed.data.email,
+    5,
+    3600,
+  );
   if (!limited.allowed) {
     return { error: "Too many attempts. Please try again later." };
   }

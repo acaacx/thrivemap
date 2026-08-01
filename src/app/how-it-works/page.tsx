@@ -51,11 +51,11 @@ export default function HowItWorksPage() {
       </ul>
       <h2>Claiming your clinic</h2>
       <p>
-        Find your clinic&apos;s page and select &ldquo;Claim this
-        clinic.&rdquo; You&apos;ll need a work email, your role at the clinic,
-        and a document showing your affiliation (for example, a business permit
-        or employment record). Claims are reviewed by our team; documents stay
-        private and are never shown publicly.
+        Find your clinic&apos;s page and select &ldquo;Claim this clinic.&rdquo;
+        You&apos;ll need a work email, your role at the clinic, and a document
+        showing your affiliation (for example, a business permit or employment
+        record). Claims are reviewed by our team; documents stay private and are
+        never shown publicly.
       </p>
     </StaticPage>
   );

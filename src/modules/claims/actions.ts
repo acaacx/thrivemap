@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/modules/auth/server";
+import {
+  enqueueUserEmail,
+  enqueueModeratorNotification,
+} from "@/modules/jobs/notify";
 import { checkRateLimit } from "@/modules/shared/rate-limit";
 import { OPEN_CLAIM_STATUSES } from "./queries";
-import {
-  claimDetailsSchema,
-  claimDocumentSchema,
-} from "./schemas";
+import { claimDetailsSchema, claimDocumentSchema } from "./schemas";
 
 export interface ClaimActionResult {
   error?: string;
@@ -25,7 +26,9 @@ export async function startClaim(clinicId: string): Promise<ClaimActionResult> {
 
   const limited = await checkRateLimit("start-claim", user.id, 5, 3600);
   if (!limited.allowed) {
-    return { error: "Too many claim attempts in a short time. Please try again later." };
+    return {
+      error: "Too many claim attempts in a short time. Please try again later.",
+    };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -60,7 +63,9 @@ export async function saveClaimDetails(
 
   const parsed = claimDetailsSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Please review the form." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Please review the form.",
+    };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -72,7 +77,8 @@ export async function saveClaimDetails(
       mobile_number: parsed.data.mobile_number,
       job_title: parsed.data.job_title,
       relationship: parsed.data.relationship,
-      business_registration_info: parsed.data.business_registration_info || null,
+      business_registration_info:
+        parsed.data.business_registration_info || null,
     })
     .eq("id", claimId)
     .eq("user_id", user.id)
@@ -90,7 +96,9 @@ export async function saveClaimDetails(
  * claim-documents bucket. The storage RLS policy already restricts uploads to
  * the caller's own folder; this re-checks the path shape defensively.
  */
-export async function recordClaimDocument(raw: unknown): Promise<ClaimActionResult> {
+export async function recordClaimDocument(
+  raw: unknown,
+): Promise<ClaimActionResult> {
   const user = await getCurrentUser();
   if (!user) return { error: "Sign in to continue." };
 
@@ -125,7 +133,7 @@ export async function submitClaim(claimId: string): Promise<ClaimActionResult> {
   const supabase = await createSupabaseServerClient();
   const { data: claim } = await supabase
     .from("clinic_claims")
-    .select("*, clinic_claim_documents(id), clinics(slug)")
+    .select("*, clinic_claim_documents(id), clinics(name, slug)")
     .eq("id", claimId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -146,7 +154,9 @@ export async function submitClaim(claimId: string): Promise<ClaimActionResult> {
     return { error: "Please complete your details before submitting." };
   }
   if (claim.clinic_claim_documents.length === 0) {
-    return { error: "Attach at least one verification document before submitting." };
+    return {
+      error: "Attach at least one verification document before submitting.",
+    };
   }
 
   const { error } = await supabase
@@ -159,7 +169,21 @@ export async function submitClaim(claimId: string): Promise<ClaimActionResult> {
     return { error: "Could not submit the claim. Please try again." };
   }
 
-  if (claim.clinics?.slug) revalidatePath(`/clinics/${claim.clinics.slug}/claim`);
+  const clinicName = claim.clinics?.name ?? "your clinic";
+  await enqueueUserEmail(
+    user.id,
+    "claimReceived",
+    { clinicName },
+    `claim-received-${claimId}`,
+  );
+  await enqueueModeratorNotification(
+    `New clinic claim: ${clinicName}`,
+    `A new ownership claim for “${clinicName}” is waiting for verification.`,
+    `claim-mods-${claimId}`,
+  );
+
+  if (claim.clinics?.slug)
+    revalidatePath(`/clinics/${claim.clinics.slug}/claim`);
   revalidatePath("/account/claims");
   return { claimId };
 }

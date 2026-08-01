@@ -23,7 +23,9 @@ describe("clinic lifecycle", () => {
   it("allows the standard publish path", () => {
     expect(canTransition("draft", "pending_review")).toBe(true);
     expect(canTransition("pending_review", "published_unverified")).toBe(true);
-    expect(canTransition("published_unverified", "published_verified")).toBe(true);
+    expect(canTransition("published_unverified", "published_verified")).toBe(
+      true,
+    );
   });
 
   it("rejects jumps that skip review", () => {
@@ -33,7 +35,9 @@ describe("clinic lifecycle", () => {
   });
 
   it("supports verification revocation and suspension", () => {
-    expect(canTransition("published_verified", "published_unverified")).toBe(true);
+    expect(canTransition("published_verified", "published_unverified")).toBe(
+      true,
+    );
     expect(canTransition("published_verified", "suspended")).toBe(true);
     expect(canTransition("suspended", "published_verified")).toBe(true);
   });

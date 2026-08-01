@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateProfile, type ProfileFormState } from "../actions";
 
-export function ProfileForm({ initialDisplayName }: { initialDisplayName: string }) {
+export function ProfileForm({
+  initialDisplayName,
+}: {
+  initialDisplayName: string;
+}) {
   const [state, action, pending] = useActionState<ProfileFormState, FormData>(
     updateProfile,
     {},

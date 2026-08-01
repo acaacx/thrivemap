@@ -1,0 +1,66 @@
+# Deploy pipeline. All deploy steps are written but inert until the listed
+# secrets are configured — see docs/operations/deployment.md.
+name: Main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-key
+
+  # Applies committed migrations to the hosted project. Requires manual
+  # approval via the "production" environment plus SUPABASE_ACCESS_TOKEN,
+  # SUPABASE_DB_PASSWORD, and SUPABASE_PROJECT_REF secrets.
+  migrate:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+      - name: Apply migrations
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+  # Vercel builds deploy automatically from the connected repo; this hook is
+  # for platforms that need an explicit trigger.
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Trigger deploy hook
+        run: curl -fsS -X POST "$DEPLOY_HOOK_URL"
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+      - name: Smoke test
+        run: |
+          sleep 60
+          curl -fsS "$SMOKE_URL/api/health"
+        env:
+          SMOKE_URL: ${{ secrets.SMOKE_URL }}

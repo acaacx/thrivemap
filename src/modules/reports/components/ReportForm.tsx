@@ -63,7 +63,10 @@ export function ReportForm({
       >
         <p className="font-heading text-xl font-semibold">Thank you</p>
         <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-        <Button className="mt-6 rounded-full" render={<Link href={`/clinics/${clinicSlug}`} />}>
+        <Button
+          className="mt-6 rounded-full"
+          render={<Link href={`/clinics/${clinicSlug}`} />}
+        >
           Back to clinic page
         </Button>
       </div>
@@ -73,18 +76,25 @@ export function ReportForm({
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium">What&apos;s incorrect? *</legend>
+        <legend className="mb-3 text-sm font-medium">
+          What&apos;s incorrect? *
+        </legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {REPORT_OPTIONS.map(([value, label]) => (
             <label
               key={value}
               className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-colors ${
-                reportType === value ? "border-primary bg-secondary/60" : "hover:bg-secondary/40"
+                reportType === value
+                  ? "border-primary bg-secondary/60"
+                  : "hover:bg-secondary/40"
               }`}
             >
               <input
@@ -116,8 +126,8 @@ export function ReportForm({
         Send report
       </Button>
       <p className="text-xs text-muted-foreground">
-        Reports can be sent without an account. Signed-in reports appear in
-        your account so you can track their status.
+        Reports can be sent without an account. Signed-in reports appear in your
+        account so you can track their status.
       </p>
     </form>
   );

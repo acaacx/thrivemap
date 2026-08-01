@@ -66,13 +66,19 @@ export function ClinicCard({ clinic, selected, onSelect }: ClinicCardProps) {
           <p className="flex items-start gap-1 text-sm text-muted-foreground">
             <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span className="truncate">
-              {[clinic.address, clinic.city, clinic.province].filter(Boolean).join(", ")}
+              {[clinic.address, clinic.city, clinic.province]
+                .filter(Boolean)
+                .join(", ")}
             </span>
           </p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {distance && <span>{distance} away</span>}
             {clinic.isOpenNow != null && (
-              <span className={clinic.isOpenNow ? "text-[var(--verified)] font-medium" : ""}>
+              <span
+                className={
+                  clinic.isOpenNow ? "text-[var(--verified)] font-medium" : ""
+                }
+              >
                 {clinic.isOpenNow ? "Open now" : "Closed now"}
               </span>
             )}
@@ -83,14 +89,22 @@ export function ClinicCard({ clinic, selected, onSelect }: ClinicCardProps) {
             )}
             {clinic.lastVerifiedAt && (
               <span>
-                Verified {new Date(clinic.lastVerifiedAt).toLocaleDateString("en-PH", { month: "short", year: "numeric" })}
+                Verified{" "}
+                {new Date(clinic.lastVerifiedAt).toLocaleDateString("en-PH", {
+                  month: "short",
+                  year: "numeric",
+                })}
               </span>
             )}
           </div>
           {clinic.serviceNames && clinic.serviceNames.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {clinic.serviceNames.slice(0, 3).map((service) => (
-                <Badge key={service} variant="secondary" className="font-normal">
+                <Badge
+                  key={service}
+                  variant="secondary"
+                  className="font-normal"
+                >
                   {service}
                 </Badge>
               ))}
@@ -102,7 +116,10 @@ export function ClinicCard({ clinic, selected, onSelect }: ClinicCardProps) {
             </div>
           )}
           <div className="flex gap-2 pt-2">
-            <Button size="sm" render={<Link href={`/clinics/${clinic.slug}`} />}>
+            <Button
+              size="sm"
+              render={<Link href={`/clinics/${clinic.slug}`} />}
+            >
               View details
             </Button>
             {directionsUrl && (
@@ -110,7 +127,11 @@ export function ClinicCard({ clinic, selected, onSelect }: ClinicCardProps) {
                 size="sm"
                 variant="outline"
                 render={
-                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer" />
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
                 }
               >
                 Directions

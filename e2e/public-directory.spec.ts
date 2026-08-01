@@ -8,8 +8,12 @@ test.describe("landing page", () => {
         name: /find therapy and developmental-care centers near you/i,
       }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: /browse by service/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /speech & language therapy/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /browse by service/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /speech & language therapy/i }),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: /featured verified clinics/i }),
     ).toBeVisible();
@@ -40,9 +44,9 @@ test.describe("clinic search", () => {
           const map = (
             window as unknown as {
               __thrivemapMap?: {
-                getSource(id: string):
-                  | { getData(): Promise<{ features: unknown[] }> }
-                  | undefined;
+                getSource(
+                  id: string,
+                ): { getData(): Promise<{ features: unknown[] }> } | undefined;
               };
             }
           ).__thrivemapMap;
@@ -59,7 +63,9 @@ test.describe("clinic search", () => {
   test("filters narrow results and update the URL", async ({ page }) => {
     await page.goto("/clinics?lat=14.5995&lng=120.9842&radius=25");
     await page.getByRole("button", { name: /filters/i }).click();
-    await page.getByRole("checkbox", { name: /speech & language therapy/i }).click();
+    await page
+      .getByRole("checkbox", { name: /speech & language therapy/i })
+      .click();
     await expect(page).toHaveURL(/services=speech-therapy/);
     await page.keyboard.press("Escape");
     await expect(page.getByText(/clinics? found/)).toBeVisible();
@@ -71,7 +77,9 @@ test.describe("clinic search", () => {
     await expect(cards.first()).toBeVisible();
     const count = await cards.count();
     for (let i = 0; i < count; i++) {
-      await expect(cards.nth(i).getByText("Verified", { exact: true })).toBeVisible();
+      await expect(
+        cards.nth(i).getByText("Verified", { exact: true }),
+      ).toBeVisible();
     }
   });
 });
@@ -82,19 +90,29 @@ test.describe("clinic profile", () => {
     await expect(
       page.getByRole("heading", { name: /little steps developmental center/i }),
     ).toBeVisible();
-    await expect(page.getByText("Verified", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: /opening hours/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /services/i }).first()).toBeVisible();
+    await expect(
+      page.getByText("Verified", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /opening hours/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /services/i }).first(),
+    ).toBeVisible();
     // Base UI renders link-styled buttons with role="button"
     await expect(
       page.getByRole("button", { name: /report incorrect information/i }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: /claim this clinic/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /claim this clinic/i }),
+    ).toBeVisible();
   });
 
   test("unverified clinic shows the caution banner", async ({ page }) => {
     await page.goto("/clinics/sunrise-kids-therapy-center");
-    await expect(page.getByText(/unverified listing\. information may be incomplete/i)).toBeVisible();
+    await expect(
+      page.getByText(/unverified listing\. information may be incomplete/i),
+    ).toBeVisible();
   });
 
   test("clinic page carries JSON-LD structured data", async ({ page }) => {
@@ -110,7 +128,9 @@ test.describe("clinic profile", () => {
 });
 
 test.describe("SEO surfaces", () => {
-  test("sitemap lists clinics, services, and locations", async ({ request }) => {
+  test("sitemap lists clinics, services, and locations", async ({
+    request,
+  }) => {
     const res = await request.get("/sitemap.xml");
     expect(res.status()).toBe(200);
     const body = await res.text();

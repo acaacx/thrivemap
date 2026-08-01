@@ -2,7 +2,10 @@ import { z } from "zod";
 
 /** Editable profile fields in the clinic portal. Input==output types. */
 export const portalProfileSchema = z.object({
-  description: z.string().trim().max(2000, "Keep the description under 2000 characters."),
+  description: z
+    .string()
+    .trim()
+    .max(2000, "Keep the description under 2000 characters."),
   phone: z.string().trim().max(30, "Phone number looks too long."),
   email: z
     .string()
@@ -27,7 +30,9 @@ export const portalProfileSchema = z.object({
 export type PortalProfileInput = z.infer<typeof portalProfileSchema>;
 
 export const portalServicesSchema = z.object({
-  service_ids: z.array(z.string().uuid()).min(1, "Choose at least one service."),
+  service_ids: z
+    .array(z.string().uuid())
+    .min(1, "Choose at least one service."),
 });
 
 export type PortalServicesInput = z.infer<typeof portalServicesSchema>;
@@ -36,8 +41,14 @@ const hourRowSchema = z
   .object({
     day_of_week: z.number().int().min(0).max(6),
     is_closed: z.boolean(),
-    opens_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
-    closes_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+    opens_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
+    closes_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
   })
   .refine((row) => row.is_closed || (row.opens_at && row.closes_at), {
     message: "Set opening and closing times, or mark the day closed.",

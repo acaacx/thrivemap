@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("search api error", error);
     return NextResponse.json(
-      { error: { code: "search_failed", message: "Search failed. Please try again." } },
+      {
+        error: {
+          code: "search_failed",
+          message: "Search failed. Please try again.",
+        },
+      },
       { status: 500 },
     );
   }

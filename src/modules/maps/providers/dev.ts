@@ -27,7 +27,10 @@ export class DevMapProvider implements MapProvider {
       p_limit: 8,
     });
     if (error) {
-      console.warn("[DEV ADAPTER] ph_locations autocomplete failed:", error.message);
+      console.warn(
+        "[DEV ADAPTER] ph_locations autocomplete failed:",
+        error.message,
+      );
       return [];
     }
     return (data ?? []).map((row) => ({

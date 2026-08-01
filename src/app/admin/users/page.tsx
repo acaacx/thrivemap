@@ -1,6 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { UserRolesEditor } from "@/modules/admin/components/UserRolesEditor";
-import { listUsersWithRoles, requireAdministrator } from "@/modules/admin/server";
+import {
+  listUsersWithRoles,
+  requireAdministrator,
+} from "@/modules/admin/server";
 
 export default async function AdminUsersPage() {
   const { user: actor } = await requireAdministrator();
@@ -18,7 +21,9 @@ export default async function AdminUsersPage() {
           <li key={user.id} className="rounded-xl border bg-card p-4">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium">{user.display_name ?? user.email}</p>
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-sm text-muted-foreground">
+                {user.email}
+              </span>
               <span className="ml-auto flex gap-1">
                 {user.roles.map((role) => (
                   <Badge key={role} variant="outline" className="text-xs">

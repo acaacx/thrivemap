@@ -37,12 +37,19 @@ const AGE_LABELS: Record<string, string> = {
  * Filter controls. Filters describe listed services and attributes only —
  * they make no claim about clinical appropriateness for any person.
  */
-export function SearchFilters({ serviceOptions, value, onChange, showRadius }: SearchFiltersProps) {
+export function SearchFilters({
+  serviceOptions,
+  value,
+  onChange,
+  showRadius,
+}: SearchFiltersProps) {
   function toggleList(key: "services" | "ages", item: string) {
     const list = value[key];
     onChange({
       ...value,
-      [key]: list.includes(item) ? list.filter((v) => v !== item) : [...list, item],
+      [key]: list.includes(item)
+        ? list.filter((v) => v !== item)
+        : [...list, item],
     });
   }
 
@@ -71,7 +78,9 @@ export function SearchFilters({ serviceOptions, value, onChange, showRadius }: S
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Age groups served</legend>
+        <legend className="mb-2 text-sm font-semibold">
+          Age groups served
+        </legend>
         <div className="space-y-2">
           {AGE_GROUPS.map((age) => (
             <div key={age} className="flex items-center gap-2">

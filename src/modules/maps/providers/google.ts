@@ -45,7 +45,13 @@ export class GoogleMapsProvider implements MapProvider {
       body: JSON.stringify({
         input: query,
         includedRegionCodes: ["ph"],
-        includedPrimaryTypes: ["locality", "sublocality", "administrative_area_level_1", "administrative_area_level_2", "postal_code"],
+        includedPrimaryTypes: [
+          "locality",
+          "sublocality",
+          "administrative_area_level_1",
+          "administrative_area_level_2",
+          "postal_code",
+        ],
       }),
     });
     if (!res.ok) {
@@ -108,7 +114,9 @@ export class GoogleMapsProvider implements MapProvider {
     return {
       formattedAddress: first.formatted_address,
       city: component("locality"),
-      province: component("administrative_area_level_2") ?? component("administrative_area_level_1"),
+      province:
+        component("administrative_area_level_2") ??
+        component("administrative_area_level_1"),
       countryCode: "PH",
     };
   }
@@ -152,7 +160,12 @@ export class GoogleMapsProvider implements MapProvider {
           "places.id,places.displayName,places.formattedAddress,places.location",
       },
       body: JSON.stringify({
-        includedTypes: ["physiotherapist", "speech_pathologist", "child_care_agency", "doctor"],
+        includedTypes: [
+          "physiotherapist",
+          "speech_pathologist",
+          "child_care_agency",
+          "doctor",
+        ],
         locationRestriction: {
           circle: {
             center: { latitude: input.latitude, longitude: input.longitude },

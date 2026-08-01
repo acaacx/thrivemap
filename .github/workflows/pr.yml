@@ -38,10 +38,37 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
-      - name: Start Supabase and run integration tests
+      - name: Migration validation (apply all migrations to a clean db)
+        run: supabase start
+      - name: Lint database schema
+        run: supabase db lint --level error
+      - name: Run integration tests
+        run: pnpm test:integration
+
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+      - run: supabase start
+      - name: Configure app env from local Supabase
         run: |
-          supabase start
-          pnpm test:integration
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } > .env.local
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Axe accessibility checks
+        run: pnpm test:e2e accessibility.spec.ts --project=chromium
 
   security:
     runs-on: ubuntu-latest
@@ -61,3 +88,8 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: SAST (Semgrep)
+        run: |
+          pipx install semgrep
+          semgrep scan --config p/typescript --config p/react --config p/nextjs \
+            --error --severity ERROR

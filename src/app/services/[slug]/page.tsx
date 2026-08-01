@@ -6,7 +6,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteConfig } from "@/lib/site-config";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
-import { getServiceBySlug, getServices, searchClinics } from "@/modules/clinics/queries";
+import {
+  getServiceBySlug,
+  getServices,
+  searchClinics,
+} from "@/modules/clinics/queries";
 import { parseSearchParams } from "@/modules/search/schemas";
 
 export const revalidate = 600;
@@ -20,7 +24,9 @@ export async function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const service = await getServiceBySlug(slug);
   if (!service) return { title: "Service not found" };

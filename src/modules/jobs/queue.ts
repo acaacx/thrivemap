@@ -1,7 +1,14 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export type JobType = "duplicate_scan";
+export type JobType =
+  | "duplicate_scan"
+  | "send_email"
+  | "submission_process"
+  | "verification_reminder_scan"
+  | "stale_listing_scan"
+  | "search_document_refresh"
+  | "candidate_import";
 
 /**
  * Enqueues a background job. Same idempotency_key twice = one job.

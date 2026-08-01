@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseAnonClient } from "@/lib/supabase/server";
+import { cachedClinicData, roundCoord } from "@/modules/shared/cache";
 import { decodeCursor, encodeCursor } from "@/modules/search/cursor";
 import type { SearchParams } from "@/modules/search/schemas";
 import type { Database } from "@/lib/database.types";
@@ -17,6 +18,36 @@ export interface ClinicSearchResult {
 const PAGE_SIZE = 20;
 
 export async function searchClinics(
+  params: SearchParams,
+): Promise<ClinicSearchResult> {
+  // Coordinates are rounded in the key so nearby searches share entries.
+  const key = [
+    "search",
+    roundCoord(params.lat),
+    roundCoord(params.lng),
+    params.radius ?? "-",
+    roundCoord(params.north),
+    roundCoord(params.south),
+    roundCoord(params.east),
+    roundCoord(params.west),
+    params.q ?? "-",
+    (params.services ?? []).join(","),
+    (params.ages ?? []).join(","),
+    params.verified ? 1 : 0,
+    params.online ? 1 : 0,
+    params.inperson ? 1 : 0,
+    params.open ? 1 : 0,
+    params.accessible ? 1 : 0,
+    params.sort,
+    params.cursor ?? "-",
+  ].join("|");
+  // open_now results depend on the clock — short TTL keeps them honest.
+  return cachedClinicData(key, params.open ? 30 : 60, () =>
+    searchClinicsUncached(params),
+  );
+}
+
+async function searchClinicsUncached(
   params: SearchParams,
 ): Promise<ClinicSearchResult> {
   const supabase = createSupabaseAnonClient();
@@ -80,6 +111,26 @@ export async function getMapClinics(bounds: {
   services?: string[];
   verifiedOnly?: boolean;
 }): Promise<MapClinicRow[]> {
+  const key = [
+    "map",
+    roundCoord(bounds.north),
+    roundCoord(bounds.south),
+    roundCoord(bounds.east),
+    roundCoord(bounds.west),
+    (bounds.services ?? []).join(","),
+    bounds.verifiedOnly ? 1 : 0,
+  ].join("|");
+  return cachedClinicData(key, 60, () => getMapClinicsUncached(bounds));
+}
+
+async function getMapClinicsUncached(bounds: {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+  services?: string[];
+  verifiedOnly?: boolean;
+}): Promise<MapClinicRow[]> {
   const supabase = createSupabaseAnonClient();
   const { data, error } = await supabase.rpc("get_map_clinics", {
     p_north: bounds.north,
@@ -94,6 +145,12 @@ export async function getMapClinics(bounds: {
 }
 
 export async function getClinicBySlug(slug: string) {
+  return cachedClinicData(`profile|${slug}`, 300, () =>
+    getClinicBySlugUncached(slug),
+  );
+}
+
+async function getClinicBySlugUncached(slug: string) {
   const supabase = createSupabaseAnonClient();
   const { data, error } = await supabase
     .from("clinics")
@@ -121,7 +178,9 @@ export async function getClinicBySlug(slug: string) {
   return data;
 }
 
-export type ClinicProfile = NonNullable<Awaited<ReturnType<typeof getClinicBySlug>>>;
+export type ClinicProfile = NonNullable<
+  Awaited<ReturnType<typeof getClinicBySlug>>
+>;
 
 export async function getFeaturedClinics(limit = 6) {
   const supabase = createSupabaseAnonClient();

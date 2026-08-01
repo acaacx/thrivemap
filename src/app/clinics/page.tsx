@@ -34,7 +34,10 @@ export default async function ClinicsPage({
           <SearchPageClient
             initialParams={params}
             initialResult={initialResult}
-            serviceOptions={services.map((s) => ({ slug: s.slug, name: s.name }))}
+            serviceOptions={services.map((s) => ({
+              slug: s.slug,
+              name: s.name,
+            }))}
           />
         </Suspense>
       </main>

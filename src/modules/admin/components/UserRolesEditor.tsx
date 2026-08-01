@@ -23,7 +23,11 @@ interface UserRolesEditorProps {
 }
 
 /** Grant/revoke role chips with a required reason — administrator only. */
-export function UserRolesEditor({ userId, roles, isSelf }: UserRolesEditorProps) {
+export function UserRolesEditor({
+  userId,
+  roles,
+  isSelf,
+}: UserRolesEditorProps) {
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [busyRole, setBusyRole] = useState<string | null>(null);

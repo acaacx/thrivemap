@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { dayName, formatDistanceKm, formatTime, slugToTitle, statusLabel } from "./format";
+import {
+  dayName,
+  formatDistanceKm,
+  formatTime,
+  slugToTitle,
+  statusLabel,
+} from "./format";
 
 describe("formatDistanceKm", () => {
-  it("formats sub-100m", () => expect(formatDistanceKm(0.05)).toBe("less than 100 m"));
+  it("formats sub-100m", () =>
+    expect(formatDistanceKm(0.05)).toBe("less than 100 m"));
   it("formats meters", () => expect(formatDistanceKm(0.55)).toBe("550 m"));
-  it("formats small km with decimal", () => expect(formatDistanceKm(4.26)).toBe("4.3 km"));
+  it("formats small km with decimal", () =>
+    expect(formatDistanceKm(4.26)).toBe("4.3 km"));
   it("rounds large km", () => expect(formatDistanceKm(12.7)).toBe("13 km"));
   it("handles null", () => expect(formatDistanceKm(null)).toBeNull());
   it("handles NaN", () => expect(formatDistanceKm(Number.NaN)).toBeNull());
@@ -23,10 +31,13 @@ describe("dayName", () => {
 });
 
 describe("statusLabel", () => {
-  it("labels verified", () => expect(statusLabel("published_verified")).toBe("Verified"));
-  it("labels unverified", () => expect(statusLabel("published_unverified")).toBe("Unverified"));
+  it("labels verified", () =>
+    expect(statusLabel("published_verified")).toBe("Verified"));
+  it("labels unverified", () =>
+    expect(statusLabel("published_unverified")).toBe("Unverified"));
 });
 
 describe("slugToTitle", () => {
-  it("titles slugs", () => expect(slugToTitle("quezon-city")).toBe("Quezon City"));
+  it("titles slugs", () =>
+    expect(slugToTitle("quezon-city")).toBe("Quezon City"));
 });

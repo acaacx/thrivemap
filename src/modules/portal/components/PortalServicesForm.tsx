@@ -21,7 +21,10 @@ export function PortalServicesForm({
 }: PortalServicesFormProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set(selectedIds));
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -96,7 +99,9 @@ export function PortalServicesForm({
           disabled={busy || selected.size === 0}
           onClick={onSave}
         >
-          {busy && <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />}
+          {busy && (
+            <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
+          )}
           {directEdit ? "Publish changes" : "Submit for review"}
         </Button>
       </div>

@@ -2,7 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/database.types";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
@@ -38,7 +39,11 @@ describe("RLS: anonymous visitors", () => {
     expect(data!.length).toBeGreaterThan(0);
     expect(
       data!.every((c) =>
-        ["published_verified", "published_unverified", "temporarily_closed"].includes(c.status),
+        [
+          "published_verified",
+          "published_unverified",
+          "temporarily_closed",
+        ].includes(c.status),
       ),
     ).toBe(true);
   });
@@ -64,7 +69,10 @@ describe("RLS: anonymous visitors", () => {
   });
 
   it("cannot update clinics", async () => {
-    const { data: clinics } = await anon.from("clinics").select("id, name").limit(1);
+    const { data: clinics } = await anon
+      .from("clinics")
+      .select("id, name")
+      .limit(1);
     const { data: updated, error } = await anon
       .from("clinics")
       .update({ name: "Hacked Name" })
@@ -89,13 +97,19 @@ describe("RLS: anonymous visitors", () => {
 describe("RLS: registered caregiver", () => {
   it("sees only their own favorites and reports", async () => {
     const caregiver = await signedInClient("caregiver@thrivemap.test");
-    const { data: favorites } = await caregiver.from("favorites").select("user_id");
+    const { data: favorites } = await caregiver
+      .from("favorites")
+      .select("user_id");
     expect(favorites!.length).toBeGreaterThan(0);
     const { data: userInfo } = await caregiver.auth.getUser();
     expect(favorites!.every((f) => f.user_id === userInfo.user!.id)).toBe(true);
 
-    const { data: reports } = await caregiver.from("clinic_reports").select("reported_by");
-    expect(reports!.every((r) => r.reported_by === userInfo.user!.id)).toBe(true);
+    const { data: reports } = await caregiver
+      .from("clinic_reports")
+      .select("reported_by");
+    expect(reports!.every((r) => r.reported_by === userInfo.user!.id)).toBe(
+      true,
+    );
   });
 
   it("cannot read audit logs", async () => {
@@ -135,7 +149,11 @@ describe("RLS: registered caregiver", () => {
 
   it("cannot favorite as another user", async () => {
     const caregiver = await signedInClient("caregiver@thrivemap.test");
-    const { data: clinic } = await caregiver.from("clinics").select("id").limit(1).single();
+    const { data: clinic } = await caregiver
+      .from("clinics")
+      .select("id")
+      .limit(1)
+      .single();
     const { error } = await caregiver.from("favorites").insert({
       user_id: "00000000-0000-0000-0000-000000000001",
       clinic_id: clinic!.id,
@@ -161,7 +179,10 @@ describe("RLS: moderator", () => {
 describe("RLS: administrator", () => {
   it("can read audit logs", async () => {
     const admin = await signedInClient("admin@thrivemap.test");
-    const { data, error } = await admin.from("audit_logs").select("id").limit(5);
+    const { data, error } = await admin
+      .from("audit_logs")
+      .select("id")
+      .limit(5);
     expect(error).toBeNull();
     expect(data).not.toBeNull();
   });

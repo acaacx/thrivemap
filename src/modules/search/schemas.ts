@@ -22,8 +22,17 @@ export type SortOption = (typeof SORT_OPTIONS)[number];
 const commaList = (values?: readonly string[]) =>
   z
     .string()
-    .transform((s) => s.split(",").map((v) => v.trim()).filter(Boolean))
-    .pipe(values ? z.array(z.enum(values as [string, ...string[]])) : z.array(z.string()));
+    .transform((s) =>
+      s
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean),
+    )
+    .pipe(
+      values
+        ? z.array(z.enum(values as [string, ...string[]]))
+        : z.array(z.string()),
+    );
 
 const boolParam = z
   .string()
@@ -62,7 +71,8 @@ export function parseSearchParams(
   const flat: Record<string, string> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (typeof value === "string") flat[key] = value;
-    else if (Array.isArray(value) && value[0] !== undefined) flat[key] = value[0];
+    else if (Array.isArray(value) && value[0] !== undefined)
+      flat[key] = value[0];
   }
   const result = searchParamsSchema.safeParse(flat);
   if (result.success) return result.data;

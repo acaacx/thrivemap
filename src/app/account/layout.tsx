@@ -16,13 +16,20 @@ const accountNav = [
   { href: "/account/claims", label: "Claims" },
 ];
 
-export default function AccountLayout({ children }: { children: React.ReactNode }) {
+export default function AccountLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[200px_1fr]">
-          <nav aria-label="Account" className="flex gap-2 overflow-x-auto md:flex-col">
+          <nav
+            aria-label="Account"
+            className="flex gap-2 overflow-x-auto md:flex-col"
+          >
             {accountNav.map((item) => (
               <Link
                 key={item.href}

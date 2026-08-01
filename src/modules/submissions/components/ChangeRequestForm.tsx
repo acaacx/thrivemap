@@ -47,7 +47,10 @@ export function ChangeRequestForm({
       >
         <p className="font-heading text-xl font-semibold">Request sent</p>
         <p className="mt-2 text-sm text-muted-foreground">{done}</p>
-        <Button className="mt-6 rounded-full" render={<Link href={`/clinics/${clinicSlug}`} />}>
+        <Button
+          className="mt-6 rounded-full"
+          render={<Link href={`/clinics/${clinicSlug}`} />}
+        >
           Back to clinic page
         </Button>
       </div>
@@ -57,10 +60,16 @@ export function ChangeRequestForm({
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           {error}{" "}
           {error.includes("Sign in") && (
-            <Link href={`/login?next=/clinics/${clinicSlug}/suggest-edit`} className="underline underline-offset-4">
+            <Link
+              href={`/login?next=/clinics/${clinicSlug}/suggest-edit`}
+              className="underline underline-offset-4"
+            >
               Sign in
             </Link>
           )}

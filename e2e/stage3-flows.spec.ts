@@ -12,7 +12,8 @@ import type { Database } from "@/lib/database.types";
  * idempotent (rows accumulate locally, which is fine).
  */
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
@@ -24,7 +25,10 @@ function adminDb() {
 }
 
 const RUN = Date.now();
-const CLAIM_CLINIC = { name: `E2E Claim Clinic ${RUN}`, slug: `e2e-claim-clinic-${RUN}` };
+const CLAIM_CLINIC = {
+  name: `E2E Claim Clinic ${RUN}`,
+  slug: `e2e-claim-clinic-${RUN}`,
+};
 const SUBMISSION_NAME = `E2E Submission Clinic ${RUN}`;
 const DUP_A = { name: `E2E Dup Alpha ${RUN}`, slug: `e2e-dup-alpha-${RUN}` };
 const DUP_B = { name: `E2E Dup Beta ${RUN}`, slug: `e2e-dup-beta-${RUN}` };
@@ -47,7 +51,8 @@ async function createPublishedClinic(
     })
     .select("id")
     .single();
-  if (error || !data) throw new Error(`clinic insert failed: ${error?.message}`);
+  if (error || !data)
+    throw new Error(`clinic insert failed: ${error?.message}`);
   const { error: locationError } = await db.from("clinic_locations").insert({
     clinic_id: data.id,
     is_primary: true,
@@ -58,7 +63,8 @@ async function createPublishedClinic(
     province_slug: "metro-manila",
     location: "POINT(121.0437 14.676)",
   });
-  if (locationError) throw new Error(`location insert failed: ${locationError.message}`);
+  if (locationError)
+    throw new Error(`location insert failed: ${locationError.message}`);
   return data.id;
 }
 
@@ -77,7 +83,10 @@ test.describe("stage 3: claims, admin, duplicates", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium", "chromium-only mutation flows");
+    test.skip(
+      testInfo.project.name !== "chromium",
+      "chromium-only mutation flows",
+    );
   });
 
   test("clinic representative completes the claim wizard", async ({ page }) => {
@@ -97,24 +106,32 @@ test.describe("stage 3: claims, admin, duplicates", () => {
     await page.getByLabel(/file \(pdf or image/i).setInputFiles({
       name: "proof.pdf",
       mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"),
+      buffer: Buffer.from(
+        "%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF",
+      ),
     });
     await expect(page.getByText("proof.pdf")).toBeVisible();
     await page.getByRole("button", { name: /continue to review/i }).click();
 
     // Step 3: consent + submit
-    await page.getByRole("checkbox", { name: /consent to verification/i }).click();
+    await page
+      .getByRole("checkbox", { name: /consent to verification/i })
+      .click();
     await page.getByRole("button", { name: /submit claim/i }).click();
     await expect(page.getByText(/claim submitted/i)).toBeVisible();
 
     // Status is visible from the account page.
     await page.goto("/account/claims");
     await expect(
-      page.locator("li", { hasText: CLAIM_CLINIC.name }).getByText(/submitted/i),
+      page
+        .locator("li", { hasText: CLAIM_CLINIC.name })
+        .getByText(/submitted/i),
     ).toBeVisible();
   });
 
-  test("admin approves the claim and the rep gets portal access", async ({ page }) => {
+  test("admin approves the claim and the rep gets portal access", async ({
+    page,
+  }) => {
     await signIn(page, "admin@thrivemap.test");
     await page.goto("/admin/claims");
     await page
@@ -129,7 +146,9 @@ test.describe("stage 3: claims, admin, duplicates", () => {
 
     // Listing is now verified.
     await page.goto(`/clinics/${CLAIM_CLINIC.slug}`);
-    await expect(page.getByText("Verified", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Verified", { exact: true }).first(),
+    ).toBeVisible();
 
     // The representative can manage it from the portal.
     await page.context().clearCookies();
@@ -141,10 +160,14 @@ test.describe("stage 3: claims, admin, duplicates", () => {
       .getByRole("button", { name: /manage/i })
       .click();
     await page.waitForURL("**/clinic-portal/**/profile");
-    await expect(page.getByRole("heading", { name: CLAIM_CLINIC.name })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: CLAIM_CLINIC.name }),
+    ).toBeVisible();
   });
 
-  test("admin approves a submission into a published listing", async ({ page }) => {
+  test("admin approves a submission into a published listing", async ({
+    page,
+  }) => {
     const db = adminDb();
     const { error } = await db.from("clinic_submissions").insert({
       clinic_name: SUBMISSION_NAME,
@@ -180,13 +203,21 @@ test.describe("stage 3: claims, admin, duplicates", () => {
     // swallowed; re-click until the scan feedback appears (scan is idempotent).
     await expect(async () => {
       await page.getByRole("button", { name: /run scan/i }).click();
-      await expect(page.getByText(/scan finished/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(/scan finished/i)).toBeVisible({
+        timeout: 5_000,
+      });
     }).toPass({ timeout: 45_000 });
 
-    const card = page.locator("li", { hasText: DUP_A.name }).filter({ hasText: DUP_B.name });
+    const card = page
+      .locator("li", { hasText: DUP_A.name })
+      .filter({ hasText: DUP_B.name });
     await expect(card).toBeVisible();
-    await card.getByLabel(/merge reason/i).fill("E2E merge test — same phone and address.");
-    await card.getByRole("button", { name: /keep a, merge b into it/i }).click();
+    await card
+      .getByLabel(/merge reason/i)
+      .fill("E2E merge test — same phone and address.");
+    await card
+      .getByRole("button", { name: /keep a, merge b into it/i })
+      .click();
     await expect(card.getByText(/listings merged/i)).toBeVisible();
 
     // Exactly one of the pair is archived and points at the survivor.

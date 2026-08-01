@@ -2,7 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/database.types";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
@@ -44,7 +45,9 @@ describe("search_clinics RPC", () => {
     expect(error).toBeNull();
     // Metro Manila seed clinics; Cebu/Davao must be excluded.
     expect(data!.length).toBeGreaterThanOrEqual(15);
-    expect(data!.every((r) => r.latitude! > 14.4 && r.latitude! < 14.8)).toBe(true);
+    expect(data!.every((r) => r.latitude! > 14.4 && r.latitude! < 14.8)).toBe(
+      true,
+    );
   });
 
   it("filters by service slug", async () => {
@@ -92,7 +95,11 @@ describe("search_clinics RPC", () => {
     expect(error).toBeNull();
     expect(
       data!.every((r) =>
-        ["published_verified", "published_unverified", "temporarily_closed"].includes(r.status),
+        [
+          "published_verified",
+          "published_unverified",
+          "temporarily_closed",
+        ].includes(r.status),
       ),
     ).toBe(true);
   });
@@ -116,7 +123,9 @@ describe("search_clinics RPC", () => {
     expect(page2.error).toBeNull();
     const ids1 = new Set(page1.data!.map((r) => r.clinic_id));
     expect(page2.data!.every((r) => !ids1.has(r.clinic_id))).toBe(true);
-    expect(page2.data![0].distance_km!).toBeGreaterThanOrEqual(last.distance_km!);
+    expect(page2.data![0].distance_km!).toBeGreaterThanOrEqual(
+      last.distance_km!,
+    );
   });
 });
 

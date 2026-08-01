@@ -6,7 +6,10 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { slugToTitle } from "@/lib/format";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
-import { getClinicsByLocation, getLocationsDirectory } from "@/modules/clinics/queries";
+import {
+  getClinicsByLocation,
+  getLocationsDirectory,
+} from "@/modules/clinics/queries";
 
 export const revalidate = 600;
 
@@ -14,7 +17,9 @@ interface PageProps {
   params: Promise<{ province: string; city: string }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { province, city } = await params;
   const cityName = slugToTitle(city);
   return {
@@ -44,14 +49,20 @@ export default async function CityPage({ params }: PageProps) {
         <div className="bg-secondary/50">
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
             <p className="text-sm text-muted-foreground">
-              <Link href={`/locations/${province}`} className="underline-offset-4 hover:underline">
+              <Link
+                href={`/locations/${province}`}
+                className="underline-offset-4 hover:underline"
+              >
                 {cityEntry?.province ?? slugToTitle(province)}
               </Link>
             </p>
             <h1 className="mt-1 font-heading text-3xl font-semibold sm:text-4xl">
               Clinics in {cityName}
             </h1>
-            <Button className="mt-6 rounded-full" render={<Link href="/clinics" />}>
+            <Button
+              className="mt-6 rounded-full"
+              render={<Link href="/clinics" />}
+            >
               Search on the map
             </Button>
           </div>

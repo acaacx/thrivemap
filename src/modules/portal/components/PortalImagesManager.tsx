@@ -27,7 +27,10 @@ interface PortalImagesManagerProps {
   images: ClinicImage[];
 }
 
-export function PortalImagesManager({ clinicId, images }: PortalImagesManagerProps) {
+export function PortalImagesManager({
+  clinicId,
+  images,
+}: PortalImagesManagerProps) {
   const router = useRouter();
   const [altText, setAltText] = useState("");
   const [kind, setKind] = useState<"gallery" | "logo" | "cover">("gallery");
@@ -38,7 +41,8 @@ export function PortalImagesManager({ clinicId, images }: PortalImagesManagerPro
   const supabase = createSupabaseBrowserClient();
 
   function publicUrl(path: string) {
-    return supabase.storage.from("clinic-images").getPublicUrl(path).data.publicUrl;
+    return supabase.storage.from("clinic-images").getPublicUrl(path).data
+      .publicUrl;
   }
 
   async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -55,7 +59,9 @@ export function PortalImagesManager({ clinicId, images }: PortalImagesManagerPro
       return;
     }
     if (!altText.trim()) {
-      setError("Describe the image first (alt text) — it helps screen-reader users.");
+      setError(
+        "Describe the image first (alt text) — it helps screen-reader users.",
+      );
       return;
     }
     setUploading(true);
@@ -102,7 +108,10 @@ export function PortalImagesManager({ clinicId, images }: PortalImagesManagerPro
   return (
     <div className="space-y-5">
       {error && (
-        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+        <p
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+        >
           {error}
         </p>
       )}
@@ -143,7 +152,8 @@ export function PortalImagesManager({ clinicId, images }: PortalImagesManagerPro
           </div>
           {uploading && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Uploading…
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />{" "}
+              Uploading…
             </p>
           )}
         </div>
@@ -154,7 +164,10 @@ export function PortalImagesManager({ clinicId, images }: PortalImagesManagerPro
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
-            <li key={image.id} className="overflow-hidden rounded-xl border bg-card">
+            <li
+              key={image.id}
+              className="overflow-hidden rounded-xl border bg-card"
+            >
               <div className="relative aspect-[4/3] bg-muted">
                 <Image
                   src={publicUrl(image.storage_path)}

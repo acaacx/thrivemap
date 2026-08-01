@@ -1,9 +1,16 @@
 import { Badge } from "@/components/ui/badge";
-import { listAdminActions, listAuditLogs, requireAdministrator } from "@/modules/admin/server";
+import {
+  listAdminActions,
+  listAuditLogs,
+  requireAdministrator,
+} from "@/modules/admin/server";
 
 export default async function AdminAuditPage() {
   await requireAdministrator();
-  const [actions, logs] = await Promise.all([listAdminActions(100), listAuditLogs(100)]);
+  const [actions, logs] = await Promise.all([
+    listAdminActions(100),
+    listAuditLogs(100),
+  ]);
 
   return (
     <div>
@@ -14,25 +21,40 @@ export default async function AdminAuditPage() {
       </p>
 
       <section className="mt-6">
-        <h2 className="font-heading text-lg font-semibold">Moderation actions</h2>
+        <h2 className="font-heading text-lg font-semibold">
+          Moderation actions
+        </h2>
         <div className="mt-3 overflow-x-auto rounded-xl border bg-card">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-muted-foreground">
-                <th scope="col" className="px-3 py-2 font-medium">When</th>
-                <th scope="col" className="px-3 py-2 font-medium">Action</th>
-                <th scope="col" className="px-3 py-2 font-medium">Target</th>
-                <th scope="col" className="px-3 py-2 font-medium">Reason</th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  When
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Action
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Target
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Reason
+                </th>
               </tr>
             </thead>
             <tbody>
               {actions.map((action) => (
-                <tr key={action.id} className="border-b align-top last:border-0">
+                <tr
+                  key={action.id}
+                  className="border-b align-top last:border-0"
+                >
                   <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
                     {new Date(action.created_at).toLocaleString("en-PH")}
                   </td>
                   <td className="px-3 py-2">
-                    <Badge variant="outline">{action.action.replaceAll("_", " ")}</Badge>
+                    <Badge variant="outline">
+                      {action.action.replaceAll("_", " ")}
+                    </Badge>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {action.target_type}
@@ -42,7 +64,10 @@ export default async function AdminAuditPage() {
               ))}
               {actions.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-4 text-center text-muted-foreground"
+                  >
                     No moderation actions yet.
                   </td>
                 </tr>
@@ -58,10 +83,18 @@ export default async function AdminAuditPage() {
           <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-muted-foreground">
-                <th scope="col" className="px-3 py-2 font-medium">When</th>
-                <th scope="col" className="px-3 py-2 font-medium">Table</th>
-                <th scope="col" className="px-3 py-2 font-medium">Operation</th>
-                <th scope="col" className="px-3 py-2 font-medium">Record</th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  When
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Table
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Operation
+                </th>
+                <th scope="col" className="px-3 py-2 font-medium">
+                  Record
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -81,7 +114,10 @@ export default async function AdminAuditPage() {
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">
+                  <td
+                    colSpan={4}
+                    className="px-3 py-4 text-center text-muted-foreground"
+                  >
                     No audit rows yet.
                   </td>
                 </tr>

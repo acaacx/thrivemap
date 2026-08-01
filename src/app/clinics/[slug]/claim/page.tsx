@@ -25,22 +25,27 @@ export default async function ClaimPage({
 
   const user = await getCurrentUser();
   const claim = user ? await getOwnClaimForClinic(clinic.id, user.id) : null;
-  const claimedByOther = Boolean(clinic.claimed_by) && clinic.claimed_by !== user?.id;
+  const claimedByOther =
+    Boolean(clinic.claimed_by) && clinic.claimed_by !== user?.id;
 
   return (
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-          <h1 className="font-heading text-3xl font-semibold">Claim {clinic.name}</h1>
+          <h1 className="font-heading text-3xl font-semibold">
+            Claim {clinic.name}
+          </h1>
           <p className="mt-3 text-muted-foreground">
-            Clinic representatives can claim this listing to keep services, hours,
-            and contact details accurate — and earn a Verified badge.
+            Clinic representatives can claim this listing to keep services,
+            hours, and contact details accurate — and earn a Verified badge.
           </p>
 
           {claimedByOther && !claim && (
             <div className="mt-6 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-              <p className="font-medium">This listing already has a representative.</p>
+              <p className="font-medium">
+                This listing already has a representative.
+              </p>
               <p className="mt-1 text-muted-foreground">
                 If you believe this is a mistake, or you also represent this
                 clinic, email{" "}
@@ -63,8 +68,8 @@ export default async function ClaimPage({
               <div className="rounded-2xl border bg-card p-6 text-sm">
                 <p className="font-medium">Sign in to start your claim</p>
                 <p className="mt-1 text-muted-foreground">
-                  You&apos;ll need an account so we can keep you updated and, once
-                  approved, give you access to the clinic portal.
+                  You&apos;ll need an account so we can keep you updated and,
+                  once approved, give you access to the clinic portal.
                 </p>
                 <div className="mt-4 flex gap-3">
                   <Button

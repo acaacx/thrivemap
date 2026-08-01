@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/modules/auth/server";
+import { invalidateClinicCaches } from "@/modules/shared/cache";
 import { checkRateLimit } from "@/modules/shared/rate-limit";
 import { canEditDirectly } from "./server";
 import {
@@ -48,6 +49,7 @@ async function requireManagerAccess(clinicId: string) {
 function revalidateClinic(slug: string, clinicId: string) {
   revalidatePath(`/clinics/${slug}`);
   revalidatePath(`/clinic-portal/${clinicId}`, "layout");
+  void invalidateClinicCaches();
 }
 
 /**
@@ -65,11 +67,14 @@ export async function updateClinicProfile(
 
   const parsed = portalProfileSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Please review the form." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Please review the form.",
+    };
   }
 
   const limited = await checkRateLimit("portal-edit", user.id, 30, 3600);
-  if (!limited.allowed) return { error: "Too many edits in a short time. Please try again later." };
+  if (!limited.allowed)
+    return { error: "Too many edits in a short time. Please try again later." };
 
   const next = {
     description: parsed.data.description || null,
@@ -106,9 +111,11 @@ export async function updateClinicProfile(
   const changes: Record<string, { from: unknown; to: unknown }> = {};
   for (const [key, to] of Object.entries(next)) {
     const from = current?.[key as keyof typeof current] ?? null;
-    if (JSON.stringify(from) !== JSON.stringify(to)) changes[key] = { from, to };
+    if (JSON.stringify(from) !== JSON.stringify(to))
+      changes[key] = { from, to };
   }
-  if (Object.keys(changes).length === 0) return { message: "No changes to save." };
+  if (Object.keys(changes).length === 0)
+    return { message: "No changes to save." };
 
   const { error } = await supabase.from("clinic_change_requests").insert({
     clinic_id: clinicId,
@@ -137,7 +144,9 @@ export async function updateClinicServices(
 
   const parsed = portalServicesSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Choose at least one service." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Choose at least one service.",
+    };
   }
 
   if (!canEditDirectly(clinic.status)) {
@@ -190,7 +199,9 @@ export async function updateClinicHours(
 
   const parsed = portalHoursSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Please review the hours." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Please review the hours.",
+    };
   }
 
   if (!canEditDirectly(clinic.status)) {
@@ -228,7 +239,9 @@ export async function updateClinicHours(
 }
 
 /** Records an image the client uploaded to clinic-images/<clinic_id>/... */
-export async function recordClinicImage(raw: unknown): Promise<PortalActionResult> {
+export async function recordClinicImage(
+  raw: unknown,
+): Promise<PortalActionResult> {
   const parsed = portalImageSchema.safeParse(raw);
   if (!parsed.success) return { error: "Invalid image details." };
 

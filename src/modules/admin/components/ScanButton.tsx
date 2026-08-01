@@ -31,7 +31,13 @@ export function ScanButton() {
           {message}
         </span>
       )}
-      <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={onScan}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="rounded-full"
+        disabled={busy}
+        onClick={onScan}
+      >
         {busy ? (
           <Loader2 aria-hidden className="mr-2 h-3.5 w-3.5 animate-spin" />
         ) : (

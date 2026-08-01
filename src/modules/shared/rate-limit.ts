@@ -9,7 +9,11 @@ export interface RateLimitResult {
 
 interface RateLimiter {
   /** Sliding-window limit: `limit` hits per `windowSeconds` per key. */
-  limit(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult>;
+  limit(
+    key: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<RateLimitResult>;
 }
 
 /** [DEV ADAPTER] In-memory limiter — per-instance only, fine for local dev. */
@@ -19,7 +23,9 @@ class InMemoryRateLimiter implements RateLimiter {
   async limit(key: string, limit: number, windowSeconds: number) {
     const now = Date.now();
     const windowStart = now - windowSeconds * 1000;
-    const timestamps = (this.hits.get(key) ?? []).filter((t) => t > windowStart);
+    const timestamps = (this.hits.get(key) ?? []).filter(
+      (t) => t > windowStart,
+    );
     if (timestamps.length >= limit) {
       this.hits.set(key, timestamps);
       return { allowed: false, remaining: 0 };
@@ -77,7 +83,9 @@ function getRateLimiter(): RateLimiter {
     if (url && token) {
       limiter = new UpstashRateLimiter(url, token);
     } else {
-      console.info("[DEV ADAPTER] Upstash not configured — in-memory rate limiter.");
+      console.info(
+        "[DEV ADAPTER] Upstash not configured — in-memory rate limiter.",
+      );
       limiter = new InMemoryRateLimiter();
     }
   }
@@ -86,7 +94,10 @@ function getRateLimiter(): RateLimiter {
 
 /** Hash identifiers so raw emails/IPs never sit in the store. */
 function hashIdentifier(value: string): string {
-  return createHash("sha256").update(value.toLowerCase()).digest("hex").slice(0, 24);
+  return createHash("sha256")
+    .update(value.toLowerCase())
+    .digest("hex")
+    .slice(0, 24);
 }
 
 /** Client IP for anonymous rate limiting (best effort behind proxies). */

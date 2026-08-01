@@ -34,13 +34,17 @@ export default async function AdminReportsPage() {
                 >
                   {report.clinics?.name ?? "Clinic"}
                 </Link>
-                <Badge variant="outline">{report.report_type.replaceAll("_", " ")}</Badge>
+                <Badge variant="outline">
+                  {report.report_type.replaceAll("_", " ")}
+                </Badge>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {new Date(report.created_at).toLocaleString("en-PH")}
                 </span>
               </div>
               {report.details && (
-                <p className="mt-2 text-sm text-muted-foreground">{report.details}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {report.details}
+                </p>
               )}
               <ReviewActions
                 reasonLabel="Resolution note (required)"
@@ -69,13 +73,20 @@ export default async function AdminReportsPage() {
           </summary>
           <ul className="mt-3 space-y-2 text-sm">
             {closed.map((report) => (
-              <li key={report.id} className="rounded-lg border bg-card px-4 py-2.5">
-                <span className="font-medium">{report.clinics?.name ?? "Clinic"}</span>{" "}
+              <li
+                key={report.id}
+                className="rounded-lg border bg-card px-4 py-2.5"
+              >
+                <span className="font-medium">
+                  {report.clinics?.name ?? "Clinic"}
+                </span>{" "}
                 <Badge variant="outline" className="ml-1">
                   {report.status}
                 </Badge>
                 {report.resolution_note && (
-                  <span className="ml-2 text-muted-foreground">{report.resolution_note}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {report.resolution_note}
+                  </span>
                 )}
               </li>
             ))}

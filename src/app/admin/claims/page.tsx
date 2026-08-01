@@ -3,7 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { listClaims } from "@/modules/admin/server";
 
-const OPEN_STATUSES = ["submitted", "under_review", "additional_information_required"];
+const OPEN_STATUSES = [
+  "submitted",
+  "under_review",
+  "additional_information_required",
+];
 
 export default async function AdminClaimsPage() {
   const claims = await listClaims();
@@ -36,7 +40,9 @@ export default async function AdminClaimsPage() {
                   {new Date(claim.created_at).toLocaleDateString("en-PH")}
                 </p>
               </div>
-              <Badge variant="outline">{claim.status.replaceAll("_", " ")}</Badge>
+              <Badge variant="outline">
+                {claim.status.replaceAll("_", " ")}
+              </Badge>
               <Button
                 size="sm"
                 className="ml-auto rounded-full"
@@ -56,8 +62,14 @@ export default async function AdminClaimsPage() {
           </summary>
           <ul className="mt-3 space-y-2 text-sm">
             {closed.map((claim) => (
-              <li key={claim.id} className="rounded-lg border bg-card px-4 py-2.5">
-                <Link className="font-medium hover:underline" href={`/admin/claims/${claim.id}`}>
+              <li
+                key={claim.id}
+                className="rounded-lg border bg-card px-4 py-2.5"
+              >
+                <Link
+                  className="font-medium hover:underline"
+                  href={`/admin/claims/${claim.id}`}
+                >
                   {claim.clinics?.name ?? "Clinic"}
                 </Link>{" "}
                 <Badge variant="outline" className="ml-1">

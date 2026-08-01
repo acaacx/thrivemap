@@ -5,14 +5,33 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { List, Loader2, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import dynamic from "next/dynamic";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
-import { ClinicMap, type ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
+import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
 import type { MapBounds } from "@/modules/maps/types";
 import { LocationSearchBox } from "./LocationSearchBox";
 import { SearchFilters, type FilterState } from "./SearchFilters";
 import type { SearchParams, SortOption } from "../schemas";
+
+// MapLibre is heavy — load it only on the client, after the list renders.
+const ClinicMap = dynamic(
+  () => import("@/modules/maps/components/ClinicMap").then((m) => m.ClinicMap),
+  { ssr: false },
+);
 
 interface SearchClinicRow {
   clinic_id: string;
@@ -195,7 +214,9 @@ export function SearchPageClient({
     if (!data?.nextCursor) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/search?${queryString}&cursor=${encodeURIComponent(data.nextCursor)}`);
+      const res = await fetch(
+        `/api/search?${queryString}&cursor=${encodeURIComponent(data.nextCursor)}`,
+      );
       if (res.ok) {
         const page = (await res.json()) as SearchResponse;
         setExtraPages((prev) => [...prev, ...page.clinics]);
@@ -317,10 +338,17 @@ export function SearchPageClient({
             <Select
               value={params.sort}
               onValueChange={(sort) =>
-                applyParams({ ...params, sort: sort as SortOption, cursor: undefined })
+                applyParams({
+                  ...params,
+                  sort: sort as SortOption,
+                  cursor: undefined,
+                })
               }
             >
-              <SelectTrigger className="w-44 rounded-full" aria-label="Sort results">
+              <SelectTrigger
+                className="w-44 rounded-full"
+                aria-label="Sort results"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -332,7 +360,11 @@ export function SearchPageClient({
               </SelectContent>
             </Select>
             {/* Mobile list/map toggle */}
-            <div className="flex rounded-full border p-0.5 md:hidden" role="group" aria-label="Toggle list or map view">
+            <div
+              className="flex rounded-full border p-0.5 md:hidden"
+              role="group"
+              aria-label="Toggle list or map view"
+            >
               <Button
                 size="sm"
                 variant={mobileView === "list" ? "default" : "ghost"}
@@ -365,7 +397,10 @@ export function SearchPageClient({
             mobileView === "map" ? "hidden md:block" : ""
           }`}
         >
-          <div aria-live="polite" className="mb-3 text-sm text-muted-foreground">
+          <div
+            aria-live="polite"
+            className="mb-3 text-sm text-muted-foreground"
+          >
             {isFetching && !data ? (
               "Searching…"
             ) : (
@@ -373,7 +408,10 @@ export function SearchPageClient({
                 {clinics.length} clinic{clinics.length === 1 ? "" : "s"} found
                 {params.loc ? ` near ${params.loc}` : ""}
                 {isFetching && (
-                  <Loader2 className="ml-2 inline size-3.5 animate-spin" aria-hidden />
+                  <Loader2
+                    className="ml-2 inline size-3.5 animate-spin"
+                    aria-hidden
+                  />
                 )}
               </>
             )}
@@ -405,11 +443,16 @@ export function SearchPageClient({
             ))}
             {clinics.length === 0 && !isFetching && (
               <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">No clinics found in this area yet.</p>
+                <p className="font-medium text-foreground">
+                  No clinics found in this area yet.
+                </p>
                 <p className="mt-1">
                   Try widening the distance, removing filters, or searching a
                   nearby city. Know a clinic here?{" "}
-                  <a href="/suggest-clinic" className="underline underline-offset-4">
+                  <a
+                    href="/suggest-clinic"
+                    className="underline underline-offset-4"
+                  >
                     Suggest it
                   </a>
                   .
@@ -419,8 +462,15 @@ export function SearchPageClient({
           </div>
           {data?.nextCursor && (
             <div className="py-4 text-center">
-              <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="rounded-full">
-                {loadingMore && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="rounded-full"
+              >
+                {loadingMore && (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                )}
                 Load more clinics
               </Button>
             </div>

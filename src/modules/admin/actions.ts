@@ -5,7 +5,10 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { assertTransition } from "@/modules/clinics/lifecycle";
 import { runDuplicateScan } from "@/modules/jobs/handlers";
+import { processDueJobs } from "@/modules/jobs/processor";
+import { enqueueUserEmail, enqueueAddressEmail } from "@/modules/jobs/notify";
 import { enqueueJob } from "@/modules/jobs/queue";
+import { invalidateClinicCaches } from "@/modules/shared/cache";
 import { requireAdministrator, requireModerator } from "./server";
 import type { Database } from "@/lib/database.types";
 
@@ -63,7 +66,11 @@ export async function approveSubmission(
     .eq("id", submissionId)
     .maybeSingle();
   if (!submission) return { error: "Submission not found." };
-  if (!["submitted", "under_review", "additional_information_required"].includes(submission.status)) {
+  if (
+    !["submitted", "under_review", "additional_information_required"].includes(
+      submission.status,
+    )
+  ) {
     return { error: "This submission was already decided." };
   }
   if (submission.latitude == null || submission.longitude == null) {
@@ -109,7 +116,10 @@ export async function approveSubmission(
     .select("id, slug")
     .single();
   if (clinicError || !clinic) {
-    console.error("approveSubmission clinic insert failed:", clinicError?.message);
+    console.error(
+      "approveSubmission clinic insert failed:",
+      clinicError?.message,
+    );
     return { error: "Could not create the clinic listing." };
   }
 
@@ -124,8 +134,13 @@ export async function approveSubmission(
     location: `POINT(${submission.longitude} ${submission.latitude})`,
   });
   if (locationError) {
-    console.error("approveSubmission location insert failed:", locationError.message);
-    return { error: "Clinic created but its location failed — fix it manually." };
+    console.error(
+      "approveSubmission location insert failed:",
+      locationError.message,
+    );
+    return {
+      error: "Clinic created but its location failed — fix it manually.",
+    };
   }
 
   if (submission.service_slugs.length > 0) {
@@ -136,7 +151,9 @@ export async function approveSubmission(
     if (services && services.length > 0) {
       await admin
         .from("clinic_services")
-        .insert(services.map((s) => ({ clinic_id: clinic.id, service_id: s.id })));
+        .insert(
+          services.map((s) => ({ clinic_id: clinic.id, service_id: s.id })),
+        );
     }
   }
 
@@ -151,19 +168,52 @@ export async function approveSubmission(
     })
     .eq("id", submissionId);
   if (updateError) {
-    console.error("approveSubmission status update failed:", updateError.message);
-    return { error: "Clinic created but the submission status did not update." };
+    console.error(
+      "approveSubmission status update failed:",
+      updateError.message,
+    );
+    return {
+      error: "Clinic created but the submission status did not update.",
+    };
   }
 
-  await logAdminAction(user.id, "approve_submission", "clinic_submission", submissionId, reason ?? null, {
-    created_clinic_id: clinic.id,
-  });
+  const approvedParams = {
+    clinicName: submission.clinic_name,
+    clinicSlug: clinic.slug,
+  };
+  if (submission.submitted_by) {
+    await enqueueUserEmail(
+      submission.submitted_by,
+      "submissionApproved",
+      approvedParams,
+      `submission-approved-${submissionId}`,
+    );
+  } else if (submission.submitter_email) {
+    await enqueueAddressEmail(
+      submission.submitter_email,
+      "submissionApproved",
+      approvedParams,
+      `submission-approved-${submissionId}`,
+    );
+  }
+
+  await logAdminAction(
+    user.id,
+    "approve_submission",
+    "clinic_submission",
+    submissionId,
+    reason ?? null,
+    {
+      created_clinic_id: clinic.id,
+    },
+  );
   await enqueueJob(
     "duplicate_scan",
     { clinic_id: clinic.id },
     { idempotencyKey: `duplicate-scan-${clinic.id}` },
   );
 
+  await invalidateClinicCaches();
   revalidatePath("/admin/submissions");
   revalidatePath("/clinics");
   return { message: `Published as /clinics/${clinic.slug} (unverified).` };
@@ -174,7 +224,8 @@ export async function requestSubmissionInfo(
   message: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireModerator();
-  if (!message.trim()) return { error: "Write what you need from the submitter." };
+  if (!message.trim())
+    return { error: "Write what you need from the submitter." };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("clinic_submissions")
@@ -186,7 +237,13 @@ export async function requestSubmissionInfo(
     })
     .eq("id", submissionId);
   if (error) return { error: "Could not update the submission." };
-  await logAdminAction(user.id, "request_submission_info", "clinic_submission", submissionId, message.trim());
+  await logAdminAction(
+    user.id,
+    "request_submission_info",
+    "clinic_submission",
+    submissionId,
+    message.trim(),
+  );
   revalidatePath("/admin/submissions");
   return { message: "Marked as needing more information." };
 }
@@ -198,6 +255,11 @@ export async function rejectSubmission(
   const { user } = await requireModerator();
   if (!reason.trim()) return { error: "A reason is required to reject." };
   const supabase = await createSupabaseServerClient();
+  const { data: submission } = await supabase
+    .from("clinic_submissions")
+    .select("clinic_name, submitted_by, submitter_email")
+    .eq("id", submissionId)
+    .maybeSingle();
   const { error } = await supabase
     .from("clinic_submissions")
     .update({
@@ -208,7 +270,36 @@ export async function rejectSubmission(
     })
     .eq("id", submissionId);
   if (error) return { error: "Could not update the submission." };
-  await logAdminAction(user.id, "reject_submission", "clinic_submission", submissionId, reason.trim());
+
+  if (submission) {
+    const params = {
+      clinicName: submission.clinic_name,
+      reason: reason.trim(),
+    };
+    if (submission.submitted_by) {
+      await enqueueUserEmail(
+        submission.submitted_by,
+        "submissionRejected",
+        params,
+        `submission-rejected-${submissionId}`,
+      );
+    } else if (submission.submitter_email) {
+      await enqueueAddressEmail(
+        submission.submitter_email,
+        "submissionRejected",
+        params,
+        `submission-rejected-${submissionId}`,
+      );
+    }
+  }
+
+  await logAdminAction(
+    user.id,
+    "reject_submission",
+    "clinic_submission",
+    submissionId,
+    reason.trim(),
+  );
   revalidatePath("/admin/submissions");
   return { message: "Submission rejected." };
 }
@@ -238,10 +329,17 @@ export async function getClaimDocumentUrl(
   }
 
   // Access to verification documents is always audited.
-  await logAdminAction(user.id, "view_claim_document", "clinic_claim_document", doc.id, null, {
-    claim_id: doc.claim_id,
-    filename: doc.original_filename,
-  });
+  await logAdminAction(
+    user.id,
+    "view_claim_document",
+    "clinic_claim_document",
+    doc.id,
+    null,
+    {
+      claim_id: doc.claim_id,
+      filename: doc.original_filename,
+    },
+  );
   return { url: signed.signedUrl };
 }
 
@@ -254,11 +352,15 @@ export async function approveClaim(
 
   const { data: claim } = await admin
     .from("clinic_claims")
-    .select("*, clinics(id, slug, status)")
+    .select("*, clinics(id, name, slug, status)")
     .eq("id", claimId)
     .maybeSingle();
   if (!claim || !claim.clinics) return { error: "Claim not found." };
-  if (!["submitted", "under_review", "additional_information_required"].includes(claim.status)) {
+  if (
+    !["submitted", "under_review", "additional_information_required"].includes(
+      claim.status,
+    )
+  ) {
     return { error: "This claim was already decided." };
   }
 
@@ -280,13 +382,21 @@ export async function approveClaim(
     return { error: "Could not grant clinic access." };
   }
 
-  await admin.from("user_roles").upsert(
-    { user_id: claim.user_id, role: "clinic_representative", granted_by: user.id },
-    { onConflict: "user_id,role", ignoreDuplicates: true },
-  );
+  await admin
+    .from("user_roles")
+    .upsert(
+      {
+        user_id: claim.user_id,
+        role: "clinic_representative",
+        granted_by: user.id,
+      },
+      { onConflict: "user_id,role", ignoreDuplicates: true },
+    );
 
   const nextStatus: ListingStatus =
-    clinic.status === "published_unverified" ? "published_verified" : (clinic.status as ListingStatus);
+    clinic.status === "published_unverified"
+      ? "published_verified"
+      : (clinic.status as ListingStatus);
   const { error: clinicError } = await admin
     .from("clinics")
     .update({
@@ -318,16 +428,34 @@ export async function approveClaim(
       decided_at: now,
     })
     .eq("id", claimId);
-  if (claimError) return { error: "Access granted but the claim status did not update." };
+  if (claimError)
+    return { error: "Access granted but the claim status did not update." };
 
-  await logAdminAction(user.id, "approve_claim", "clinic_claim", claimId, reason ?? null, {
-    clinic_id: clinic.id,
-    claimant_id: claim.user_id,
-  });
+  await enqueueUserEmail(
+    claim.user_id,
+    "claimApproved",
+    { clinicName: clinic.name },
+    `claim-approved-${claimId}`,
+  );
 
+  await logAdminAction(
+    user.id,
+    "approve_claim",
+    "clinic_claim",
+    claimId,
+    reason ?? null,
+    {
+      clinic_id: clinic.id,
+      claimant_id: claim.user_id,
+    },
+  );
+
+  await invalidateClinicCaches();
   revalidatePath("/admin/claims");
   revalidatePath(`/clinics/${clinic.slug}`);
-  return { message: "Claim approved — the representative can now manage this clinic." };
+  return {
+    message: "Claim approved — the representative can now manage this clinic.",
+  };
 }
 
 export async function rejectClaim(
@@ -337,6 +465,11 @@ export async function rejectClaim(
   const { user } = await requireModerator();
   if (!reason.trim()) return { error: "A reason is required to reject." };
   const supabase = await createSupabaseServerClient();
+  const { data: claim } = await supabase
+    .from("clinic_claims")
+    .select("user_id, clinics(name)")
+    .eq("id", claimId)
+    .maybeSingle();
   const { error } = await supabase
     .from("clinic_claims")
     .update({
@@ -347,7 +480,24 @@ export async function rejectClaim(
     })
     .eq("id", claimId);
   if (error) return { error: "Could not update the claim." };
-  await logAdminAction(user.id, "reject_claim", "clinic_claim", claimId, reason.trim());
+  if (claim) {
+    await enqueueUserEmail(
+      claim.user_id,
+      "claimRejected",
+      {
+        clinicName: claim.clinics?.name ?? "your clinic",
+        reason: reason.trim(),
+      },
+      `claim-rejected-${claimId}`,
+    );
+  }
+  await logAdminAction(
+    user.id,
+    "reject_claim",
+    "clinic_claim",
+    claimId,
+    reason.trim(),
+  );
   revalidatePath("/admin/claims");
   return { message: "Claim rejected." };
 }
@@ -357,8 +507,14 @@ export async function requestClaimInfo(
   message: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireModerator();
-  if (!message.trim()) return { error: "Write what you need from the claimant." };
+  if (!message.trim())
+    return { error: "Write what you need from the claimant." };
   const supabase = await createSupabaseServerClient();
+  const { data: claim } = await supabase
+    .from("clinic_claims")
+    .select("user_id, clinics(name)")
+    .eq("id", claimId)
+    .maybeSingle();
   const { error } = await supabase
     .from("clinic_claims")
     .update({
@@ -367,7 +523,19 @@ export async function requestClaimInfo(
     })
     .eq("id", claimId);
   if (error) return { error: "Could not update the claim." };
-  await logAdminAction(user.id, "request_claim_info", "clinic_claim", claimId, message.trim());
+  if (claim) {
+    await enqueueUserEmail(claim.user_id, "claimMoreInfo", {
+      clinicName: claim.clinics?.name ?? "your clinic",
+      request: message.trim(),
+    });
+  }
+  await logAdminAction(
+    user.id,
+    "request_claim_info",
+    "clinic_claim",
+    claimId,
+    message.trim(),
+  );
   revalidatePath("/admin/claims");
   return { message: "Marked as needing more information." };
 }
@@ -396,15 +564,19 @@ export async function approveChangeRequest(
 
   const { data: request } = await supabase
     .from("clinic_change_requests")
-    .select("*, clinics(id, slug)")
+    .select("*, clinics(id, name, slug)")
     .eq("id", requestId)
     .maybeSingle();
-  if (!request || !request.clinics) return { error: "Change request not found." };
+  if (!request || !request.clinics)
+    return { error: "Change request not found." };
   if (!["submitted", "under_review"].includes(request.status)) {
     return { error: "This request was already decided." };
   }
 
-  const changes = (request.changes ?? {}) as Record<string, { from: unknown; to: unknown }>;
+  const changes = (request.changes ?? {}) as Record<
+    string,
+    { from: unknown; to: unknown }
+  >;
   const clinicPatch: Record<string, unknown> = {};
   for (const field of CHANGEABLE_CLINIC_FIELDS) {
     if (field in changes) clinicPatch[field] = changes[field].to;
@@ -419,11 +591,19 @@ export async function approveChangeRequest(
 
   if (Array.isArray(changes.service_ids?.to)) {
     const nextIds = changes.service_ids.to as string[];
-    await admin.from("clinic_services").delete().eq("clinic_id", request.clinics.id);
+    await admin
+      .from("clinic_services")
+      .delete()
+      .eq("clinic_id", request.clinics.id);
     if (nextIds.length > 0) {
       await admin
         .from("clinic_services")
-        .insert(nextIds.map((service_id) => ({ clinic_id: request.clinics!.id, service_id })));
+        .insert(
+          nextIds.map((service_id) => ({
+            clinic_id: request.clinics!.id,
+            service_id,
+          })),
+        );
     }
   }
 
@@ -434,7 +614,10 @@ export async function approveChangeRequest(
       opens_at: string | null;
       closes_at: string | null;
     }[];
-    await admin.from("clinic_hours").delete().eq("clinic_id", request.clinics.id);
+    await admin
+      .from("clinic_hours")
+      .delete()
+      .eq("clinic_id", request.clinics.id);
     await admin.from("clinic_hours").insert(
       rows.map((row) => ({
         clinic_id: request.clinics!.id,
@@ -455,12 +638,30 @@ export async function approveChangeRequest(
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", requestId);
-  if (error) return { error: "Changes applied but the request status did not update." };
+  if (error)
+    return { error: "Changes applied but the request status did not update." };
 
-  await logAdminAction(user.id, "approve_change_request", "clinic_change_request", requestId, reason ?? null, {
-    clinic_id: request.clinics.id,
-    fields: Object.keys(changes),
-  });
+  if (request.requested_by) {
+    await enqueueUserEmail(
+      request.requested_by,
+      "changeRequestApproved",
+      { clinicName: request.clinics.name },
+      `change-approved-${requestId}`,
+    );
+  }
+
+  await logAdminAction(
+    user.id,
+    "approve_change_request",
+    "clinic_change_request",
+    requestId,
+    reason ?? null,
+    {
+      clinic_id: request.clinics.id,
+      fields: Object.keys(changes),
+    },
+  );
+  await invalidateClinicCaches();
   revalidatePath("/admin/change-requests");
   revalidatePath(`/clinics/${request.clinics.slug}`);
   return { message: "Changes applied to the listing." };
@@ -473,6 +674,11 @@ export async function rejectChangeRequest(
   const { user } = await requireModerator();
   if (!reason.trim()) return { error: "A reason is required to reject." };
   const supabase = await createSupabaseServerClient();
+  const { data: request } = await supabase
+    .from("clinic_change_requests")
+    .select("requested_by, clinics(name)")
+    .eq("id", requestId)
+    .maybeSingle();
   const { error } = await supabase
     .from("clinic_change_requests")
     .update({
@@ -483,7 +689,24 @@ export async function rejectChangeRequest(
     })
     .eq("id", requestId);
   if (error) return { error: "Could not update the request." };
-  await logAdminAction(user.id, "reject_change_request", "clinic_change_request", requestId, reason.trim());
+  if (request?.requested_by) {
+    await enqueueUserEmail(
+      request.requested_by,
+      "changeRequestRejected",
+      {
+        clinicName: request.clinics?.name ?? "the clinic",
+        reason: reason.trim(),
+      },
+      `change-rejected-${requestId}`,
+    );
+  }
+  await logAdminAction(
+    user.id,
+    "reject_change_request",
+    "clinic_change_request",
+    requestId,
+    reason.trim(),
+  );
   revalidatePath("/admin/change-requests");
   return { message: "Change request rejected." };
 }
@@ -509,9 +732,17 @@ export async function resolveReport(
     })
     .eq("id", reportId);
   if (error) return { error: "Could not update the report." };
-  await logAdminAction(user.id, `${outcome}_report`, "clinic_report", reportId, note.trim());
+  await logAdminAction(
+    user.id,
+    `${outcome}_report`,
+    "clinic_report",
+    reportId,
+    note.trim(),
+  );
   revalidatePath("/admin/reports");
-  return { message: outcome === "resolved" ? "Report resolved." : "Report dismissed." };
+  return {
+    message: outcome === "resolved" ? "Report resolved." : "Report dismissed.",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -533,7 +764,13 @@ export async function discardCandidate(
     })
     .eq("id", candidateId);
   if (error) return { error: "Could not update the candidate." };
-  await logAdminAction(user.id, "discard_candidate", "external_place_candidate", candidateId, reason.trim());
+  await logAdminAction(
+    user.id,
+    "discard_candidate",
+    "external_place_candidate",
+    candidateId,
+    reason.trim(),
+  );
   revalidatePath("/admin/candidates");
   return { message: "Candidate discarded." };
 }
@@ -545,9 +782,16 @@ export async function runDuplicateScanAction(): Promise<AdminActionResult> {
   const { user } = await requireModerator();
   try {
     const found = await runDuplicateScan();
-    await logAdminAction(user.id, "run_duplicate_scan", "duplicate_match_candidates", null, null, {
-      new_pairs: found,
-    });
+    await logAdminAction(
+      user.id,
+      "run_duplicate_scan",
+      "duplicate_match_candidates",
+      null,
+      null,
+      {
+        new_pairs: found,
+      },
+    );
     revalidatePath("/admin/duplicates");
     return { message: `Scan finished — ${found} new candidate pair(s).` };
   } catch (cause) {
@@ -572,9 +816,20 @@ export async function resolveDuplicateCandidate(
     .eq("id", candidateId)
     .eq("status", "pending");
   if (error) return { error: "Could not update the candidate pair." };
-  await logAdminAction(user.id, `mark_${resolution}`, "duplicate_match_candidate", candidateId, null);
+  await logAdminAction(
+    user.id,
+    `mark_${resolution}`,
+    "duplicate_match_candidate",
+    candidateId,
+    null,
+  );
   revalidatePath("/admin/duplicates");
-  return { message: resolution === "not_duplicate" ? "Marked as not a duplicate." : "Confirmed as duplicate." };
+  return {
+    message:
+      resolution === "not_duplicate"
+        ? "Marked as not a duplicate."
+        : "Confirmed as duplicate.",
+  };
 }
 
 export async function mergeDuplicatePair(
@@ -592,7 +847,10 @@ export async function mergeDuplicatePair(
     .eq("id", candidateId)
     .maybeSingle();
   if (!candidate) return { error: "Candidate pair not found." };
-  if (candidate.status !== "pending" && candidate.status !== "confirmed_duplicate") {
+  if (
+    candidate.status !== "pending" &&
+    candidate.status !== "confirmed_duplicate"
+  ) {
     return { error: "This pair was already resolved." };
   }
 
@@ -610,6 +868,7 @@ export async function mergeDuplicatePair(
     console.error("mergeDuplicatePair failed:", error.message);
     return { error: "Merge failed. Check that both listings still exist." };
   }
+  await invalidateClinicCaches();
   revalidatePath("/admin/duplicates");
   revalidatePath("/clinics");
   return { message: "Listings merged — the duplicate is archived." };
@@ -625,7 +884,8 @@ export async function setUserRole(
   reason: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireAdministrator();
-  if (!reason.trim()) return { error: "A reason is required for role changes." };
+  if (!reason.trim())
+    return { error: "A reason is required for role changes." };
   if (role === "super_administrator") {
     return { error: "Super administrator is granted from the database only." };
   }
@@ -633,10 +893,12 @@ export async function setUserRole(
 
   const admin = createSupabaseAdminClient();
   if (grant) {
-    const { error } = await admin.from("user_roles").upsert(
-      { user_id: userId, role, granted_by: user.id },
-      { onConflict: "user_id,role", ignoreDuplicates: true },
-    );
+    const { error } = await admin
+      .from("user_roles")
+      .upsert(
+        { user_id: userId, role, granted_by: user.id },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
     if (error) return { error: "Could not grant the role." };
   } else {
     const { error } = await admin
@@ -646,7 +908,14 @@ export async function setUserRole(
       .eq("role", role);
     if (error) return { error: "Could not revoke the role." };
   }
-  await logAdminAction(user.id, grant ? "grant_role" : "revoke_role", "user", userId, reason.trim(), { role });
+  await logAdminAction(
+    user.id,
+    grant ? "grant_role" : "revoke_role",
+    "user",
+    userId,
+    reason.trim(),
+    { role },
+  );
   revalidatePath("/admin/users");
   return { message: grant ? `Granted ${role}.` : `Revoked ${role}.` };
 }
@@ -657,7 +926,8 @@ export async function setClinicStatus(
   reason: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireAdministrator();
-  if (!reason.trim()) return { error: "A reason is required for status changes." };
+  if (!reason.trim())
+    return { error: "A reason is required for status changes." };
 
   const admin = createSupabaseAdminClient();
   const { data: clinic } = await admin
@@ -670,7 +940,9 @@ export async function setClinicStatus(
   try {
     assertTransition(clinic.status, status);
   } catch (cause) {
-    return { error: cause instanceof Error ? cause.message : "Invalid transition." };
+    return {
+      error: cause instanceof Error ? cause.message : "Invalid transition.",
+    };
   }
 
   const { error } = await admin
@@ -681,10 +953,58 @@ export async function setClinicStatus(
     console.error("setClinicStatus failed:", error.message);
     return { error: "Could not update the clinic status." };
   }
-  await logAdminAction(user.id, "set_clinic_status", "clinic", clinicId, reason.trim(), {
-    from: clinic.status,
-    to: status,
-  });
+  await logAdminAction(
+    user.id,
+    "set_clinic_status",
+    "clinic",
+    clinicId,
+    reason.trim(),
+    {
+      from: clinic.status,
+      to: status,
+    },
+  );
+  await invalidateClinicCaches();
   revalidatePath(`/clinics/${clinic.slug}`);
   return { message: `Status changed to ${status.replaceAll("_", " ")}.` };
+}
+
+// ---------------------------------------------------------------------------
+// Jobs (dead-letter queue)
+
+export async function retryDeadJob(jobId: string): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
+    .from("jobs")
+    .update({
+      status: "pending",
+      attempts: 0,
+      run_at: new Date().toISOString(),
+      locked_at: null,
+      locked_by: null,
+      last_error: null,
+    })
+    .eq("id", jobId)
+    .eq("status", "dead");
+  if (error) return { error: "Could not requeue the job." };
+  await logAdminAction(user.id, "retry_dead_job", "job", jobId, null);
+  revalidatePath("/admin/jobs");
+  return { message: "Job requeued." };
+}
+
+/** Manual tick: process due jobs now (local dev / debugging convenience). */
+export async function runJobsTickAction(): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  try {
+    const results = await processDueJobs(`admin-${user.id.slice(0, 8)}`, 20);
+    revalidatePath("/admin/jobs");
+    const done = results.filter((r) => r.status === "completed").length;
+    return {
+      message: `Processed ${results.length} job(s) — ${done} completed.`,
+    };
+  } catch (cause) {
+    console.error("runJobsTickAction failed:", cause);
+    return { error: "Job tick failed. Check server logs." };
+  }
 }

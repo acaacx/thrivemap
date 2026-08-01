@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { approveClaim, rejectClaim, requestClaimInfo } from "@/modules/admin/actions";
+import {
+  approveClaim,
+  rejectClaim,
+  requestClaimInfo,
+} from "@/modules/admin/actions";
 import { ClaimDocumentList } from "@/modules/admin/components/ClaimDocumentList";
 import { ReviewActions } from "@/modules/admin/components/ReviewCard";
 import { getClaimDetail } from "@/modules/admin/server";
@@ -15,9 +19,11 @@ export default async function AdminClaimDetailPage({
   const claim = await getClaimDetail(claimId);
   if (!claim || !claim.clinics) notFound();
 
-  const decidable = ["submitted", "under_review", "additional_information_required"].includes(
-    claim.status,
-  );
+  const decidable = [
+    "submitted",
+    "under_review",
+    "additional_information_required",
+  ].includes(claim.status);
 
   return (
     <div>
@@ -75,7 +81,9 @@ export default async function AdminClaimDetailPage({
       </dl>
 
       <section className="mt-6">
-        <h2 className="font-heading text-lg font-semibold">Verification documents</h2>
+        <h2 className="font-heading text-lg font-semibold">
+          Verification documents
+        </h2>
         <div className="mt-3">
           <ClaimDocumentList documents={claim.clinic_claim_documents} />
         </div>
@@ -89,7 +97,8 @@ export default async function AdminClaimDetailPage({
       )}
       {claim.decision_reason && (
         <p className="mt-6 rounded-xl border bg-card p-4 text-sm">
-          <span className="font-medium">Decision reason:</span> {claim.decision_reason}
+          <span className="font-medium">Decision reason:</span>{" "}
+          {claim.decision_reason}
         </p>
       )}
 
@@ -98,7 +107,10 @@ export default async function AdminClaimDetailPage({
           <h2 className="font-heading text-lg font-semibold">Decision</h2>
           <ReviewActions
             actions={[
-              { label: "Approve claim", run: approveClaim.bind(null, claim.id) },
+              {
+                label: "Approve claim",
+                run: approveClaim.bind(null, claim.id),
+              },
               {
                 label: "Request info",
                 variant: "outline",

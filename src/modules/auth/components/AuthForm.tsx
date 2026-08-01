@@ -7,12 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import {
-  sendMagicLink,
-  signIn,
-  signUp,
-  type AuthFormState,
-} from "../actions";
+import { sendMagicLink, signIn, signUp, type AuthFormState } from "../actions";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -73,7 +68,9 @@ export function AuthForm({ mode, next }: AuthFormProps) {
               id="password"
               name="password"
               type="password"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              autoComplete={
+                mode === "login" ? "current-password" : "new-password"
+              }
               required
               minLength={8}
               aria-describedby={mode === "signup" ? "password-help" : undefined}
@@ -84,8 +81,14 @@ export function AuthForm({ mode, next }: AuthFormProps) {
               </p>
             )}
           </div>
-          <Button type="submit" className="w-full rounded-full" disabled={passwordPending}>
-            {passwordPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          <Button
+            type="submit"
+            className="w-full rounded-full"
+            disabled={passwordPending}
+          >
+            {passwordPending && (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            )}
             {mode === "login" ? "Sign in" : "Create account"}
           </Button>
         </form>
@@ -103,8 +106,14 @@ export function AuthForm({ mode, next }: AuthFormProps) {
               placeholder="you@example.com"
             />
           </div>
-          <Button type="submit" className="w-full rounded-full" disabled={magicPending}>
-            {magicPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+          <Button
+            type="submit"
+            className="w-full rounded-full"
+            disabled={magicPending}
+          >
+            {magicPending && (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            )}
             Email me a magic link
           </Button>
         </form>
@@ -118,20 +127,28 @@ export function AuthForm({ mode, next }: AuthFormProps) {
           className="text-primary underline-offset-4 hover:underline"
           onClick={() => setShowMagic((v) => !v)}
         >
-          {showMagic ? "Use a password instead" : "Email me a magic link instead"}
+          {showMagic
+            ? "Use a password instead"
+            : "Email me a magic link instead"}
         </button>
         <p className="text-muted-foreground">
           {mode === "login" ? (
             <>
               New to ThriveMap?{" "}
-              <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/signup"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 Create an account
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href="/login"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 Sign in
               </Link>
             </>

@@ -11,7 +11,9 @@ export default async function PortalImagesPage({
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-semibold">{clinic.name} — images</h1>
+      <h1 className="font-heading text-2xl font-semibold">
+        {clinic.name} — images
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Photos help families know what to expect. Images publish immediately;
         misuse leads to claim revocation.

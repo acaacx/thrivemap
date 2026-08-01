@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <StaticPage title="Privacy" lede="Plain-language summary of what we collect and why.">
+    <StaticPage
+      title="Privacy"
+      lede="Plain-language summary of what we collect and why."
+    >
       <p>
         ThriveMap is designed to work with as little personal information as
         possible. This page summarizes our practices; it will be reviewed for
@@ -42,14 +45,16 @@ export default function PrivacyPage() {
       <p>
         We use privacy-conscious product analytics to understand which features
         help families (for example, how often searches lead to clinic pages).
-        Analytics never include your precise location or any health
-        information.
+        Analytics never include your precise location or any health information.
       </p>
       <h2>Your choices</h2>
       <p>
         You can use ThriveMap fully without an account. Account holders can
         request deletion of their data at any time by emailing{" "}
-        <a href="mailto:hello@thrivemap.ph" className="underline underline-offset-4">
+        <a
+          href="mailto:hello@thrivemap.ph"
+          className="underline underline-offset-4"
+        >
           hello@thrivemap.ph
         </a>
         .

@@ -7,7 +7,9 @@ import { requireUser } from "@/modules/auth/server";
 
 const clinicIdSchema = z.string().uuid();
 
-export async function saveFavorite(clinicId: string): Promise<{ error?: string }> {
+export async function saveFavorite(
+  clinicId: string,
+): Promise<{ error?: string }> {
   const parsed = clinicIdSchema.safeParse(clinicId);
   if (!parsed.success) return { error: "Invalid clinic." };
   const user = await requireUser();
@@ -23,7 +25,9 @@ export async function saveFavorite(clinicId: string): Promise<{ error?: string }
   return {};
 }
 
-export async function removeFavorite(clinicId: string): Promise<{ error?: string }> {
+export async function removeFavorite(
+  clinicId: string,
+): Promise<{ error?: string }> {
   const parsed = clinicIdSchema.safeParse(clinicId);
   if (!parsed.success) return { error: "Invalid clinic." };
   const user = await requireUser();

@@ -17,34 +17,41 @@ export async function getDashboardMetrics() {
   const supabase = await createSupabaseServerClient();
   const head = { count: "exact" as const, head: true };
 
-  const [submissions, claims, changeRequests, reports, duplicates, published, deadJobs] =
-    await Promise.all([
-      supabase
-        .from("clinic_submissions")
-        .select("id", head)
-        .in("status", ["submitted", "under_review"]),
-      supabase
-        .from("clinic_claims")
-        .select("id", head)
-        .in("status", ["submitted", "under_review"]),
-      supabase
-        .from("clinic_change_requests")
-        .select("id", head)
-        .in("status", ["submitted", "under_review"]),
-      supabase
-        .from("clinic_reports")
-        .select("id", head)
-        .in("status", ["open", "under_review"]),
-      supabase
-        .from("duplicate_match_candidates")
-        .select("id", head)
-        .eq("status", "pending"),
-      supabase
-        .from("clinics")
-        .select("id", head)
-        .in("status", ["published_unverified", "published_verified"]),
-      supabase.from("jobs").select("id", head).eq("status", "dead"),
-    ]);
+  const [
+    submissions,
+    claims,
+    changeRequests,
+    reports,
+    duplicates,
+    published,
+    deadJobs,
+  ] = await Promise.all([
+    supabase
+      .from("clinic_submissions")
+      .select("id", head)
+      .in("status", ["submitted", "under_review"]),
+    supabase
+      .from("clinic_claims")
+      .select("id", head)
+      .in("status", ["submitted", "under_review"]),
+    supabase
+      .from("clinic_change_requests")
+      .select("id", head)
+      .in("status", ["submitted", "under_review"]),
+    supabase
+      .from("clinic_reports")
+      .select("id", head)
+      .in("status", ["open", "under_review"]),
+    supabase
+      .from("duplicate_match_candidates")
+      .select("id", head)
+      .eq("status", "pending"),
+    supabase
+      .from("clinics")
+      .select("id", head)
+      .in("status", ["published_unverified", "published_verified"]),
+    supabase.from("jobs").select("id", head).eq("status", "dead"),
+  ]);
 
   return {
     submissions: submissions.count ?? 0,
@@ -130,11 +137,12 @@ export async function listDuplicates() {
 /** User management list — admin client because profiles are owner-read. */
 export async function listUsersWithRoles() {
   const supabase = createSupabaseAdminClient();
-  const [{ data: profiles }, { data: roles }, { data: authUsers }] = await Promise.all([
-    supabase.from("profiles").select("id, display_name, created_at"),
-    supabase.from("user_roles").select("user_id, role"),
-    supabase.auth.admin.listUsers({ perPage: 200 }),
-  ]);
+  const [{ data: profiles }, { data: roles }, { data: authUsers }] =
+    await Promise.all([
+      supabase.from("profiles").select("id, display_name, created_at"),
+      supabase.from("user_roles").select("user_id, role"),
+      supabase.auth.admin.listUsers({ perPage: 200 }),
+    ]);
   const emailById = new Map(
     (authUsers?.users ?? []).map((user) => [user.id, user.email ?? ""]),
   );
@@ -167,4 +175,26 @@ export async function listAdminActions(limit = 100) {
     .order("created_at", { ascending: false })
     .limit(limit);
   return data ?? [];
+}
+
+export async function listJobs(limit = 100) {
+  // Jobs are infrastructure rows (no RLS grants) — moderator check done by
+  // the admin layout; service role reads here.
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function countStaleClinics() {
+  const supabase = createSupabaseAdminClient();
+  const { count } = await supabase
+    .from("clinics")
+    .select("id", { count: "exact", head: true })
+    .not("flagged_stale_at", "is", null)
+    .is("deleted_at", null);
+  return count ?? 0;
 }

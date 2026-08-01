@@ -50,7 +50,9 @@ export function FavoriteButton({
     },
     onMutate: async (nextFavorited) => {
       await queryClient.cancelQueries({ queryKey: ["favorites"] });
-      const previous = queryClient.getQueryData<FavoritesPayload>(["favorites"]);
+      const previous = queryClient.getQueryData<FavoritesPayload>([
+        "favorites",
+      ]);
       queryClient.setQueryData<FavoritesPayload>(["favorites"], (old) => ({
         signedIn: old?.signedIn ?? true,
         clinicIds: nextFavorited
@@ -60,7 +62,8 @@ export function FavoriteButton({
       return { previous };
     },
     onError: (error, _next, context) => {
-      if (context?.previous) queryClient.setQueryData(["favorites"], context.previous);
+      if (context?.previous)
+        queryClient.setQueryData(["favorites"], context.previous);
       toast.error(error.message);
     },
     onSettled: () => {
@@ -96,7 +99,8 @@ export function FavoriteButton({
         aria-hidden
         className={cn(
           "size-4 transition-colors",
-          favorited && "fill-[var(--accent-foreground)] text-[var(--accent-foreground)]",
+          favorited &&
+            "fill-[var(--accent-foreground)] text-[var(--accent-foreground)]",
         )}
       />
     </Button>

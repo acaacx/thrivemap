@@ -35,7 +35,11 @@ function toTimeInput(value: string | null): string {
   return value ? value.slice(0, 5) : "";
 }
 
-export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFormProps) {
+export function PortalHoursForm({
+  clinicId,
+  directEdit,
+  initial,
+}: PortalHoursFormProps) {
   const [rows, setRows] = useState<HourRow[]>(() =>
     DAYS.map((_, day) => {
       const existing = initial.find((row) => row.day_of_week === day);
@@ -48,11 +52,16 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
     }),
   );
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
 
   function patchRow(day: number, patch: Partial<HourRow>) {
     setRows((current) =>
-      current.map((row) => (row.day_of_week === day ? { ...row, ...patch } : row)),
+      current.map((row) =>
+        row.day_of_week === day ? { ...row, ...patch } : row,
+      ),
     );
   }
 
@@ -95,10 +104,18 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
         <table className="w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
-              <th scope="col" className="px-4 py-3 font-medium">Day</th>
-              <th scope="col" className="px-4 py-3 font-medium">Open</th>
-              <th scope="col" className="px-4 py-3 font-medium">Opens</th>
-              <th scope="col" className="px-4 py-3 font-medium">Closes</th>
+              <th scope="col" className="px-4 py-3 font-medium">
+                Day
+              </th>
+              <th scope="col" className="px-4 py-3 font-medium">
+                Open
+              </th>
+              <th scope="col" className="px-4 py-3 font-medium">
+                Opens
+              </th>
+              <th scope="col" className="px-4 py-3 font-medium">
+                Closes
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -113,8 +130,14 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
                     onCheckedChange={(checked) =>
                       patchRow(row.day_of_week, {
                         is_closed: checked !== true,
-                        opens_at: checked === true ? (row.opens_at ?? "09:00") : row.opens_at,
-                        closes_at: checked === true ? (row.closes_at ?? "17:00") : row.closes_at,
+                        opens_at:
+                          checked === true
+                            ? (row.opens_at ?? "09:00")
+                            : row.opens_at,
+                        closes_at:
+                          checked === true
+                            ? (row.closes_at ?? "17:00")
+                            : row.closes_at,
                       })
                     }
                     aria-label={`Open on ${DAYS[row.day_of_week]}`}
@@ -126,7 +149,9 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
                     value={row.opens_at ?? ""}
                     disabled={row.is_closed}
                     onChange={(e) =>
-                      patchRow(row.day_of_week, { opens_at: e.target.value || null })
+                      patchRow(row.day_of_week, {
+                        opens_at: e.target.value || null,
+                      })
                     }
                     aria-label={`${DAYS[row.day_of_week]} opening time`}
                     className="w-32"
@@ -138,7 +163,9 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
                     value={row.closes_at ?? ""}
                     disabled={row.is_closed}
                     onChange={(e) =>
-                      patchRow(row.day_of_week, { closes_at: e.target.value || null })
+                      patchRow(row.day_of_week, {
+                        closes_at: e.target.value || null,
+                      })
                     }
                     aria-label={`${DAYS[row.day_of_week]} closing time`}
                     className="w-32"
@@ -151,7 +178,9 @@ export function PortalHoursForm({ clinicId, directEdit, initial }: PortalHoursFo
       </div>
       <div className="flex justify-end">
         <Button className="rounded-full" disabled={busy} onClick={onSave}>
-          {busy && <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />}
+          {busy && (
+            <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
+          )}
           {directEdit ? "Publish changes" : "Submit for review"}
         </Button>
       </div>
