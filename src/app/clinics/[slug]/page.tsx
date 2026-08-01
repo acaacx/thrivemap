@@ -28,6 +28,7 @@ import { SiteHeader } from "@/components/site-header";
 import { dayName, formatTime, slugToTitle } from "@/lib/format";
 import { siteConfig } from "@/lib/site-config";
 import { getClinicBySlug } from "@/modules/clinics/queries";
+import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";
 import { VerificationBadge } from "@/modules/clinics/components/VerificationBadge";
 import { ClinicProfileMap } from "./profile-map";
 
@@ -201,7 +202,8 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                 </p>
               )}
             </div>
-            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <FavoriteButton clinicId={clinic.id} clinicName={clinic.name} />
               {clinic.phone && (
                 <Button
                   className="rounded-full"
@@ -461,6 +463,14 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       render={<Link href={`/clinics/${clinic.slug}/report`} />}
                     >
                       Report incorrect information
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      render={<Link href={`/clinics/${clinic.slug}/suggest-edit`} />}
+                    >
+                      Suggest a correction
                     </Button>
                     <Button
                       variant="ghost"

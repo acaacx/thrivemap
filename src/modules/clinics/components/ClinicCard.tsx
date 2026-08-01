@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceKm } from "@/lib/format";
+import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";
 import { VerificationBadge } from "./VerificationBadge";
 
 export interface ClinicCardData {
@@ -116,6 +117,11 @@ export function ClinicCard({ clinic, selected, onSelect }: ClinicCardProps) {
                 <ExternalLink className="size-3.5" aria-hidden />
               </Button>
             )}
+            <FavoriteButton
+              clinicId={clinic.id}
+              clinicName={clinic.name}
+              className="ml-auto"
+            />
           </div>
         </div>
       </CardContent>

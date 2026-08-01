@@ -113,6 +113,13 @@ describe("RLS: registered caregiver", () => {
       .eq("slug", "bloom-developmental-services")
       .single();
 
+    // Idempotent against leftovers from e2e runs sharing the demo account.
+    await caregiver
+      .from("favorites")
+      .delete()
+      .eq("user_id", userInfo.user!.id)
+      .eq("clinic_id", clinic!.id);
+
     const { error: insertError } = await caregiver
       .from("favorites")
       .insert({ user_id: userInfo.user!.id, clinic_id: clinic!.id });

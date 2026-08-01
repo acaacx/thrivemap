@@ -22,6 +22,8 @@ interface ClinicMapProps {
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   onMoved?: (bounds: MapBounds, center: { latitude: number; longitude: number }, zoom: number) => void;
+  /** Click anywhere on the map (used for pin placement in forms). */
+  onMapClick?: (location: { latitude: number; longitude: number }) => void;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export function ClinicMap({
   selectedId,
   onSelect,
   onMoved,
+  onMapClick,
   className,
 }: ClinicMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,8 +50,10 @@ export function ClinicMap({
   const loadedRef = useRef(false);
   const onSelectRef = useRef(onSelect);
   const onMovedRef = useRef(onMoved);
+  const onMapClickRef = useRef(onMapClick);
   onSelectRef.current = onSelect;
   onMovedRef.current = onMoved;
+  onMapClickRef.current = onMapClick;
 
   // Suppress onMoved for programmatic movements (only user gestures should
   // surface the "Search this area" affordance).
@@ -182,6 +187,10 @@ export function ClinicMap({
       });
 
       syncMarkers();
+    });
+
+    map.on("click", (e: maplibregl.MapMouseEvent) => {
+      onMapClickRef.current?.({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
     });
 
     map.on("moveend", () => {
