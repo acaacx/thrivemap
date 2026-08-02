@@ -251,7 +251,6 @@ export function ClinicMap({
     });
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(syncMarkers, [markers, selectedId]);
 
   useEffect(() => {

@@ -1472,6 +1472,7 @@ export type Database = {
           p_accessible_only?: boolean
           p_age_groups?: Database["public"]["Enums"]["age_group"][]
           p_cursor_id?: string
+          p_cursor_text?: string
           p_cursor_value?: number
           p_east?: number
           p_in_person_services?: boolean
@@ -1510,6 +1511,8 @@ export type Database = {
           service_names: string[]
           service_slugs: string[]
           slug: string
+          sort_text: string
+          sort_value: number
           status: Database["public"]["Enums"]["listing_status"]
           website: string
           wheelchair_accessible: boolean

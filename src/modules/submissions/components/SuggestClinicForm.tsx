@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,6 +44,13 @@ export function SuggestClinicForm({
       consent: undefined as unknown as true,
     },
   });
+
+  // useWatch (not form.watch) so React Compiler can memoize this component.
+  const selectedServices = useWatch({
+    control: form.control,
+    name: "service_slugs",
+  });
+  const consentChecked = useWatch({ control: form.control, name: "consent" });
 
   const [pin, setPin] = useState<{
     latitude: number;
@@ -351,7 +358,7 @@ export function SuggestClinicForm({
             <div key={service.slug} className="flex items-center gap-2">
               <Checkbox
                 id={`suggest-svc-${service.slug}`}
-                checked={form.watch("service_slugs").includes(service.slug)}
+                checked={selectedServices.includes(service.slug)}
                 onCheckedChange={(checked) => {
                   const current = form.getValues("service_slugs");
                   form.setValue(
@@ -410,7 +417,7 @@ export function SuggestClinicForm({
       <div className="flex items-start gap-2">
         <Checkbox
           id="consent"
-          checked={form.watch("consent") === true}
+          checked={consentChecked === true}
           onCheckedChange={(checked) =>
             form.setValue("consent", (checked === true) as true, {
               shouldValidate: true,

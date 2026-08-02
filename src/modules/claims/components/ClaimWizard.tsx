@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   CheckCircle2,
   FileText,
@@ -117,6 +117,9 @@ export function ClaimWizard({
         initialClaim?.business_registration_info ?? "",
     },
   });
+  // useWatch (not form.watch) so React Compiler can memoize this component.
+  // Must sit above the early returns to keep hook order stable.
+  const values = useWatch({ control: form.control });
 
   if (done) {
     return (
@@ -280,8 +283,6 @@ export function ClaimWizard({
       setBusy(false);
     }
   }
-
-  const values = form.watch();
 
   return (
     <div className="space-y-6">
@@ -527,11 +528,11 @@ export function ClaimWizard({
       {step === "review" && (
         <div className="space-y-4">
           <dl className="grid gap-3 rounded-xl border bg-card p-5 text-sm sm:grid-cols-2">
-            <ReviewItem label="Full name" value={values.full_name} />
-            <ReviewItem label="Work email" value={values.work_email} />
-            <ReviewItem label="Mobile" value={values.mobile_number} />
-            <ReviewItem label="Job title" value={values.job_title} />
-            <ReviewItem label="Relationship" value={values.relationship} />
+            <ReviewItem label="Full name" value={values.full_name ?? ""} />
+            <ReviewItem label="Work email" value={values.work_email ?? ""} />
+            <ReviewItem label="Mobile" value={values.mobile_number ?? ""} />
+            <ReviewItem label="Job title" value={values.job_title ?? ""} />
+            <ReviewItem label="Relationship" value={values.relationship ?? ""} />
             <ReviewItem label="Documents" value={`${docs.length} attached`} />
           </dl>
           <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">

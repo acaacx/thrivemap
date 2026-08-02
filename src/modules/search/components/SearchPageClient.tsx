@@ -110,6 +110,11 @@ export function SearchPageClient({
     center: { latitude: number; longitude: number };
   } | null>(null);
   const [extraPages, setExtraPages] = useState<SearchClinicRow[]>([]);
+  // undefined = no page loaded past the first, so the first page's cursor
+  // applies; null = the last page came back without one.
+  const [moreCursor, setMoreCursor] = useState<string | null | undefined>(
+    undefined,
+  );
   const [loadingMore, setLoadingMore] = useState(false);
 
   const queryString = paramsToQueryString(params);
@@ -132,6 +137,7 @@ export function SearchPageClient({
   const applyParams = useCallback(
     (next: SearchParams) => {
       setExtraPages([]);
+      setMoreCursor(undefined);
       setSelectedId(null);
       setParams(next);
       const qs = paramsToQueryString(next);
@@ -144,6 +150,9 @@ export function SearchPageClient({
     () => [...(data?.clinics ?? []), ...extraPages],
     [data, extraPages],
   );
+
+  const nextCursor =
+    moreCursor === undefined ? (data?.nextCursor ?? null) : moreCursor;
 
   const markers: ClinicMapMarker[] = useMemo(
     () =>
@@ -211,15 +220,16 @@ export function SearchPageClient({
   }
 
   async function loadMore() {
-    if (!data?.nextCursor) return;
+    if (!nextCursor) return;
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/search?${queryString}&cursor=${encodeURIComponent(data.nextCursor)}`,
+        `/api/search?${queryString}&cursor=${encodeURIComponent(nextCursor)}`,
       );
       if (res.ok) {
         const page = (await res.json()) as SearchResponse;
         setExtraPages((prev) => [...prev, ...page.clinics]);
+        setMoreCursor(page.nextCursor);
       }
     } finally {
       setLoadingMore(false);
@@ -460,7 +470,7 @@ export function SearchPageClient({
               </div>
             )}
           </div>
-          {data?.nextCursor && (
+          {nextCursor && (
             <div className="py-4 text-center">
               <Button
                 variant="outline"

@@ -71,6 +71,31 @@ test.describe("clinic search", () => {
     await expect(page.getByText(/clinics? found/)).toBeVisible();
   });
 
+  test("load more pages through a non-distance sort", async ({ page }) => {
+    // Alphabetical (and the other non-distance sorts) used to be limit-only:
+    // page one was all you ever got.
+    await page.goto("/clinics?sort=alphabetical");
+    const cards = page.locator("[data-clinic-id]");
+    await expect(cards.first()).toBeVisible();
+    const firstPage = await cards.count();
+    expect(firstPage).toBe(20);
+
+    await page.getByRole("button", { name: /load more clinics/i }).click();
+    await expect(cards).not.toHaveCount(firstPage);
+
+    const ids = await cards.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("data-clinic-id")),
+    );
+    expect(ids.length).toBeGreaterThan(firstPage);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    // Ordering must survive the page boundary.
+    const names = await cards
+      .locator("h3")
+      .evaluateAll((els) => els.map((el) => el.textContent!.trim()));
+    expect([...names].sort((a, b) => a.localeCompare(b))).toEqual(names);
+  });
+
   test("verified-only filter shows only verified badges", async ({ page }) => {
     await page.goto("/clinics?lat=14.5995&lng=120.9842&radius=25&verified=1");
     const cards = page.locator("[data-clinic-id]");

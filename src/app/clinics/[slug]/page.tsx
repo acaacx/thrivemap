@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { dayName, formatTime, slugToTitle } from "@/lib/format";
+import { dayName, formatTime } from "@/lib/format";
 import { siteConfig } from "@/lib/site-config";
 import { getClinicBySlug } from "@/modules/clinics/queries";
 import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";

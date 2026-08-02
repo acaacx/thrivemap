@@ -72,7 +72,8 @@ async function searchClinicsUncached(
     p_open_now: params.open ?? false,
     p_accessible_only: params.accessible ?? false,
     p_sort: params.sort,
-    p_cursor_value: cursor?.v,
+    p_cursor_value: typeof cursor?.v === "number" ? cursor.v : undefined,
+    p_cursor_text: typeof cursor?.v === "string" ? cursor.v : undefined,
     p_cursor_id: cursor?.id,
     p_limit: PAGE_SIZE + 1,
   });
@@ -86,13 +87,9 @@ async function searchClinicsUncached(
   const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
   const last = page[page.length - 1];
 
-  // Keyset cursors are supported for distance/relevance sorts.
-  const cursorValue =
-    params.sort === "nearest"
-      ? last?.distance_km
-      : params.sort === "relevance"
-        ? last?.rank
-        : null;
+  // Every sort mode is keyset-paginated: the RPC returns the key it ordered
+  // by — sort_text for `alphabetical`, sort_value for the rest.
+  const cursorValue = last ? (last.sort_text ?? last.sort_value) : null;
 
   return {
     clinics: page,

@@ -21,10 +21,16 @@ One SECURITY DEFINER function does all filtering in SQL:
   for relevance sort.
 - **Filters**: service slugs, age groups, verified-only, online/in-person,
   open-now (evaluated against clinic_hours in Asia/Manila), accessible-only.
-- **Pagination**: keyset cursor on `(sort value, clinic_id)` —
-  supported for `nearest` and `relevance` sorts only; other sorts are
-  limit-only (documented Stage 1 decision). Cursors are opaque base64
-  (`modules/search/cursor.ts`).
+- **Pagination**: keyset cursor on `(sort key, clinic_id)` for every sort
+  mode. `search_clinics` emits the key it ordered by — `sort_value` (numeric)
+  or `sort_text` (alphabetical, keyed on name) — so callers never recompute
+  it. Numeric keys are rounded in SQL (6 dp for distance/rank, 3 dp for
+  verification epoch) because float8 renders with 15 significant digits,
+  one short of a double: an un-rounded key does not round-trip and the
+  boundary row is re-emitted on the next page. Ascending sorts use a row-wise
+  comparison; descending sorts need `key < cursor OR (key = cursor AND id >
+  cursor_id)` because the id tie-break runs the other way. Cursors are opaque
+  base64 (`modules/search/cursor.ts`).
 - Only published listings are visible; the function re-checks status even
   though RLS also filters.
 

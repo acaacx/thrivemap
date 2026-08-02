@@ -116,7 +116,7 @@ describe("search_clinics RPC", () => {
       p_lat: 14.5995,
       p_lng: 120.9842,
       p_radius_km: 50,
-      p_cursor_value: last.distance_km!,
+      p_cursor_value: last.sort_value,
       p_cursor_id: last.clinic_id,
       p_limit: 5,
     });
@@ -126,6 +126,94 @@ describe("search_clinics RPC", () => {
     expect(page2.data![0].distance_km!).toBeGreaterThanOrEqual(
       last.distance_km!,
     );
+  });
+
+  // Every sort mode carries a keyset cursor. Paging through in small pages
+  // must reproduce the single-shot ordering exactly: no gaps, no repeats.
+  describe.each([
+    "nearest",
+    "relevance",
+    "verified_first",
+    "recently_verified",
+    "alphabetical",
+  ] as const)("keyset pagination for sort=%s", (sort) => {
+    const baseArgs = {
+      p_lat: 14.5995,
+      p_lng: 120.9842,
+      p_radius_km: 500,
+      p_query: sort === "relevance" ? "therapy" : undefined,
+      p_sort: sort,
+    };
+
+    it("walks the full ordering in pages", async () => {
+      const whole = await anon.rpc("search_clinics", {
+        ...baseArgs,
+        p_limit: 50,
+      });
+      expect(whole.error).toBeNull();
+      const expected = whole.data!.map((r) => r.clinic_id);
+      expect(expected.length).toBeGreaterThan(6);
+
+      const walked: string[] = [];
+      let cursorValue: number | undefined;
+      let cursorText: string | undefined;
+      let cursorId: string | undefined;
+
+      for (let page = 0; page < 20; page += 1) {
+        const res = await anon.rpc("search_clinics", {
+          ...baseArgs,
+          p_limit: 3,
+          p_cursor_value: cursorValue,
+          p_cursor_text: cursorText,
+          p_cursor_id: cursorId,
+        });
+        expect(res.error).toBeNull();
+        const rows = res.data ?? [];
+        if (rows.length === 0) break;
+        walked.push(...rows.map((r) => r.clinic_id));
+        const last = rows[rows.length - 1];
+        cursorValue = last.sort_value ?? undefined;
+        cursorText = last.sort_text ?? undefined;
+        cursorId = last.clinic_id;
+      }
+
+      expect(walked).toEqual(expected);
+      expect(new Set(walked).size).toBe(walked.length);
+    });
+  });
+
+  it("orders alphabetically by name", async () => {
+    const { data, error } = await anon.rpc("search_clinics", {
+      p_sort: "alphabetical",
+      p_limit: 50,
+    });
+    expect(error).toBeNull();
+    const names = data!.map((r) => r.name);
+    expect([...names].sort((a, b) => a.localeCompare(b))).toEqual(names);
+    expect(data!.every((r) => r.sort_text === r.name)).toBe(true);
+  });
+
+  it("puts verified clinics first for verified_first", async () => {
+    const { data, error } = await anon.rpc("search_clinics", {
+      p_sort: "verified_first",
+      p_limit: 50,
+    });
+    expect(error).toBeNull();
+    const flags = data!.map((r) => (r.status === "published_verified" ? 1 : 0));
+    expect([...flags].sort((a, b) => b - a)).toEqual(flags);
+  });
+
+  it("orders recently_verified newest first with unverified last", async () => {
+    const { data, error } = await anon.rpc("search_clinics", {
+      p_sort: "recently_verified",
+      p_limit: 50,
+    });
+    expect(error).toBeNull();
+    const keys = data!.map((r) => r.sort_value!);
+    expect([...keys].sort((a, b) => b - a)).toEqual(keys);
+    // Never-verified rows sort last via the sentinel key.
+    const nulls = data!.filter((r) => r.last_verified_at === null);
+    expect(nulls.every((r) => r.sort_value === -1)).toBe(true);
   });
 });
 

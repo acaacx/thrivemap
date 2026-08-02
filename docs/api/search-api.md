@@ -20,7 +20,7 @@ Wraps the `search_clinics` RPC.
 | `open`                        | boolean                                                                               | Open now (Asia/Manila)                                                 |
 | `accessible`                  | boolean                                                                               | Wheelchair-accessible only                                             |
 | `sort`                        | `nearest` \| `relevance` \| `verified_first` \| `recently_verified` \| `alphabetical` | Default `nearest`                                                      |
-| `cursor`                      | opaque string                                                                         | From previous response; keyset pagination (`nearest`/`relevance` only) |
+| `cursor`                      | opaque string                                                                         | From previous response; keyset pagination, all sort modes              |
 
 Response:
 
