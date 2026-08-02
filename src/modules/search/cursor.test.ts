@@ -24,7 +24,10 @@ describe("cursor", () => {
 
   it("round-trips text sort keys (alphabetical sort)", () => {
     const encoded = encodeCursor({ v: "Kaleidoscope Center", id: uuid });
-    expect(decodeCursor(encoded)).toEqual({ v: "Kaleidoscope Center", id: uuid });
+    expect(decodeCursor(encoded)).toEqual({
+      v: "Kaleidoscope Center",
+      id: uuid,
+    });
   });
 
   it("rejects oversized text sort keys", () => {

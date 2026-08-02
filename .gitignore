@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .dev-mail/
+
+# Playwright artifacts
+test-results/
+playwright-report/

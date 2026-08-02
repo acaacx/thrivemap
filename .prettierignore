@@ -3,3 +3,5 @@ node_modules
 pnpm-lock.yaml
 src/lib/database.types.ts
 supabase/.temp
+test-results
+playwright-report

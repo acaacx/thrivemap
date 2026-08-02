@@ -7,20 +7,20 @@ scripting against the app. All endpoints are read-only GET and return JSON.
 
 Wraps the `search_clinics` RPC.
 
-| Param                         | Type                                                                                  | Notes                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `lat`, `lng`                  | number                                                                                | Search center (with `radius`)                                          |
-| `radius`                      | km, number                                                                            | Radius mode; mutually exclusive with bbox                              |
-| `north`,`south`,`east`,`west` | number                                                                                | Bbox mode ("search this area")                                         |
-| `q`                           | string                                                                                | Free text (websearch syntax + typo-tolerant name match)                |
-| `services`                    | csv slugs                                                                             | e.g. `speech-therapy,occupational-therapy`                             |
-| `ages`                        | csv                                                                                   | `early_childhood,school_age,adolescent,adult`                          |
-| `verified`                    | boolean                                                                               | Verified listings only                                                 |
-| `online`, `inperson`          | boolean                                                                               | Delivery mode                                                          |
-| `open`                        | boolean                                                                               | Open now (Asia/Manila)                                                 |
-| `accessible`                  | boolean                                                                               | Wheelchair-accessible only                                             |
-| `sort`                        | `nearest` \| `relevance` \| `verified_first` \| `recently_verified` \| `alphabetical` | Default `nearest`                                                      |
-| `cursor`                      | opaque string                                                                         | From previous response; keyset pagination, all sort modes              |
+| Param                         | Type                                                                                  | Notes                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `lat`, `lng`                  | number                                                                                | Search center (with `radius`)                             |
+| `radius`                      | km, number                                                                            | Radius mode; mutually exclusive with bbox                 |
+| `north`,`south`,`east`,`west` | number                                                                                | Bbox mode ("search this area")                            |
+| `q`                           | string                                                                                | Free text (websearch syntax + typo-tolerant name match)   |
+| `services`                    | csv slugs                                                                             | e.g. `speech-therapy,occupational-therapy`                |
+| `ages`                        | csv                                                                                   | `early_childhood,school_age,adolescent,adult`             |
+| `verified`                    | boolean                                                                               | Verified listings only                                    |
+| `online`, `inperson`          | boolean                                                                               | Delivery mode                                             |
+| `open`                        | boolean                                                                               | Open now (Asia/Manila)                                    |
+| `accessible`                  | boolean                                                                               | Wheelchair-accessible only                                |
+| `sort`                        | `nearest` \| `relevance` \| `verified_first` \| `recently_verified` \| `alphabetical` | Default `nearest`                                         |
+| `cursor`                      | opaque string                                                                         | From previous response; keyset pagination, all sort modes |
 
 Response:
 

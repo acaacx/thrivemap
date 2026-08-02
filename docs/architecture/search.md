@@ -29,7 +29,7 @@ One SECURITY DEFINER function does all filtering in SQL:
   one short of a double: an un-rounded key does not round-trip and the
   boundary row is re-emitted on the next page. Ascending sorts use a row-wise
   comparison; descending sorts need `key < cursor OR (key = cursor AND id >
-  cursor_id)` because the id tie-break runs the other way. Cursors are opaque
+cursor_id)` because the id tie-break runs the other way. Cursors are opaque
   base64 (`modules/search/cursor.ts`).
 - Only published listings are visible; the function re-checks status even
   though RLS also filters.

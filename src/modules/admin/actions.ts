@@ -382,16 +382,14 @@ export async function approveClaim(
     return { error: "Could not grant clinic access." };
   }
 
-  await admin
-    .from("user_roles")
-    .upsert(
-      {
-        user_id: claim.user_id,
-        role: "clinic_representative",
-        granted_by: user.id,
-      },
-      { onConflict: "user_id,role", ignoreDuplicates: true },
-    );
+  await admin.from("user_roles").upsert(
+    {
+      user_id: claim.user_id,
+      role: "clinic_representative",
+      granted_by: user.id,
+    },
+    { onConflict: "user_id,role", ignoreDuplicates: true },
+  );
 
   const nextStatus: ListingStatus =
     clinic.status === "published_unverified"
@@ -596,14 +594,12 @@ export async function approveChangeRequest(
       .delete()
       .eq("clinic_id", request.clinics.id);
     if (nextIds.length > 0) {
-      await admin
-        .from("clinic_services")
-        .insert(
-          nextIds.map((service_id) => ({
-            clinic_id: request.clinics!.id,
-            service_id,
-          })),
-        );
+      await admin.from("clinic_services").insert(
+        nextIds.map((service_id) => ({
+          clinic_id: request.clinics!.id,
+          service_id,
+        })),
+      );
     }
   }
 

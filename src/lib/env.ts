@@ -33,8 +33,24 @@ const clientSchema = z.object({
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 });
 
+/**
+ * Drops empty-string values so they read as "unset".
+ *
+ * `.env.example` ships optional provider keys blank, and hosting dashboards
+ * (Vercel included) store a variable you leave blank as `""` rather than
+ * omitting it. Zod treats `""` as a present value, so `.optional()` and
+ * `.default()` do not apply and validation fails on a config that is meant to
+ * be valid — which took down every route calling serverEnv(), /api/health
+ * among them.
+ */
+function withoutEmpty<T extends Record<string, unknown>>(source: T) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== ""),
+  );
+}
+
 function parseServerEnv() {
-  const parsed = serverSchema.safeParse(process.env);
+  const parsed = serverSchema.safeParse(withoutEmpty(process.env));
   if (!parsed.success) {
     throw new Error(
       `Invalid server environment variables:\n${JSON.stringify(z.treeifyError(parsed.error), null, 2)}`,
@@ -44,15 +60,18 @@ function parseServerEnv() {
 }
 
 function parseClientEnv() {
-  const parsed = clientSchema.safeParse({
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY:
-      process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY,
-    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-  });
+  // Each value is read as an explicit property so Next inlines it at build time.
+  const parsed = clientSchema.safeParse(
+    withoutEmpty({
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY:
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY,
+      NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+      NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    }),
+  );
   if (!parsed.success) {
     throw new Error(
       `Invalid client environment variables:\n${JSON.stringify(z.treeifyError(parsed.error), null, 2)}`,

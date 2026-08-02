@@ -532,7 +532,10 @@ export function ClaimWizard({
             <ReviewItem label="Work email" value={values.work_email ?? ""} />
             <ReviewItem label="Mobile" value={values.mobile_number ?? ""} />
             <ReviewItem label="Job title" value={values.job_title ?? ""} />
-            <ReviewItem label="Relationship" value={values.relationship ?? ""} />
+            <ReviewItem
+              label="Relationship"
+              value={values.relationship ?? ""}
+            />
             <ReviewItem label="Documents" value={`${docs.length} attached`} />
           </dl>
           <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">
