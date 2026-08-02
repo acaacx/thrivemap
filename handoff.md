@@ -14,7 +14,7 @@ Build **ThriveMap** (renamed from "AuSome" mid-session — product name is Thriv
 
 ## Finished and verified
 
-Phase 1 MVP is feature-complete plus a polish pass. Working tree clean; `main` at `d107c2f`. **Nothing is pushed — this repo has no git remote configured** (`git remote -v` is empty); the user was told to add one (`gh repo create … --source . --push`) and has not yet.
+Phase 1 MVP is feature-complete plus a polish pass. Working tree clean; `main` at `239272e`, pushed and in sync with `origin/main` — https://github.com/acaacx/thrivemap (private).
 
 - **Stage 1** (`07732f0`, `9c4e83a`): Next.js 16 app (TS strict, Tailwind v4, shadcn/ui on **Base UI**), migrations 1–9 — schema, PostGIS `search_clinics`/`get_map_clinics`/`find_duplicate_candidates`/`search_ph_locations`, RLS everywhere, explicit grants (mig 8), audit triggers, storage buckets, generated lat/lng (mig 9). Seed: 30 fictional clinics, 8 services, `ph_locations`, 4 demo users. Public pages: landing, `/clinics` (split list+map, URL-as-state, keyset cursor), `/clinics/[slug]` + JSON-LD, `/services/[slug]`, `/locations/[province]（/[city]）`, statics, sitemap/robots.
 - **Stage 2** (`9f25ee8`): auth (password + magic link, `src/middleware.ts` session refresh, `requireUser`/`requireRole` in `src/modules/auth/server.ts`), favorites, account pages, suggest-clinic with pre-submit duplicate review, change requests, anonymous reports, `RateLimiter`.
@@ -33,15 +33,14 @@ Nothing half-done. Phase 1 scope is closed and the polish pass is committed. Eve
 
 - Real Google Places import (handler is a stub), therapist profiles, inquiries/booking, reviews, i18n, PWA.
 
-Only loose end: the repo has never been pushed anywhere (no remote).
+No loose ends.
 
 ## Single next action
 
-Nothing is queued — ask the user which direction to take before writing code. Three live options, in order of readiness:
+Nothing is queued — ask the user which direction to take before writing code. Two live options:
 
-1. Add a git remote and push (`d107c2f` and everything before it exist only locally).
-2. Phase 2 item from `docs/phase-2-plan.md` — Places import is the most staged (tables, admin candidates workspace, and the `candidate_import` job stub all exist), but it needs a real API key, which breaks the no-external-credentials rule and is the user's call.
-3. Deployment dry-run against a real Supabase project per `docs/operations/deployment.md`.
+1. Phase 2 item from `docs/phase-2-plan.md` — Places import is the most staged (tables, admin candidates workspace, and the `candidate_import` job stub all exist), but it needs a real API key, which breaks the no-external-credentials rule and is the user's call.
+2. Deployment dry-run against a real Supabase project per `docs/operations/deployment.md`.
 
 ## Traps / non-obvious facts
 
