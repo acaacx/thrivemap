@@ -14,32 +14,34 @@ Build **ThriveMap** (renamed from "AuSome" mid-session — product name is Thriv
 
 ## Finished and verified
 
-Phase 1 MVP is feature-complete. Working tree clean; `main` at `83b0734`.
+Phase 1 MVP is feature-complete plus a polish pass. Working tree clean; `main` at `d107c2f`. **Nothing is pushed — this repo has no git remote configured** (`git remote -v` is empty); the user was told to add one (`gh repo create … --source . --push`) and has not yet.
 
 - **Stage 1** (`07732f0`, `9c4e83a`): Next.js 16 app (TS strict, Tailwind v4, shadcn/ui on **Base UI**), migrations 1–9 — schema, PostGIS `search_clinics`/`get_map_clinics`/`find_duplicate_candidates`/`search_ph_locations`, RLS everywhere, explicit grants (mig 8), audit triggers, storage buckets, generated lat/lng (mig 9). Seed: 30 fictional clinics, 8 services, `ph_locations`, 4 demo users. Public pages: landing, `/clinics` (split list+map, URL-as-state, keyset cursor), `/clinics/[slug]` + JSON-LD, `/services/[slug]`, `/locations/[province]（/[city]）`, statics, sitemap/robots.
 - **Stage 2** (`9f25ee8`): auth (password + magic link, `src/middleware.ts` session refresh, `requireUser`/`requireRole` in `src/modules/auth/server.ts`), favorites, account pages, suggest-clinic with pre-submit duplicate review, change requests, anonymous reports, `RateLimiter`.
 - **Stage 3** (`73979d8`): claim wizard at `/clinics/[slug]/claim` (multi-step, private `claim-documents` uploads, resubmission on request-more-info) + `/account/claims`; clinic portal `/clinic-portal/*` (verified clinics edit directly and audited, unverified edits become change requests); admin console `/admin/*` (dashboard, submissions/claims/change-requests/reports/candidates/duplicates workspaces, user roles, audit log — reasons required on destructive decisions, all logged to `admin_actions`); lifecycle state machine (`modules/clinics/lifecycle.ts`) mirrored by a DB transition trigger; `merge_clinics` RPC; set-based `scan_duplicate_candidates`. Migrations 10–13.
 - **Stage 4** (`83b0734`): job handlers (email delivery, submission intake, verification reminders, stale-listing scan, search-doc refresh, candidate-import stub) + pg_cron enqueues (mig 14) + admin dead-letter view/retry; `EmailSender` (console/`.dev-mail` dev adapter, Resend env-gated) with 12 transactional templates; `CacheStore` (in-memory/Upstash) with versioned-namespace invalidation on clinic mutations; CSP + secure headers, `/api/health`, redacting structured logger, Sentry + PostHog env-gated; map bundle dynamic-imported on search page; CI (Semgrep, db lint/migration validation, axe, inert main deploy workflow); full `docs/` set.
 
-**Test state (re-verified 2026-08-02, all green):** typecheck clean; lint 0 errors / 4 known warnings (unused eslint-disable in `ClinicMap.tsx:254`, React-Compiler `form.watch` bailouts); 52 unit, 23 integration, 45 e2e passed + 5 skipped by design (stage-3 flows and favorites mutation are chromium-only — both Playwright projects share demo accounts and would race); prod build clean.
+- **Polish pass** (`d107c2f`): lint is now warning-free — `form.watch()` → `useWatch` in `ClaimWizard`/`SuggestClinicForm` (React Compiler was bailing out of memoizing both), dead `slugToTitle` import, stale eslint-disable. Migration 15 rewrites `search_clinics` so **every** sort mode carries a keyset cursor: the RPC now returns the key it ordered by (`sort_value` numeric / `sort_text` for alphabetical) and callers never recompute it. Also fixed two real bugs found on the way — the relevance cursor skipped rank-tied rows whose id sorted after the cursor, and `loadMore` in `SearchPageClient` reused page one's cursor forever, so a second click re-appended the same page.
+
+**Test state (re-verified 2026-08-02 after a fresh `pnpm db:reset`, all green):** typecheck clean; lint 0 errors, 0 warnings; 55 unit, 31 integration, 47 e2e passed + 5 skipped by design (stage-3 flows and favorites mutation are chromium-only — both Playwright projects share demo accounts and would race); prod build clean.
 
 Demo logins (local, password `password123`): admin@ / moderator@ / caregiver@ / clinicrep@ `thrivemap.test`.
 
 ## Half-done / not started
 
-Nothing half-done. Phase 1 scope is closed. Everything remaining is Phase 2 (see `docs/phase-2-plan.md`) or optional polish:
+Nothing half-done. Phase 1 scope is closed and the polish pass is committed. Everything remaining is Phase 2 (see `docs/phase-2-plan.md`):
 
 - Real Google Places import (handler is a stub), therapist profiles, inquiries/booking, reviews, i18n, PWA.
 
-**Polish pass (uncommitted at time of writing, all tests green):** lint is now
-0 warnings (`form.watch` → `useWatch` in ClaimWizard/SuggestClinicForm, dead
-`slugToTitle` import, stale eslint-disable); migration 15 gives every sort mode
-a keyset cursor and fixes the relevance tie-break bug; `loadMore` in
-SearchPageClient no longer reuses page one's cursor forever.
+Only loose end: the repo has never been pushed anywhere (no remote).
 
 ## Single next action
 
-Nothing is queued — ask the user which direction to take before writing code. Default suggestion: pick a Phase 2 item from `docs/phase-2-plan.md` (Places import is the most staged: tables, admin candidates workspace, and `candidate_import` job stub all exist), or do a deployment dry-run against a real Supabase project per `docs/operations/deployment.md`.
+Nothing is queued — ask the user which direction to take before writing code. Three live options, in order of readiness:
+
+1. Add a git remote and push (`d107c2f` and everything before it exist only locally).
+2. Phase 2 item from `docs/phase-2-plan.md` — Places import is the most staged (tables, admin candidates workspace, and the `candidate_import` job stub all exist), but it needs a real API key, which breaks the no-external-credentials rule and is the user's call.
+3. Deployment dry-run against a real Supabase project per `docs/operations/deployment.md`.
 
 ## Traps / non-obvious facts
 
