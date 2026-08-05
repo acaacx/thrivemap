@@ -44,6 +44,9 @@ export async function findLikelyDuplicates(input: {
     p_lng: input.longitude,
     p_radius_km: input.latitude != null ? 5 : undefined,
     p_limit: 5,
+    // Name-similarity check: the default 'nearest' sort buries exact-name
+    // matches once no origin is set.
+    p_sort: "relevance",
   });
   return (data ?? []).map((row) => ({
     slug: row.slug,
