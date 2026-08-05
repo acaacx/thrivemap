@@ -1347,6 +1347,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attach_candidate: {
+        Args: { p_candidate_id: string; p_clinic_id: string }
+        Returns: undefined
+      }
       claim_due_jobs: {
         Args: { p_batch?: number; p_worker: string }
         Returns: {
@@ -1439,6 +1443,21 @@ export type Database = {
         Returns: boolean
       }
       manages_clinic: { Args: { p_clinic_id: string }; Returns: boolean }
+      match_candidate_clinics: {
+        Args: {
+          p_candidate_id: string
+          p_distance_m?: number
+          p_name_similarity?: number
+        }
+        Returns: {
+          clinic_id: string
+          clinic_name: string
+          clinic_slug: string
+          distance_m: number
+          name_similarity: number
+          same_place_id: boolean
+        }[]
+      }
       merge_clinics: {
         Args: { p_keep_id: string; p_merge_id: string; p_reason: string }
         Returns: undefined
@@ -1453,6 +1472,7 @@ export type Database = {
           province_slug: string
         }[]
       }
+      promote_candidate: { Args: { p_candidate_id: string }; Returns: string }
       refresh_all_clinic_search_documents: { Args: never; Returns: number }
       refresh_clinic_search_document: {
         Args: { p_clinic_id: string }
