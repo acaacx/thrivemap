@@ -2,60 +2,63 @@
 
 ## What we are trying to do
 
-Build **ThriveMap** (renamed from "AuSome" mid-session — product name is ThriveMap everywhere; directory name stays `ausomeapp`): a Philippines-first, autism-focused clinic directory MVP. Phase 1 = clinic discovery only (no booking/therapist profiles/payments). Condensed plan in `/Users/alaric/.claude/plans/review-this-prompt-and-dazzling-pelican.md`; Phase 2 candidates in `docs/phase-2-plan.md`.
+Build **ThriveMap** (product name everywhere; directory stays `ausomeapp`): a Philippines-first, autism-focused clinic directory. Phase 1 (clinic discovery MVP) is complete. We are now into Phase 2 (`docs/phase-2-plan.md`); Phase 2 feature 1 — **Google Places import** — is finished as of this session.
 
 **Locked decisions (do not relitigate):**
 
-- No external credentials — everything runs on local Supabase + `[DEV ADAPTER]`-marked fallbacks (maps, rate limit, email, analytics, Sentry/PostHog). Real providers env-gated; setup documented in `.env.example`.
-- Staged build with user checkpoint between stages: 1) foundation+DB+public directory, 2) auth+contributions, 3) claims+rep portal+admin, 4) jobs+hardening+docs+CI. **All four stages are done.**
-- Background jobs = pg-based queue (`jobs` table + pg_cron + processor route at `/api/internal/jobs/process`, secret-protected). No Trigger.dev/Inngest.
-- Single Next.js app, domain modules under `src/modules/` (admin, auth, claims, clinics, favorites, jobs, maps, portal, reports, search, shared, submissions, users). No monorepo.
-- Design: "Warm Horizon" — Fraunces (display, `--font-display`) + Nunito Sans (body), warm cream bg, deep teal primary, coral accent, `--verified` green token. Theme in `src/app/globals.css`.
+- No external credentials — everything runs on local Supabase + `[DEV ADAPTER]`-marked fallbacks (maps, rate limit, email, analytics, Sentry/PostHog, and now the Places fixture provider). Real providers env-gated; setup documented in `.env.example` (now actually tracked in git — see traps).
+- Background jobs = pg-based queue (`jobs` table + pg_cron + processor route at `/api/internal/jobs/process`, protected by the `x-jobs-secret` header — NOT `Authorization: Bearer`).
+- Single Next.js app, domain modules under `src/modules/` (now includes `imports`). No monorepo.
+- Design: "Warm Horizon" — Fraunces + Nunito Sans, warm cream bg, deep teal primary, coral accent. Theme in `src/app/globals.css`.
+- Import queries are always the fixed template `"{service term} in {city}, Philippines"` — 5 approved terms in `src/modules/imports/query.ts`, no free text.
+- Fixture provider's `name` is `"google"` on purpose (fixture rows share the `(provider, external_id)` space with future live rows; fixture ids are prefixed `fixture-` and cleaned by tests).
 
 ## Finished and verified
 
-Phase 1 MVP is feature-complete plus a polish pass. Working tree clean; `main` at `239272e`, pushed and in sync with `origin/main` — https://github.com/acaacx/thrivemap (private).
+Working tree clean; `main` at `ea2f4d1`, pushed to https://github.com/acaacx/thrivemap (private).
 
-- **Stage 1** (`07732f0`, `9c4e83a`): Next.js 16 app (TS strict, Tailwind v4, shadcn/ui on **Base UI**), migrations 1–9 — schema, PostGIS `search_clinics`/`get_map_clinics`/`find_duplicate_candidates`/`search_ph_locations`, RLS everywhere, explicit grants (mig 8), audit triggers, storage buckets, generated lat/lng (mig 9). Seed: 30 fictional clinics, 8 services, `ph_locations`, 4 demo users. Public pages: landing, `/clinics` (split list+map, URL-as-state, keyset cursor), `/clinics/[slug]` + JSON-LD, `/services/[slug]`, `/locations/[province]（/[city]）`, statics, sitemap/robots.
-- **Stage 2** (`9f25ee8`): auth (password + magic link, `src/middleware.ts` session refresh, `requireUser`/`requireRole` in `src/modules/auth/server.ts`), favorites, account pages, suggest-clinic with pre-submit duplicate review, change requests, anonymous reports, `RateLimiter`.
-- **Stage 3** (`73979d8`): claim wizard at `/clinics/[slug]/claim` (multi-step, private `claim-documents` uploads, resubmission on request-more-info) + `/account/claims`; clinic portal `/clinic-portal/*` (verified clinics edit directly and audited, unverified edits become change requests); admin console `/admin/*` (dashboard, submissions/claims/change-requests/reports/candidates/duplicates workspaces, user roles, audit log — reasons required on destructive decisions, all logged to `admin_actions`); lifecycle state machine (`modules/clinics/lifecycle.ts`) mirrored by a DB transition trigger; `merge_clinics` RPC; set-based `scan_duplicate_candidates`. Migrations 10–13.
-- **Stage 4** (`83b0734`): job handlers (email delivery, submission intake, verification reminders, stale-listing scan, search-doc refresh, candidate-import stub) + pg_cron enqueues (mig 14) + admin dead-letter view/retry; `EmailSender` (console/`.dev-mail` dev adapter, Resend env-gated) with 12 transactional templates; `CacheStore` (in-memory/Upstash) with versioned-namespace invalidation on clinic mutations; CSP + secure headers, `/api/health`, redacting structured logger, Sentry + PostHog env-gated; map bundle dynamic-imported on search page; CI (Semgrep, db lint/migration validation, axe, inert main deploy workflow); full `docs/` set.
+- **Phase 1 MVP** (stages 1–4 + polish, commits `07732f0`…`d107c2f`): schema+PostGIS+RLS (migrations 1–16), public directory, auth, favorites, submissions, claims, clinic portal, admin console, job queue + handlers, email/cache/security hardening, CI, docs. See git history for detail.
+- **Places import** (this session, commits `bb4a250`…`ea2f4d1`, plan `docs/superpowers/plans/2026-08-06-places-import.md`, spec in `docs/superpowers/specs/`):
+  - Migration 17 (`20260806000017_candidate_matching.sql`): `match_candidate_clinics` (trigram + proximity + place-id, security definer, moderator-gated), `promote_candidate` (draft clinic + location via `nearest_ph_city` + source record + candidate marked), `attach_candidate` (source record on existing clinic, backfills free `google_place_id`). Explicit grants per hardened-defaults convention.
+  - `src/modules/imports/`: `PlacesProvider` interface; `FixturePlacesProvider` (`[DEV ADAPTER]`, deterministic JSON fixtures mirroring Places API (New) shape); `GooglePlacesProvider` (Text Search POST, minimal field mask, `nextPageToken` pagination capped at `MAX_PAGES = 3`, injectable fetch); `normalizeGooglePlace` zod normalizer; `buildImportQuery` + `IMPORT_SERVICE_TERMS`; `getPlacesProvider()` factory keyed on `GOOGLE_MAPS_SERVER_API_KEY`.
+  - `runPlacesImport` (`src/modules/imports/server.ts`) wired into the `candidate_import` job: upserts on `(provider, external_id)`, refreshes data columns, preserves `status`/`reviewed_by`/`reviewed_at` — discarded candidates never resurrect.
+  - Admin: `triggerCandidateImportAction` (rate-limited 10/hr/admin, idempotency key `candidate-import:{term}:{city}:{day}`), `promoteCandidateAction`, `attachCandidateAction`; server queries `listCandidateMatches`/`listImportCities`/`listRecentImportJobs`; rebuilt `/admin/candidates` page + `ImportTriggerCard` (native `<select>`s on purpose — Playwright-friendly).
+  - e2e `e2e/places-import.spec.ts` (chromium-only, idempotent, DB-polls for fixture rows after the tick instead of trusting UI badges); docs updated (`docs/architecture/jobs.md` candidate_import section, `dev-adapters.md` table row, `deployment.md` provider row, `.env.example` comment).
+  - **Bonus fix** (`f5b12fb`): pre-submit duplicate check (`findLikelyDuplicates` in `src/modules/submissions/actions.ts`) now passes `p_sort: "relevance"` — the default `nearest` sort buried exact-name matches once no origin was set; the seeded reference data (migration 16) grew enough that the e2e duplicate-check test caught it.
 
-- **Polish pass** (`d107c2f`): lint is now warning-free — `form.watch()` → `useWatch` in `ClaimWizard`/`SuggestClinicForm` (React Compiler was bailing out of memoizing both), dead `slugToTitle` import, stale eslint-disable. Migration 15 rewrites `search_clinics` so **every** sort mode carries a keyset cursor: the RPC now returns the key it ordered by (`sort_value` numeric / `sort_text` for alphabetical) and callers never recompute it. Also fixed two real bugs found on the way — the relevance cursor skipped rank-tied rows whose id sorted after the cursor, and `loadMore` in `SearchPageClient` reused page one's cursor forever, so a second click re-appended the same page.
+**Test state (verified this session, 2026-08-06, all green):** typecheck clean; lint 0 errors 0 warnings; 71 unit, 40 integration, 48 e2e passed + 6 skipped by design (5 pre-existing chromium-only stage-3/favorites skips + places-import's mobile skip); prod build clean (no database needed).
 
-**Test state (re-verified 2026-08-02 after a fresh `pnpm db:reset`, all green):** typecheck clean; lint 0 errors, 0 warnings; 55 unit, 31 integration, 47 e2e passed + 5 skipped by design (stage-3 flows and favorites mutation are chromium-only — both Playwright projects share demo accounts and would race); prod build clean.
+Also verified live in the browser: queue import → toast → job tick → fixture candidates render with match scores and same-place-id badges; re-import kept a discarded candidate discarded.
 
 Demo logins (local, password `password123`): admin@ / moderator@ / caregiver@ / clinicrep@ `thrivemap.test`.
 
 ## Half-done / not started
 
-Nothing half-done. Phase 1 scope is closed and the polish pass is committed. Everything remaining is Phase 2 (see `docs/phase-2-plan.md`):
-
-- Real Google Places import (handler is a stub), therapist profiles, inquiries/booking, reviews, i18n, PWA.
-
-No loose ends.
+Nothing half-done. Remaining Phase 2 candidates (`docs/phase-2-plan.md`): therapist profiles, inquiries/booking, reviews, i18n, PWA. Live Google imports need a real `GOOGLE_MAPS_SERVER_API_KEY` (user's call — breaks the no-credentials rule; everything else about the pipeline is done and fixture-tested).
 
 ## Single next action
 
-Nothing is queued — ask the user which direction to take before writing code. Two live options:
-
-1. Phase 2 item from `docs/phase-2-plan.md` — Places import is the most staged (tables, admin candidates workspace, and the `candidate_import` job stub all exist), but it needs a real API key, which breaks the no-external-credentials rule and is the user's call.
-2. Deployment dry-run against a real Supabase project per `docs/operations/deployment.md`.
+Nothing queued — ask the user. Live options: next Phase 2 feature from `docs/phase-2-plan.md`, or the deployment dry-run per `docs/operations/deployment.md`.
 
 ## Traps / non-obvious facts
 
-- **shadcn = Base UI now, not Radix.** No `asChild`; use `render={<Link …/>}`. `Button` patched (`src/components/ui/button.tsx`) to infer `nativeButton` — rendered links get `role="button"` (e2e locators rely on this). `Accordion` uses `multiple={false}`; `Slider` `onValueChange` gives `number | number[]`; `CardTitle` is a plain div — nest a real `<h2>` inside.
-- **MapLibre style needs `glyphs`** or any symbol layer throws inside `map.on("load")`, killing later `addLayer` calls. ClinicMap adds the clinic-point layer FIRST and wraps the cluster-count symbol layer in try/catch. `window.__thrivemapMap` exposed in non-prod.
-- **e2e map assertions**: never wait on `isStyleLoaded()`/`loaded()`; assert `getSource('clinics').getData()` feature count. Never `waitForLoadState("networkidle")` on map pages. `AJAXError: Failed to fetch … tile.openstreetmap.org` noise during e2e is expected (sandbox has no tile access) and is not a failure.
-- **pnpm 11**: build-script approvals live in `pnpm-workspace.yaml` `allowBuilds:` (not package.json).
-- **Supabase hardened defaults**: new tables get NO grants to anon/authenticated — `20260801000008_grants.sql` adds them + default privileges; add grants for any new table.
-- **Seeded auth users** need `confirmation_token/recovery_token/email_change_token_new/email_change = ''` AND an `auth.identities` row, or password sign-in fails with an empty error.
-- **Extensions live in the `extensions` schema** — write `extensions.geography(point,4326)`, `extensions.st_setsrid(...)` in migrations/seed.
-- **e2e state leakage**: demo accounts are shared; tests must be idempotent (favorites test resets `aria-pressed` first; `rls.test.ts` deletes before insert). Integration favorites 23505 = leftovers from an aborted e2e run; it self-heals.
-- **Port 3000 squatter** sometimes present; `.claude/launch.json` has `autoPort: true`. `pkill -f next-server` also kills the preview dev server — restart via preview_start.
-- **Browser-pane flakiness**: map doesn't init while the pane is hidden (rAF throttled) — verify map behavior via Playwright, not the preview pane.
-- Dev server can serve stale SSR chunks after component fixes — restart if console errors reference old code.
+- **Port 3000 squatter is real and ACTIVE** (node PID varies — a different app, "Verified VA Jobs"). Playwright's `reuseExistingServer` will happily test the wrong app on 3000. Run e2e as `PLAYWRIGHT_BASE_URL=http://localhost:<preview-port> pnpm test:e2e` against the preview dev server, or ensure 3000 is free.
+- **In-memory rate limiter accumulates across e2e runs** on a long-lived dev server (sign-in/submit limits) — repeated full-suite runs start timing out on `waitForURL` after login. Restart the dev server (preview_stop/preview_start) between full e2e runs.
+- **Jobs processor route auth**: header is `x-jobs-secret: <JOBS_PROCESSOR_SECRET>`, not a Bearer token. Local secret in `.env.local`. Useful for manually ticking the queue: `curl -X POST -H "x-jobs-secret: $SECRET" http://localhost:<port>/api/internal/jobs/process`.
+- **`.env*` was gitignored including `.env.example`** — it silently never got committed until `ea2f4d1` added a `!.env.example` exception. Watch for other "documented but ignored" files.
+- **Vitest integration config** (`vitest.integration.config.ts`) now stubs `server-only` (alias → `tests/integration/helpers/server-only-stub.ts`) and loads `.env.local` via a tiny KEY=VALUE parser (vite's `loadEnv` is NOT importable — `vite` isn't a direct dependency and `vitest/config` doesn't re-export it). Integration tests can now import real server modules.
+- **`external_place_candidates.raw_payload` is NOT NULL** — every insert (tests included) must supply it.
+- **A fetch-mock `Response` body can be read once** — `vi.fn().mockResolvedValue(jsonResponse(...))` breaks paginating code on the second call; use `mockImplementation` returning a fresh Response.
+- **e2e waits**: don't assert on the jobs table's "completed" badge to detect job completion — other suites leave completed jobs in the table; poll the DB (`expect.poll` + service-role client) instead.
+- **Pre-existing `git stash`** (`stash@{0}` on `c5bd966`) — not from these sessions, left untouched.
+- **shadcn = Base UI, not Radix.** No `asChild`; `render={<Link …/>}`; `CardTitle` is a plain div.
+- **Supabase hardened defaults**: new tables/functions get NO grants — add explicit grants (see migration 8 and the bottom of migration 17).
+- **Extensions live in `extensions` schema** — `extensions.st_setsrid(...)` etc. in SQL.
+- **pnpm 11**: build-script approvals in `pnpm-workspace.yaml` `allowBuilds:`.
+- **e2e state leakage**: demo accounts shared; tests idempotent (clean own data first). Chromium-only for anything mutating shared accounts.
+- **Browser-pane flakiness**: `read_page` sometimes returns "(empty page)" and the pane can hang on scroll — verify flows via Playwright, not the preview pane. Map doesn't init while pane hidden.
+- **float8 doesn't round-trip through PostgREST** — round in SQL before keyset comparisons (migration 15's `sort_value`).
+- Re-running migration 15 by hand fails ("function already exists") — drop the new signature explicitly or `pnpm db:reset`.
 - Suggest-form zod schema must keep input==output types (no `.coerce`/`.default()`) or `zodResolver` type-errors.
-- Claim document uploads must use path `<user_id>/<claim_id>/...` — storage policy in migration 7 depends on it.
-- **float8 does not round-trip through PostgREST**: Postgres renders it with 15 significant digits, a double needs 17. Any value a client sends back for an equality/keyset comparison must be rounded in SQL first (see migration 15's `sort_value`), or the boundary row repeats.
-- Re-running migration 15 by hand fails with "function already exists" — its `drop` targets the pre-migration signature. Drop the new one explicitly or `pnpm db:reset`.
+- Claim uploads path must be `<user_id>/<claim_id>/...` (storage policy, migration 7).
+- Seeded auth users need empty-string token columns AND an `auth.identities` row or password sign-in fails empty.
