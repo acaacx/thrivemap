@@ -9,6 +9,7 @@ external credentials; each real provider activates when its env key is set
 | ------------------------ | -------------------------------------- | -------------------------------- | ---------------------------------------------------------- |
 | Map rendering            | `<ClinicMap>` renderer                 | MapLibre GL + OSM raster tiles   | Google Maps JS (`NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY`) |
 | Geocoding / autocomplete | `MapProvider`                          | seeded `ph_locations` table      | Google Places (`GOOGLE_MAPS_SERVER_API_KEY`)               |
+| Candidate import         | `PlacesProvider` (`modules/imports`)   | deterministic JSON fixtures      | Places API (New) Text Search (`GOOGLE_MAPS_SERVER_API_KEY`) |
 | Rate limiting            | `RateLimiter` (`shared/rate-limit.ts`) | in-memory sliding window         | Upstash Redis                                              |
 | Cache                    | `CacheStore` (`shared/cache.ts`)       | in-memory TTL map                | Upstash Redis                                              |
 | Email                    | `EmailSender` (`shared/email/`)        | console log + `.dev-mail/` files | Resend (`RESEND_API_KEY`)                                  |

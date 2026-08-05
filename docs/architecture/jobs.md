@@ -38,11 +38,25 @@ handlers.
 | `verification_reminder_scan` | Verified clinics stale >180 days → reminder email per active manager, max once per clinic/manager/month.         |
 | `stale_listing_scan`         | Published listings untouched >365 days → sets `clinics.flagged_stale_at` (cleared automatically on next update). |
 | `search_document_refresh`    | One clinic or full rebuild of search documents.                                                                  |
-| `candidate_import`           | [DEV ADAPTER] stub — logs and completes without a Google key.                                                    |
+| `candidate_import`           | Places Text Search import (payload `{query, termSlug, citySlug, requestedBy}`); see below.                       |
 
 All handlers are idempotent: enqueue-side idempotency keys plus
 upsert/update-shaped writes mean a retried job cannot double-send or
 double-write.
+
+### `candidate_import`
+
+Admin-triggered from `/admin/candidates` with payload
+`{ query, termSlug, citySlug, requestedBy }`. The query is always the fixed
+template `"{service term} in {city}, Philippines"` — no free text. Provider
+selection happens in `src/modules/imports`: with `GOOGLE_MAPS_SERVER_API_KEY`
+set it calls Places API (New) Text Search (paginated, hard cap 3 pages);
+without it a `[DEV ADAPTER]` fixture provider serves deterministic JSON so the
+whole flow works offline. Results upsert into `external_place_candidates` on
+`(provider, external_id)`: data columns (name, address, coordinates,
+raw_payload) refresh on re-import, while `status`/`reviewed_by`/`reviewed_at`
+are untouched — a discarded candidate never resurrects. Failures retry with
+backoff and land in the `/admin/jobs` dead-letter view.
 
 ## Dead letter
 
