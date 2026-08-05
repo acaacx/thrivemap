@@ -38,6 +38,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
       - name: Apply migrations
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"

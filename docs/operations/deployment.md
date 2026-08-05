@@ -53,11 +53,15 @@ never requires them to build.
    erroring — per-instance state, so rate limits no longer hold across
    serverless instances. Check the boot logs for `[DEV ADAPTER]` lines.
 
-5. **Jobs tick**: create a Vercel cron hitting
-   `POST /api/internal/jobs/process` every minute with header
-   `x-jobs-secret: $JOBS_PROCESSOR_SECRET`. Without the secret set the route
-   refuses to run in production (503), so the queue silently stops draining —
-   `/api/health` reports the jobs check.
+5. **Jobs tick**: `vercel.json` already declares a per-minute cron on
+   `/api/internal/jobs/process`. Vercel Cron can only send GET with
+   `Authorization: Bearer $CRON_SECRET` (no POST, no custom headers), so set a
+   `CRON_SECRET` env var to the same value as `JOBS_PROCESSOR_SECRET` — the
+   platform attaches the header itself. Note: per-minute schedules need a Pro
+   plan; on Hobby the cron silently runs once a day. External schedulers can
+   still use `POST` with `x-jobs-secret: $JOBS_PROCESSOR_SECRET`. Without the
+   secret set the route refuses to run in production (503), so the queue
+   silently stops draining — `/api/health` reports the jobs check.
 6. **GitHub Actions** (`.github/workflows/main.yml`): set repository
    variable `DEPLOY_ENABLED=true` plus secrets `SUPABASE_ACCESS_TOKEN`,
    `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `DEPLOY_HOOK_URL`,

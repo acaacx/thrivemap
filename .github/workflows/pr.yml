@@ -38,6 +38,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
       - name: Migration validation (apply all migrations to a clean db)
         run: supabase start
       - name: Lint database schema
@@ -56,6 +58,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.110.0
       - run: supabase start
       - name: Configure app env from local Supabase
         run: |

@@ -19,8 +19,10 @@ handlers.
   backoff (2^attempts minutes) until `max_attempts`, then `dead`.
   Exposed via:
   - `POST /api/internal/jobs/process` — protected by the `x-jobs-secret`
-    header (`JOBS_PROCESSOR_SECRET`); in production a platform cron (e.g.
-    Vercel cron) hits it every minute.
+    header (`JOBS_PROCESSOR_SECRET`), for external schedulers and manual
+    ticks. `GET` on the same path accepts Vercel Cron's
+    `Authorization: Bearer $CRON_SECRET` (see `vercel.json`); set
+    `CRON_SECRET` to the same value as `JOBS_PROCESSOR_SECRET`.
   - **Admin → Jobs → "Run tick now"** — manual tick for local dev.
 - **pg_cron enqueues** (migration 14) — daily verification-reminder scan,
   weekly stale-listing scan, nightly search-document refresh; each insert is
