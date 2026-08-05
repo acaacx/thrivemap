@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logger } from "@/lib/logger";
+import { runPlacesImport } from "@/modules/imports/server";
 import { getEmailSender, emailTemplates } from "@/modules/shared/email";
 import type { EmailContent, EmailTemplateName } from "@/modules/shared/email";
 import { siteConfig } from "@/lib/site-config";
@@ -245,21 +246,12 @@ async function refreshSearchDocuments(payload: JobPayload): Promise<void> {
 }
 
 /**
- * [DEV ADAPTER] External candidate import stub. The real implementation calls
- * Google Places Nearby Search and writes external_place_candidates rows; it
- * activates once GOOGLE_MAPS_SERVER_API_KEY is configured (see
- * docs/operations/deployment.md). Without a key this logs and completes.
+ * External candidate import: Google Places Text Search (or the [DEV ADAPTER]
+ * fixture provider when GOOGLE_MAPS_SERVER_API_KEY is absent — see
+ * src/modules/imports). Payload: { query, termSlug, citySlug, requestedBy }.
  */
 async function runCandidateImport(payload: JobPayload): Promise<void> {
-  if (!process.env.GOOGLE_MAPS_SERVER_API_KEY) {
-    logger.info("[DEV ADAPTER] candidate_import skipped — no Google key", {
-      area: typeof payload.area === "string" ? payload.area : undefined,
-    });
-    return;
-  }
-  throw new Error(
-    "candidate_import: Google Places import not implemented yet — key present but importer is Phase 2 scope",
-  );
+  await runPlacesImport(payload);
 }
 
 export const JOB_HANDLERS: Record<JobType, JobHandler> = {
