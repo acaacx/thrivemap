@@ -8,7 +8,9 @@ import { runDuplicateScan } from "@/modules/jobs/handlers";
 import { processDueJobs } from "@/modules/jobs/processor";
 import { enqueueUserEmail, enqueueAddressEmail } from "@/modules/jobs/notify";
 import { enqueueJob } from "@/modules/jobs/queue";
+import { buildImportQuery, IMPORT_SERVICE_TERMS } from "@/modules/imports/query";
 import { invalidateClinicCaches } from "@/modules/shared/cache";
+import { checkRateLimit } from "@/modules/shared/rate-limit";
 import { requireAdministrator, requireModerator } from "./server";
 import type { Database } from "@/lib/database.types";
 
@@ -769,6 +771,112 @@ export async function discardCandidate(
   );
   revalidatePath("/admin/candidates");
   return { message: "Candidate discarded." };
+}
+
+export async function triggerCandidateImportAction(
+  termSlug: string,
+  locationId: string,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const { allowed } = await checkRateLimit(
+    "candidate-import",
+    user.id,
+    10,
+    3600,
+  );
+  if (!allowed) {
+    return { error: "Import rate limit reached — try again in an hour." };
+  }
+  const term = IMPORT_SERVICE_TERMS.find((t) => t.slug === termSlug);
+  if (!term) return { error: "Unknown service term." };
+
+  const supabase = await createSupabaseServerClient();
+  const { data: location } = await supabase
+    .from("ph_locations")
+    .select("id, city, city_slug, province")
+    .eq("id", locationId)
+    .maybeSingle();
+  if (!location?.city || !location.city_slug) {
+    return { error: "Unknown city." };
+  }
+
+  const query = buildImportQuery(term.slug, location.city);
+  const day = new Date().toISOString().slice(0, 10);
+  await enqueueJob(
+    "candidate_import",
+    {
+      query,
+      termSlug: term.slug,
+      citySlug: location.city_slug,
+      requestedBy: user.id,
+    },
+    // One import per term+city per day; repeat clicks are no-ops.
+    {
+      idempotencyKey: `candidate-import:${term.slug}:${location.city_slug}:${day}`,
+    },
+  );
+  await logAdminAction(user.id, "trigger_candidate_import", "job", null, null, {
+    query,
+    term: term.slug,
+    city_slug: location.city_slug,
+  });
+  revalidatePath("/admin/candidates");
+  return { message: `Import queued: ${query}` };
+}
+
+export async function promoteCandidateAction(
+  candidateId: string,
+  note: string,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const supabase = await createSupabaseServerClient();
+  const { data: clinicId, error } = await supabase.rpc("promote_candidate", {
+    p_candidate_id: candidateId,
+  });
+  if (error) {
+    if (error.message.includes("already linked")) {
+      return { error: "A clinic already has this place — use Attach instead." };
+    }
+    console.error("promoteCandidateAction failed:", error.message);
+    return { error: "Could not promote the candidate." };
+  }
+  await logAdminAction(
+    user.id,
+    "promote_candidate",
+    "external_place_candidate",
+    candidateId,
+    note.trim() || null,
+    { clinic_id: clinicId },
+  );
+  revalidatePath("/admin/candidates");
+  return { message: "Draft clinic created." };
+}
+
+export async function attachCandidateAction(
+  candidateId: string,
+  clinicId: string,
+  note: string,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("attach_candidate", {
+    p_candidate_id: candidateId,
+    p_clinic_id: clinicId,
+  });
+  if (error) {
+    console.error("attachCandidateAction failed:", error.message);
+    return { error: "Could not attach the candidate." };
+  }
+  await logAdminAction(
+    user.id,
+    "attach_candidate",
+    "external_place_candidate",
+    candidateId,
+    note.trim() || null,
+    { clinic_id: clinicId },
+  );
+  revalidatePath("/admin/candidates");
+  return { message: "Candidate attached to the existing clinic." };
 }
 
 // ---------------------------------------------------------------------------

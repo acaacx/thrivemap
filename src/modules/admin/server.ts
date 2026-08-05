@@ -121,6 +121,56 @@ export async function listCandidates() {
   return data ?? [];
 }
 
+export type CandidateMatch = {
+  clinic_id: string;
+  clinic_name: string;
+  clinic_slug: string;
+  name_similarity: number;
+  distance_m: number | null;
+  same_place_id: boolean;
+};
+
+/** Live candidate-vs-clinic matches; computed at render, never stored. */
+export async function listCandidateMatches(
+  candidateIds: string[],
+): Promise<Record<string, CandidateMatch[]>> {
+  const supabase = await createSupabaseServerClient();
+  const entries = await Promise.all(
+    candidateIds.map(async (id) => {
+      const { data } = await supabase.rpc("match_candidate_clinics", {
+        p_candidate_id: id,
+      });
+      return [id, (data ?? []) as CandidateMatch[]] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
+export async function listImportCities() {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("ph_locations")
+    .select("id, city, province")
+    .in("kind", ["city", "municipality"])
+    .order("province", { ascending: true })
+    .order("city", { ascending: true });
+  return (data ?? []).filter(
+    (row): row is { id: string; city: string; province: string } =>
+      row.city !== null,
+  );
+}
+
+export async function listRecentImportJobs() {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select("id, status, payload, created_at, last_error")
+    .eq("job_type", "candidate_import")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  return data ?? [];
+}
+
 export async function listDuplicates() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
