@@ -1,0 +1,26 @@
+{
+  "places": [
+    {
+      "id": "fixture-autism-001",
+      "displayName": { "text": "Fixture Autism Care Center" },
+      "formattedAddress": "101 Kalayaan Ave, Quezon City, Metro Manila",
+      "location": { "latitude": 14.6512, "longitude": 121.0491 },
+      "internationalPhoneNumber": "+63 2 8555 0101",
+      "websiteUri": "https://fixture-autism-care.example"
+    },
+    {
+      "id": "fixture-autism-002",
+      "displayName": { "text": "Fixture Bright Path Intervention Hub" },
+      "formattedAddress": "22 Timog Ave, Quezon City, Metro Manila",
+      "location": { "latitude": 14.6355, "longitude": 121.0355 },
+      "internationalPhoneNumber": "+63 2 8555 0202"
+    },
+    {
+      "id": "fixture-autism-003",
+      "displayName": { "text": "Fixture Sensory Steps Therapy" },
+      "formattedAddress": "5 Katipunan Ave, Quezon City, Metro Manila",
+      "location": { "latitude": 14.639, "longitude": 121.0745 },
+      "websiteUri": "https://fixture-sensory-steps.example"
+    }
+  ]
+}

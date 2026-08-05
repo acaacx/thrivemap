@@ -1,0 +1,16 @@
+{
+  "places": [
+    {
+      "id": "fixture-generic-001",
+      "displayName": { "text": "Fixture Developmental Clinic" },
+      "formattedAddress": "8 Rizal St, Davao City, Davao del Sur",
+      "location": { "latitude": 7.0731, "longitude": 125.6128 }
+    },
+    {
+      "id": "fixture-generic-002",
+      "displayName": { "text": "Fixture Child Wellness Center" },
+      "formattedAddress": "14 Osmeña Blvd, Cebu City, Cebu",
+      "location": { "latitude": 10.3157, "longitude": 123.8854 }
+    }
+  ]
+}
