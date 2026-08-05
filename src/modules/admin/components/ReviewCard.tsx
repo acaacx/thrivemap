@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,10 +34,7 @@ export function ReviewActions({
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{
-    kind: "ok" | "error";
-    text: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const fieldId = useId();
 
   async function onRun(action: ReviewActionSpec) {
@@ -45,16 +43,18 @@ export function ReviewActions({
       (action.requiresReason || action.variant === "destructive") &&
       !reason.trim()
     ) {
-      setFeedback({ kind: "error", text: `“${action.label}” needs a reason.` });
+      setFeedback(`“${action.label}” needs a reason.`);
       return;
     }
     setBusyLabel(action.label);
     try {
       const result = await action.run(reason.trim());
       if (result.error) {
-        setFeedback({ kind: "error", text: result.error });
+        setFeedback(result.error);
       } else {
-        setFeedback({ kind: "ok", text: result.message ?? "Done." });
+        // Success via toast: it lives in the root layout, so it survives the
+        // refresh unmounting this card once the item is no longer decidable.
+        toast.success(result.message ?? "Done.");
         setReason("");
         router.refresh();
       }
@@ -67,14 +67,10 @@ export function ReviewActions({
     <div className="mt-4 space-y-3 border-t pt-4">
       {feedback && (
         <p
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`rounded-lg border px-3 py-2 text-sm ${
-            feedback.kind === "error"
-              ? "border-destructive/40 bg-destructive/10"
-              : "border-[var(--verified)]/40 bg-[var(--verified)]/10"
-          }`}
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
         >
-          {feedback.text}
+          {feedback}
         </p>
       )}
       <div className="space-y-1.5">

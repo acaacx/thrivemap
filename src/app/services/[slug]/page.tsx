@@ -20,8 +20,14 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  const services = await getServices();
-  return services.map((s) => ({ slug: s.slug }));
+  // The build must succeed without a reachable database (CI builds against
+  // placeholder env). Fall back to on-demand ISR when the fetch fails.
+  try {
+    const services = await getServices();
+    return services.map((s) => ({ slug: s.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({

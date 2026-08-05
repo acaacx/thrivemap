@@ -184,7 +184,8 @@ test.describe("stage 3: claims, admin, duplicates", () => {
     await page.goto("/admin/submissions");
     const card = page.locator("li", { hasText: SUBMISSION_NAME });
     await card.getByRole("button", { name: /approve & publish/i }).click();
-    await expect(card.getByText(/published as \/clinics\//i)).toBeVisible();
+    // Success feedback is a toast (survives the refresh that removes the card).
+    await expect(page.getByText(/published as \/clinics\//i)).toBeVisible();
 
     const slug = SUBMISSION_NAME.toLowerCase().replaceAll(" ", "-");
     await page.goto(`/clinics/${slug}`);
@@ -218,7 +219,8 @@ test.describe("stage 3: claims, admin, duplicates", () => {
     await card
       .getByRole("button", { name: /keep a, merge b into it/i })
       .click();
-    await expect(card.getByText(/listings merged/i)).toBeVisible();
+    // Success feedback is a toast (survives the refresh that removes the card).
+    await expect(page.getByText(/listings merged/i)).toBeVisible();
 
     // Exactly one of the pair is archived and points at the survivor.
     const db = adminDb();

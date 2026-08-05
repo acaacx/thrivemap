@@ -47,10 +47,12 @@ const faqs = [
 ];
 
 export default async function HomePage() {
+  // The build must succeed without a reachable database (CI builds against
+  // placeholder env). ISR re-renders with live data once the app is serving.
   const [featured, services] = await Promise.all([
     getFeaturedClinics(6),
     getServices(),
-  ]);
+  ]).catch(() => [[], []] as const);
 
   return (
     <>

@@ -6,20 +6,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createSupabaseAnonClient();
   const base = siteConfig.url;
 
-  const [{ data: clinics }, { data: services }, { data: locations }] =
-    await Promise.all([
-      supabase
-        .from("clinics")
-        .select("slug, updated_at")
-        .in("status", [
-          "published_unverified",
-          "published_verified",
-          "temporarily_closed",
-        ])
-        .is("deleted_at", null),
-      supabase.from("services").select("slug"),
-      supabase.from("ph_locations").select("province_slug, city_slug, kind"),
-    ]);
+  // The build must succeed without a reachable database (CI builds against
+  // placeholder env). Static pages alone are a valid sitemap; the full one is
+  // regenerated once the app serves requests with a live database.
+  let clinics, services, locations;
+  try {
+    [{ data: clinics }, { data: services }, { data: locations }] =
+      await Promise.all([
+        supabase
+          .from("clinics")
+          .select("slug, updated_at")
+          .in("status", [
+            "published_unverified",
+            "published_verified",
+            "temporarily_closed",
+          ])
+          .is("deleted_at", null),
+        supabase.from("services").select("slug"),
+        supabase.from("ph_locations").select("province_slug, city_slug, kind"),
+      ]);
+  } catch {
+    clinics = services = locations = null;
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: "daily", priority: 1 },
