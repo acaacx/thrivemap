@@ -133,12 +133,16 @@ export async function deleteTherapist(
   if ("error" in access) return { error: access.error };
   const { supabase, clinic } = access;
 
-  const { data: row } = await supabase
+  const { data: row, error: lookupError } = await supabase
     .from("clinic_therapists")
     .select("id, photo_path")
     .eq("id", therapistId)
     .eq("clinic_id", clinicId)
     .maybeSingle();
+  if (lookupError) {
+    console.error("deleteTherapist lookup failed:", lookupError.message);
+    return { error: "Something went wrong. Please try again." };
+  }
   if (!row) return { error: "Team member not found." };
 
   const { error } = await supabase
@@ -170,12 +174,16 @@ export async function moveTherapist(
   if (!parsed.success) return { error: "Invalid reorder request." };
   const { therapist_id, direction } = parsed.data;
 
-  const { data: rows } = await supabase
+  const { data: rows, error: lookupError } = await supabase
     .from("clinic_therapists")
     .select("id, display_order")
     .eq("clinic_id", clinicId)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
+  if (lookupError) {
+    console.error("moveTherapist lookup failed:", lookupError.message);
+    return { error: "Something went wrong. Please try again." };
+  }
   const list = rows ?? [];
   const index = list.findIndex((r) => r.id === therapist_id);
   if (index === -1) return { error: "Team member not found." };
@@ -220,12 +228,16 @@ export async function setTherapistPhoto(
     return { error: "Invalid photo path." };
   }
 
-  const { data: row } = await supabase
+  const { data: row, error: lookupError } = await supabase
     .from("clinic_therapists")
     .select("id, photo_path")
     .eq("id", parsed.data.therapist_id)
     .eq("clinic_id", clinicId)
     .maybeSingle();
+  if (lookupError) {
+    console.error("setTherapistPhoto lookup failed:", lookupError.message);
+    return { error: "Something went wrong. Please try again." };
+  }
   if (!row) return { error: "Team member not found." };
 
   const { error } = await supabase
@@ -252,12 +264,16 @@ export async function removeTherapistPhoto(
   if ("error" in access) return { error: access.error };
   const { supabase, clinic } = access;
 
-  const { data: row } = await supabase
+  const { data: row, error: lookupError } = await supabase
     .from("clinic_therapists")
     .select("id, photo_path")
     .eq("id", therapistId)
     .eq("clinic_id", clinicId)
     .maybeSingle();
+  if (lookupError) {
+    console.error("removeTherapistPhoto lookup failed:", lookupError.message);
+    return { error: "Something went wrong. Please try again." };
+  }
   if (!row) return { error: "Team member not found." };
   if (!row.photo_path) return { message: "No photo to remove." };
 
