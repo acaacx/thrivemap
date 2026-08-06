@@ -112,6 +112,28 @@ export async function listReports() {
   return data ?? [];
 }
 
+export interface ReportedInquiryThread {
+  inquiry: { id: string; subject: string; status: string; created_at: string };
+  messages: Array<{
+    id: string;
+    sender_role: string;
+    body: string;
+    created_at: string;
+  }>;
+}
+
+/** Thread behind an inquiry report — the only admin read path (RPC-gated). */
+export async function getReportedInquiryThread(
+  reportId: string,
+): Promise<ReportedInquiryThread | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("get_reported_inquiry_thread", {
+    p_report_id: reportId,
+  });
+  if (error || !data) return null;
+  return data as unknown as ReportedInquiryThread;
+}
+
 export async function listCandidates() {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase

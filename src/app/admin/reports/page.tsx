@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { resolveReport } from "@/modules/admin/actions";
+import { ReportedConversationPanel } from "@/modules/admin/components/ReportedConversationPanel";
 import { ReviewActions } from "@/modules/admin/components/ReviewCard";
-import { listReports } from "@/modules/admin/server";
+import { getReportedInquiryThread, listReports } from "@/modules/admin/server";
 
 const OPEN_STATUSES = ["open", "under_review"];
 
@@ -10,6 +11,13 @@ export default async function AdminReportsPage() {
   const reports = await listReports();
   const open = reports.filter((r) => OPEN_STATUSES.includes(r.status));
   const closed = reports.filter((r) => !OPEN_STATUSES.includes(r.status));
+
+  const threadEntries = await Promise.all(
+    open
+      .filter((r) => r.inquiry_id)
+      .map(async (r) => [r.id, await getReportedInquiryThread(r.id)] as const),
+  );
+  const threadsByReportId = new Map(threadEntries);
 
   return (
     <div>
@@ -25,44 +33,50 @@ export default async function AdminReportsPage() {
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
-          {open.map((report) => (
-            <li key={report.id} className="rounded-2xl border bg-card p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/clinics/${report.clinics?.slug}`}
-                  className="font-heading text-lg font-semibold hover:underline"
-                >
-                  {report.clinics?.name ?? "Clinic"}
-                </Link>
-                <Badge variant="outline">
-                  {report.report_type.replaceAll("_", " ")}
-                </Badge>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {new Date(report.created_at).toLocaleString("en-PH")}
-                </span>
-              </div>
-              {report.details && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {report.details}
-                </p>
-              )}
-              <ReviewActions
-                reasonLabel="Resolution note (required)"
-                actions={[
-                  {
-                    label: "Resolve",
-                    requiresReason: true,
-                    run: resolveReport.bind(null, report.id, "resolved"),
-                  },
-                  {
-                    label: "Dismiss",
-                    variant: "destructive",
-                    run: resolveReport.bind(null, report.id, "dismissed"),
-                  },
-                ]}
-              />
-            </li>
-          ))}
+          {open.map((report) => {
+            const thread = report.inquiry_id
+              ? threadsByReportId.get(report.id)
+              : undefined;
+            return (
+              <li key={report.id} className="rounded-2xl border bg-card p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/clinics/${report.clinics?.slug}`}
+                    className="font-heading text-lg font-semibold hover:underline"
+                  >
+                    {report.clinics?.name ?? "Clinic"}
+                  </Link>
+                  <Badge variant="outline">
+                    {report.report_type.replaceAll("_", " ")}
+                  </Badge>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {new Date(report.created_at).toLocaleString("en-PH")}
+                  </span>
+                </div>
+                {report.details && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {report.details}
+                  </p>
+                )}
+                {thread && <ReportedConversationPanel thread={thread} />}
+                <ReviewActions
+                  reasonLabel="Resolution note (required)"
+                  actions={[
+                    {
+                      label: "Resolve",
+                      requiresReason: true,
+                      run: resolveReport.bind(null, report.id, "resolved"),
+                    },
+                    {
+                      label: "Dismiss",
+                      variant: "destructive",
+                      run: resolveReport.bind(null, report.id, "dismissed"),
+                    },
+                  ]}
+                />
+              </li>
+            );
+          })}
         </ul>
       )}
 
