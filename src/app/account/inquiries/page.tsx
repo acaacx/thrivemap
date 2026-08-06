@@ -52,7 +52,7 @@ export default async function InquiriesPage() {
         inquiries.map((inquiry) => (
           <Card
             key={inquiry.id}
-            className="relative transition-colors hover:border-primary/40"
+            className="relative border transition-colors hover:border-primary/40"
           >
             <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
               <div className="min-w-0 flex-1">

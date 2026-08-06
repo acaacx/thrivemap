@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { InquiryThread } from "../queries";
 import { replyInquiryAction } from "../actions";
@@ -137,7 +138,11 @@ export function InquiryThreadView({
         </p>
       ) : (
         <form onSubmit={onReply} className="space-y-2">
+          <Label htmlFor="inquiry-reply-body" className="sr-only">
+            Your reply
+          </Label>
           <Textarea
+            id="inquiry-reply-body"
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder="Write a reply…"
