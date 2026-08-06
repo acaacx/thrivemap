@@ -13,6 +13,7 @@ const sections = [
   { segment: "services", label: "Services" },
   { segment: "hours", label: "Hours" },
   { segment: "images", label: "Images" },
+  { segment: "inquiries", label: "Inquiries" },
 ];
 
 export default async function ManageClinicLayout({
