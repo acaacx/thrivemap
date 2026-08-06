@@ -844,6 +844,56 @@ export type Database = {
           },
         ]
       }
+      clinic_therapists: {
+        Row: {
+          bio: string | null
+          clinic_id: string
+          created_at: string
+          credentials: string | null
+          display_order: number
+          full_name: string
+          id: string
+          photo_path: string | null
+          profession: string
+          specialties: string[]
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          clinic_id: string
+          created_at?: string
+          credentials?: string | null
+          display_order?: number
+          full_name: string
+          id?: string
+          photo_path?: string | null
+          profession: string
+          specialties?: string[]
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          clinic_id?: string
+          created_at?: string
+          credentials?: string | null
+          display_order?: number
+          full_name?: string
+          id?: string
+          photo_path?: string | null
+          profession?: string
+          specialties?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_therapists_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_verification_events: {
         Row: {
           actor_id: string | null
