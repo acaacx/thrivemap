@@ -1,11 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/modules/auth/server";
 import { invalidateClinicCaches } from "@/modules/shared/cache";
 import { checkRateLimit } from "@/modules/shared/rate-limit";
-import { canEditDirectly } from "./server";
+import { canEditDirectly, requireManagerAccess } from "./server";
 import {
   portalHoursSchema,
   portalImageSchema,
@@ -16,34 +14,6 @@ import {
 export interface PortalActionResult {
   error?: string;
   message?: string;
-}
-
-/**
- * Shared guard for portal actions: signed-in user with an active manager
- * grant on the clinic. Returns the clinic row for policy decisions.
- */
-async function requireManagerAccess(clinicId: string) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Sign in to manage your clinic." as const };
-
-  const supabase = await createSupabaseServerClient();
-  const { data: grant } = await supabase
-    .from("clinic_managers")
-    .select("id")
-    .eq("clinic_id", clinicId)
-    .eq("user_id", user.id)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (!grant) return { error: "You don't manage this clinic." as const };
-
-  const { data: clinic } = await supabase
-    .from("clinics")
-    .select("id, slug, status")
-    .eq("id", clinicId)
-    .maybeSingle();
-  if (!clinic) return { error: "Clinic not found." as const };
-
-  return { user, supabase, clinic };
 }
 
 function revalidateClinic(slug: string, clinicId: string) {
