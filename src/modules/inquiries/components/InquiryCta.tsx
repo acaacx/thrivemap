@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,20 +26,38 @@ import { createInquiryAction } from "../actions";
 const DATE_INPUT_CLASSES =
   "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80";
 
+/**
+ * Signed-in state, resolved client-side. `accepts` is server-derived and
+ * clinic-scoped (not user-specific), so it can be passed in as a prop from
+ * an ISR page — but auth state can't, without forcing that page dynamic.
+ * Mirrors FavoriteButton's useFavorites().
+ */
+function useSignedIn() {
+  return useQuery<{ signedIn: boolean }>({
+    queryKey: ["inquiries-session"],
+    queryFn: async () => {
+      const res = await fetch("/api/inquiries/session");
+      if (!res.ok) throw new Error("session fetch failed");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
+
 export function InquiryCta({
   clinicId,
   clinicName,
   clinicSlug,
   accepts,
-  signedIn,
 }: {
   clinicId: string;
   clinicName: string;
   clinicSlug: string;
   accepts: boolean;
-  signedIn: boolean;
 }) {
   const router = useRouter();
+  const { data: session } = useSignedIn();
+  const signedIn = session?.signedIn ?? false;
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");

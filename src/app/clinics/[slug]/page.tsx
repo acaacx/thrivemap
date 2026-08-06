@@ -27,7 +27,6 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { dayName, formatTime } from "@/lib/format";
 import { siteConfig } from "@/lib/site-config";
-import { getCurrentUser } from "@/modules/auth/server";
 import { getClinicBySlug } from "@/modules/clinics/queries";
 import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";
 import { VerificationBadge } from "@/modules/clinics/components/VerificationBadge";
@@ -71,10 +70,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
   const clinic = await getClinicBySlug(slug);
   if (!clinic) notFound();
 
-  const [acceptsInquiries, user] = await Promise.all([
-    clinicAcceptsInquiries(clinic.id),
-    getCurrentUser(),
-  ]);
+  const acceptsInquiries = await clinicAcceptsInquiries(clinic.id);
 
   const location =
     clinic.clinic_locations.find((l) => l.is_primary) ??
@@ -549,7 +545,6 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                 clinicName={clinic.name}
                 clinicSlug={clinic.slug}
                 accepts={acceptsInquiries}
-                signedIn={Boolean(user)}
               />
 
               <Card>

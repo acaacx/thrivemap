@@ -64,6 +64,31 @@ describe("createInquirySchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("trims surrounding whitespace, rejecting whitespace-only subject/body", () => {
+    expect(
+      createInquirySchema.safeParse({
+        clinicId: uuid,
+        subject: "   ab   ",
+        preferredDate: "",
+        preferredTimeNote: "",
+        body: "   ",
+      }).success,
+    ).toBe(false);
+    const result = createInquirySchema.safeParse({
+      clinicId: uuid,
+      subject: "  Initial assessment  ",
+      preferredDate: "",
+      preferredTimeNote: "  weekday mornings  ",
+      body: "  Hello there  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.subject).toBe("Initial assessment");
+      expect(result.data.preferredTimeNote).toBe("weekday mornings");
+      expect(result.data.body).toBe("Hello there");
+    }
+  });
 });
 
 describe("setInquiryStatusSchema", () => {

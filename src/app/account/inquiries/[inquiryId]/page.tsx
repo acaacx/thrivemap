@@ -14,10 +14,13 @@ export default async function InquiryThreadPage({
 }: {
   params: Promise<{ inquiryId: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const { inquiryId } = await params;
   const thread = await getInquiryThread(inquiryId);
-  if (!thread) notFound();
+  // RLS also grants the clinic's managers read access to this thread, but
+  // this page is the caregiver-only surface — a manager who navigates here
+  // (or guesses the URL) must not see it.
+  if (!thread || thread.caregiverId !== user.id) notFound();
 
   return <InquiryThreadView thread={thread} viewer="caregiver" />;
 }

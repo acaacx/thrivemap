@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cachedClinicData } from "@/modules/shared/cache";
 import type { InquiryStatus } from "./schemas";
 
 export interface InquiryMessageItem {
@@ -111,21 +112,33 @@ export function shapeThread(row: ThreadRow): InquiryThread {
 export async function clinicAcceptsInquiries(
   clinicId: string,
 ): Promise<boolean> {
-  const supabase = createSupabaseAdminClient();
-  const { count } = await supabase
-    .from("clinic_managers")
-    .select("id", { count: "exact", head: true })
-    .eq("clinic_id", clinicId)
-    .is("revoked_at", null);
-  return (count ?? 0) > 0;
+  return cachedClinicData(`inquiries-accepts|${clinicId}`, 300, async () => {
+    const supabase = createSupabaseAdminClient();
+    const { count } = await supabase
+      .from("clinic_managers")
+      .select("id", { count: "exact", head: true })
+      .eq("clinic_id", clinicId)
+      .is("revoked_at", null);
+    return (count ?? 0) > 0;
+  });
 }
 
-/** Caregiver dashboard: own threads, newest activity first. RLS scopes. */
+/**
+ * Caregiver dashboard: own threads only, newest activity first. RLS also
+ * grants read access to the clinic's managers, so this needs its own
+ * caregiver_id filter — without it, a manager reading this function would
+ * see every thread on their clinic instead of just their own inquiries.
+ */
 export async function listMyInquiries(): Promise<InquiryListItem[]> {
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
   const { data } = await supabase
     .from("inquiries")
-    .select(THREAD_SELECT);
+    .select(THREAD_SELECT)
+    .eq("caregiver_id", user.id);
   const items = ((data ?? []) as unknown as ThreadRow[]).map((row) => {
     const thread = shapeThread(row);
     const last = thread.messages[thread.messages.length - 1];

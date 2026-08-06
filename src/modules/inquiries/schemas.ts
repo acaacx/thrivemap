@@ -41,6 +41,7 @@ const optionalIsoDate = z
 
 const bodyField = z
   .string()
+  .trim()
   .min(1, "Please write a message")
   .max(4000, "Messages are limited to 4000 characters");
 
@@ -48,11 +49,13 @@ export const createInquirySchema = z.object({
   clinicId: z.string().uuid(),
   subject: z
     .string()
+    .trim()
     .min(3, "Please add a short subject")
     .max(200, "Subjects are limited to 200 characters"),
   preferredDate: optionalIsoDate,
   preferredTimeNote: z
     .string()
+    .trim()
     .max(200, "Keep the time note under 200 characters")
     .optional(),
   body: bodyField,
@@ -95,6 +98,7 @@ export const reportInquirySchema = z.object({
   ]),
   details: z
     .string()
+    .trim()
     .max(2000, "Keep details under 2000 characters")
     .optional(),
 });

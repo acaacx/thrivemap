@@ -49,13 +49,9 @@ export async function createInquiryAction(
   const { data: inquiryId, error } = await supabase.rpc("create_inquiry", {
     p_clinic_id: parsed.data.clinicId,
     p_subject: parsed.data.subject,
-    // Generated Args type marks these as required `string` (no `| null`),
-    // even though the RPC parameters default to NULL server-side. Cast the
-    // runtime null through the mismatched type; no behavior change.
-    p_preferred_date: (parsed.data.preferredDate || null) as unknown as string,
-    p_preferred_time_note: (parsed.data.preferredTimeNote ||
-      null) as unknown as string,
     p_body: parsed.data.body,
+    p_preferred_date: parsed.data.preferredDate || undefined,
+    p_preferred_time_note: parsed.data.preferredTimeNote || undefined,
   });
   if (error || !inquiryId) {
     return { error: friendlyRpcError(error?.message) };
