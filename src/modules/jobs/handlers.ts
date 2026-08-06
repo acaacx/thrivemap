@@ -326,12 +326,13 @@ async function runInquiryNotification(payload: JobPayload): Promise<void> {
       .from("inquiry_messages")
       .select("sender_role, body")
       .eq("id", messageId)
+      .eq("inquiry_id", inquiryId)
       .maybeSingle();
     if (msgErr) throw new Error(`message lookup failed: ${msgErr.message}`);
     if (!message) return;
     const excerpt =
       message.body.length > 120
-        ? `${message.body.slice(0, 120)}…`
+        ? `${message.body.slice(0, 119)}…`
         : message.body;
     if (message.sender_role === "caregiver") {
       await notifyManagers((name) =>

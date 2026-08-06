@@ -72,4 +72,36 @@ describe("inquiry email templates", () => {
     expect(status.subject).toContain("Confirmed");
     expect(status.html).toContain("2026-09-15");
   });
+
+  it("escapes HTML in user-supplied subject and excerpt", () => {
+    const received = emailTemplates.inquiryReceived({
+      name: "Rep",
+      clinicName: "Sunrise Center",
+      subject: "<b>x</b>",
+      path: "/clinic-portal/abc/inquiries/def",
+    });
+    expect(received.html).not.toContain("<b>x</b>");
+    expect(received.html).toContain("&lt;b&gt;x&lt;/b&gt;");
+
+    const reply = emailTemplates.inquiryReply({
+      name: "Maria",
+      clinicName: "Sunrise Center",
+      subject: "<b>x</b>",
+      excerpt: "<script>alert(1)</script>",
+      path: "/account/inquiries/def",
+    });
+    expect(reply.html).not.toContain("<script>alert(1)</script>");
+    expect(reply.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+
+    const status = emailTemplates.inquiryStatusChanged({
+      name: "Maria",
+      clinicName: "Sunrise Center",
+      subject: "<b>x</b>",
+      statusLabel: "Confirmed",
+      confirmedDate: "2026-09-15",
+      path: "/account/inquiries/def",
+    });
+    expect(status.html).not.toContain("<b>x</b>");
+    expect(status.html).toContain("&lt;b&gt;x&lt;/b&gt;");
+  });
 });

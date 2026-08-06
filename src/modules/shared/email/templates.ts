@@ -46,6 +46,15 @@ function button(href: string, label: string): string {
 
 const url = (path: string) => `${siteConfig.url}${path}`;
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export const emailTemplates = {
   welcome(params: { name: string }): EmailContent {
     const title = `Welcome to ${siteConfig.name}`;
@@ -269,7 +278,7 @@ export const emailTemplates = {
         "New inquiry",
         paragraphs(
           `Hi ${params.name},`,
-          `A caregiver sent <strong>${params.clinicName}</strong> a new inquiry: "${params.subject}".`,
+          `A caregiver sent <strong>${params.clinicName}</strong> a new inquiry: "${escapeHtml(params.subject)}".`,
           `Reply from the clinic portal — families appreciate a quick answer.`,
         ) + button(url(params.path), "Open the inquiry"),
       ),
@@ -291,7 +300,7 @@ export const emailTemplates = {
         paragraphs(
           `Hi ${params.name},`,
           `There's a new reply in your conversation with <strong>${params.clinicName}</strong>:`,
-          `<em>${params.excerpt}</em>`,
+          `<em>${escapeHtml(params.excerpt)}</em>`,
         ) + button(url(params.path), "Read and reply"),
       ),
       text: `Hi ${params.name},\n\nNew reply about "${params.subject}" from your conversation with ${params.clinicName}:\n${params.excerpt}\n\nRead and reply: ${url(params.path)}`,
@@ -315,7 +324,7 @@ export const emailTemplates = {
         `Inquiry ${params.statusLabel.toLowerCase()}`,
         paragraphs(
           `Hi ${params.name},`,
-          `<strong>${params.clinicName}</strong> updated your inquiry "${params.subject}" to <strong>${params.statusLabel}</strong>.`,
+          `<strong>${params.clinicName}</strong> updated your inquiry "${escapeHtml(params.subject)}" to <strong>${params.statusLabel}</strong>.`,
           ...(dateLine ? [dateLine] : []),
         ) + button(url(params.path), "View the conversation"),
       ),
