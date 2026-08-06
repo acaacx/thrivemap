@@ -1449,6 +1449,10 @@ export type Database = {
         Args: { p_candidate_id: string; p_clinic_id: string }
         Returns: undefined
       }
+      can_report_inquiry: {
+        Args: { p_clinic_id: string; p_inquiry_id: string }
+        Returns: boolean
+      }
       claim_due_jobs: {
         Args: { p_batch?: number; p_worker: string }
         Returns: {
@@ -1489,8 +1493,8 @@ export type Database = {
         Args: {
           p_body: string
           p_clinic_id: string
-          p_preferred_date: string
-          p_preferred_time_note: string
+          p_preferred_date?: string
+          p_preferred_time_note?: string
           p_subject: string
         }
         Returns: string

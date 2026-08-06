@@ -92,9 +92,9 @@ create policy inquiry_messages_participant_read on public.inquiry_messages
 create or replace function public.create_inquiry(
   p_clinic_id uuid,
   p_subject text,
-  p_preferred_date date,
-  p_preferred_time_note text,
-  p_body text
+  p_body text,
+  p_preferred_date date default null,
+  p_preferred_time_note text default null
 )
 returns uuid
 language plpgsql
@@ -286,17 +286,83 @@ begin
 end;
 $$;
 
+-- Can the current user file a report against this (inquiry, clinic) pair?
+-- True only when p_clinic_id is that inquiry's actual clinic AND the caller
+-- is its caregiver or an active manager. Signed-out callers (auth.uid() is
+-- null) never satisfy this — inquiry reports are for signed-in participants
+-- only, by design.
+--
+-- Must be plpgsql, not sql: a `language sql` function is eligible for
+-- planner inlining, and an inlined body loses its security-definer role
+-- switch — its nested is_active_clinic_manager() call would then run under
+-- the RLS policy's original caller (e.g. anon), who has no EXECUTE grant on
+-- it. Postgres checks function/table privileges for every reference in a
+-- query at parse time, even ones a runtime OR would short-circuit — so an
+-- anon caller filing an ordinary (non-inquiry) clinic report, where
+-- inquiry_id is null, would fail even though this branch never actually
+-- runs. plpgsql is never inlined, so its EXECUTE grant is the only ACL
+-- check the caller needs; everything inside runs as the definer. Folding
+-- the clinic_id match in here too (rather than a separate `select clinic_id
+-- from inquiries` in the policy) keeps the caller from ever touching
+-- public.inquiries directly, which sidesteps the same inlining hazard in
+-- *its* RLS policy (inquiries_participant_read also calls
+-- is_active_clinic_manager).
+create or replace function public.can_report_inquiry(
+  p_inquiry_id uuid,
+  p_clinic_id uuid
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.inquiries i
+    where i.id = p_inquiry_id
+      and i.clinic_id = p_clinic_id
+      and (
+        i.caregiver_id = auth.uid()
+        or public.is_active_clinic_manager(i.clinic_id)
+      )
+  );
+end;
+$$;
+
+-- Tighten the clinic_reports insert policy (from migration 6): an
+-- inquiry_id must belong to a thread the caller actually participates in,
+-- and clinic_id must match that thread's clinic. Without this, anon/any
+-- signed-in user could insert a report row with an arbitrary inquiry_id and
+-- have get_reported_inquiry_thread expose that thread to moderators.
+drop policy "clinic_reports: insert" on public.clinic_reports;
+create policy "clinic_reports: insert" on public.clinic_reports
+  for insert with check (
+    (reported_by is null or reported_by = auth.uid())
+    and (
+      inquiry_id is null
+      or public.can_report_inquiry(inquiry_id, clinic_id)
+    )
+  );
+
 -- Hardened defaults: explicit grants.
 grant select on public.inquiries, public.inquiry_messages to authenticated;
 grant all on public.inquiries, public.inquiry_messages to service_role;
 
 revoke execute on function public.is_active_clinic_manager(uuid) from public, anon;
-revoke execute on function public.create_inquiry(uuid, text, date, text, text) from public, anon;
+revoke execute on function public.create_inquiry(uuid, text, text, date, text) from public, anon;
 revoke execute on function public.reply_inquiry(uuid, text) from public, anon;
 revoke execute on function public.set_inquiry_status(uuid, public.inquiry_status, date) from public, anon;
 revoke execute on function public.get_reported_inquiry_thread(uuid) from public, anon;
+-- can_report_inquiry stays callable by anon (unlike the functions above):
+-- the clinic_reports insert policy references it even on ordinary reports
+-- (inquiry_id null), and Postgres ACL-checks every function a query
+-- references regardless of runtime short-circuiting. It's still safe —
+-- auth.uid() is null for anon, so the function itself always returns false.
+revoke execute on function public.can_report_inquiry(uuid, uuid) from public;
 grant execute on function public.is_active_clinic_manager(uuid) to authenticated, service_role;
-grant execute on function public.create_inquiry(uuid, text, date, text, text) to authenticated, service_role;
+grant execute on function public.create_inquiry(uuid, text, text, date, text) to authenticated, service_role;
 grant execute on function public.reply_inquiry(uuid, text) to authenticated, service_role;
 grant execute on function public.set_inquiry_status(uuid, public.inquiry_status, date) to authenticated, service_role;
 grant execute on function public.get_reported_inquiry_thread(uuid) to authenticated, service_role;
+grant execute on function public.can_report_inquiry(uuid, uuid) to anon, authenticated, service_role;

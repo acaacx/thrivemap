@@ -8,15 +8,6 @@ const ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-// `supabase gen types typescript` never emits `| null` for scalar RPC
-// arguments (only `?` when the SQL param has a default) — so the generated
-// Args type for create_inquiry's p_preferred_date/p_preferred_time_note is
-// a required `string`, not `string | null`. These tests intentionally
-// exercise the RPC with NULL for those fields, which Postgres accepts fine;
-// this cast just routes around the generator gap, it changes nothing at
-// runtime.
-const NULL_ARG = null as unknown as string;
-
 function anonClient() {
   return createClient<Database>(SUPABASE_URL, ANON_KEY, {
     auth: { persistSession: false },
@@ -116,8 +107,6 @@ describe("inquiries: create_inquiry", () => {
     const { error } = await caregiver.rpc("create_inquiry", {
       p_clinic_id: clinicId,
       p_subject: "[itest] should fail",
-      p_preferred_date: NULL_ARG,
-      p_preferred_time_note: NULL_ARG,
       p_body: "hello",
     });
     expect(error?.message).toMatch(/not accepting inquiries/i);
@@ -127,8 +116,6 @@ describe("inquiries: create_inquiry", () => {
     const { error } = await anonClient().rpc("create_inquiry", {
       p_clinic_id: await managedClinicId(),
       p_subject: "[itest] anon",
-      p_preferred_date: NULL_ARG,
-      p_preferred_time_note: NULL_ARG,
       p_body: "hello",
     });
     expect(error).not.toBeNull();
@@ -143,8 +130,6 @@ describe("inquiries: visibility", () => {
     const { data } = await caregiver.rpc("create_inquiry", {
       p_clinic_id: await managedClinicId(),
       p_subject: "[itest] visibility thread",
-      p_preferred_date: NULL_ARG,
-      p_preferred_time_note: NULL_ARG,
       p_body: "visibility check",
     });
     inquiryId = data!;
@@ -204,7 +189,6 @@ describe("inquiries: reply + status lifecycle", () => {
       p_clinic_id: await managedClinicId(),
       p_subject: "[itest] lifecycle thread",
       p_preferred_date: "2026-09-15",
-      p_preferred_time_note: NULL_ARG,
       p_body: "lifecycle check",
     });
     inquiryId = data!;
@@ -303,8 +287,6 @@ describe("inquiries: reported-thread moderator access", () => {
     const { data: inquiryId } = await caregiver.rpc("create_inquiry", {
       p_clinic_id: clinicId,
       p_subject: "[itest] reported thread",
-      p_preferred_date: NULL_ARG,
-      p_preferred_time_note: NULL_ARG,
       p_body: "message to be reported",
     });
     const { data: report } = await service
@@ -337,6 +319,58 @@ describe("inquiries: reported-thread moderator access", () => {
       { p_report_id: report!.id },
     );
     expect(denied).not.toBeNull();
+  });
+});
+
+describe("inquiries: clinic_reports insert policy", () => {
+  it("a non-participant cannot report someone else's inquiry thread directly", async () => {
+    const caregiver = await signedInClient("caregiver@thrivemap.test");
+    const clinicId = await managedClinicId();
+    const { data: inquiryId } = await caregiver.rpc("create_inquiry", {
+      p_clinic_id: clinicId,
+      p_subject: "[itest] non-participant report",
+      p_body: "message not to be reported by a stranger",
+    });
+
+    const moderator = await signedInClient("moderator@thrivemap.test");
+    const { error } = await moderator.from("clinic_reports").insert({
+      clinic_id: clinicId,
+      inquiry_id: inquiryId,
+      report_type: "inappropriate_content",
+      details: "[itest] moderator is not a participant",
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("the participant caregiver can report their own inquiry thread", async () => {
+    const caregiver = await signedInClient("caregiver@thrivemap.test");
+    const { data: me } = await caregiver.auth.getUser();
+    const clinicId = await managedClinicId();
+    const { data: inquiryId } = await caregiver.rpc("create_inquiry", {
+      p_clinic_id: clinicId,
+      p_subject: "[itest] participant report",
+      p_body: "message to be reported by its own caregiver",
+    });
+
+    // reported_by must be set (matches reportInquiryAction in production):
+    // Postgres also enforces the table's SELECT policy on INSERT ...
+    // RETURNING rows, and "clinic_reports: own read" only allows a reporter
+    // to read back their own (reported_by = auth.uid()) report.
+    const { data: report, error } = await caregiver
+      .from("clinic_reports")
+      .insert({
+        clinic_id: clinicId,
+        inquiry_id: inquiryId,
+        reported_by: me.user!.id,
+        report_type: "inappropriate_content",
+        details: "[itest] participant self-report",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    expect(report?.id).toBeTruthy();
+
+    await service.from("clinic_reports").delete().eq("id", report!.id);
   });
 });
 
