@@ -8,7 +8,8 @@ export type JobType =
   | "verification_reminder_scan"
   | "stale_listing_scan"
   | "search_document_refresh"
-  | "candidate_import";
+  | "candidate_import"
+  | "inquiry_notification";
 
 /**
  * Enqueues a background job. Same idempotency_key twice = one job.

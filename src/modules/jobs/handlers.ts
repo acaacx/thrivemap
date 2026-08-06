@@ -254,6 +254,133 @@ async function runCandidateImport(payload: JobPayload): Promise<void> {
   await runPlacesImport(payload);
 }
 
+/**
+ * Inquiry notifications. Payload: { inquiry_id, kind, message_id?, status? }.
+ * created → all active managers; message → the side that didn't send it;
+ * status → the caregiver. Honors each recipient's email_notifications pref
+ * via emailForUser.
+ */
+async function runInquiryNotification(payload: JobPayload): Promise<void> {
+  const inquiryId = String(payload.inquiry_id ?? "");
+  const kind = String(payload.kind ?? "");
+  if (!inquiryId || !kind) {
+    throw new Error("inquiry_notification needs inquiry_id and kind");
+  }
+  const supabase = createSupabaseAdminClient();
+  const { data: inquiry, error } = await supabase
+    .from("inquiries")
+    .select(
+      "id, subject, status, confirmed_date, caregiver_id, clinic_id, clinics(name)",
+    )
+    .eq("id", inquiryId)
+    .maybeSingle();
+  if (error) throw new Error(`inquiry lookup failed: ${error.message}`);
+  if (!inquiry) return; // Thread deleted — nothing to notify.
+
+  const clinicName = inquiry.clinics?.name ?? "the clinic";
+  const sender = getEmailSender();
+  const portalPath = `/clinic-portal/${inquiry.clinic_id}/inquiries/${inquiry.id}`;
+  const accountPath = `/account/inquiries/${inquiry.id}`;
+
+  async function notifyManagers(
+    render: (name: string) => EmailContent,
+  ): Promise<void> {
+    const { data: managers, error: mErr } = await supabase
+      .from("clinic_managers")
+      .select("user_id")
+      .eq("clinic_id", inquiry!.clinic_id)
+      .is("revoked_at", null);
+    if (mErr) throw new Error(`manager lookup failed: ${mErr.message}`);
+    for (const manager of managers ?? []) {
+      const to = await emailForUser(manager.user_id);
+      if (!to) continue;
+      const name = await displayName(manager.user_id, to);
+      await sender.send({ to, ...render(name) });
+    }
+  }
+
+  async function notifyCaregiver(
+    render: (name: string) => EmailContent,
+  ): Promise<void> {
+    const to = await emailForUser(inquiry!.caregiver_id);
+    if (!to) return;
+    const name = await displayName(inquiry!.caregiver_id, to);
+    await sender.send({ to, ...render(name) });
+  }
+
+  if (kind === "created") {
+    await notifyManagers((name) =>
+      emailTemplates.inquiryReceived({
+        name,
+        clinicName,
+        subject: inquiry.subject,
+        path: portalPath,
+      }),
+    );
+    return;
+  }
+
+  if (kind === "message") {
+    const messageId = String(payload.message_id ?? "");
+    const { data: message, error: msgErr } = await supabase
+      .from("inquiry_messages")
+      .select("sender_role, body")
+      .eq("id", messageId)
+      .maybeSingle();
+    if (msgErr) throw new Error(`message lookup failed: ${msgErr.message}`);
+    if (!message) return;
+    const excerpt =
+      message.body.length > 120
+        ? `${message.body.slice(0, 120)}…`
+        : message.body;
+    if (message.sender_role === "caregiver") {
+      await notifyManagers((name) =>
+        emailTemplates.inquiryReply({
+          name,
+          clinicName,
+          subject: inquiry.subject,
+          excerpt,
+          path: portalPath,
+        }),
+      );
+    } else {
+      await notifyCaregiver((name) =>
+        emailTemplates.inquiryReply({
+          name,
+          clinicName,
+          subject: inquiry.subject,
+          excerpt,
+          path: accountPath,
+        }),
+      );
+    }
+    return;
+  }
+
+  if (kind === "status") {
+    const statusLabels: Record<string, string> = {
+      replied: "Replied",
+      confirmed: "Confirmed",
+      declined: "Declined",
+      closed: "Closed",
+    };
+    const statusLabel = statusLabels[String(payload.status ?? "")] ?? "Updated";
+    await notifyCaregiver((name) =>
+      emailTemplates.inquiryStatusChanged({
+        name,
+        clinicName,
+        subject: inquiry.subject,
+        statusLabel,
+        confirmedDate: inquiry.confirmed_date ?? undefined,
+        path: accountPath,
+      }),
+    );
+    return;
+  }
+
+  throw new Error(`unknown inquiry_notification kind: ${kind}`);
+}
+
 export const JOB_HANDLERS: Record<JobType, JobHandler> = {
   duplicate_scan: async (payload) => {
     await runDuplicateScan(payload);
@@ -264,4 +391,5 @@ export const JOB_HANDLERS: Record<JobType, JobHandler> = {
   stale_listing_scan: runStaleListingScan,
   search_document_refresh: refreshSearchDocuments,
   candidate_import: runCandidateImport,
+  inquiry_notification: runInquiryNotification,
 };

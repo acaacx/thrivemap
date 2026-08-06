@@ -1,7 +1,7 @@
 import { siteConfig } from "@/lib/site-config";
 
 /**
- * The 12 transactional email templates, as plain HTML with inline styles
+ * The 15 transactional email templates, as plain HTML with inline styles
  * (email clients ignore stylesheets). Each returns subject + html + text;
  * the caller supplies the recipient.
  */
@@ -254,6 +254,72 @@ export const emailTemplates = {
         ) + button(url("/clinic-portal"), "Review my clinic"),
       ),
       text: `Hi ${params.name},\n\nPlease re-verify ${params.clinicName} — confirm hours, services, and contact details at ${url("/clinic-portal")}`,
+    };
+  },
+
+  inquiryReceived(params: {
+    name: string;
+    clinicName: string;
+    subject: string;
+    path: string;
+  }): EmailContent {
+    return {
+      subject: `New inquiry for ${params.clinicName}`,
+      html: layout(
+        "New inquiry",
+        paragraphs(
+          `Hi ${params.name},`,
+          `A caregiver sent <strong>${params.clinicName}</strong> a new inquiry: "${params.subject}".`,
+          `Reply from the clinic portal — families appreciate a quick answer.`,
+        ) + button(url(params.path), "Open the inquiry"),
+      ),
+      text: `Hi ${params.name},\n\nNew inquiry for ${params.clinicName}: "${params.subject}". Reply at ${url(params.path)}`,
+    };
+  },
+
+  inquiryReply(params: {
+    name: string;
+    clinicName: string;
+    subject: string;
+    excerpt: string;
+    path: string;
+  }): EmailContent {
+    return {
+      subject: `New reply about "${params.subject}"`,
+      html: layout(
+        "New reply",
+        paragraphs(
+          `Hi ${params.name},`,
+          `There's a new reply in your conversation with <strong>${params.clinicName}</strong>:`,
+          `<em>${params.excerpt}</em>`,
+        ) + button(url(params.path), "Read and reply"),
+      ),
+      text: `Hi ${params.name},\n\nNew reply about "${params.subject}" from your conversation with ${params.clinicName}:\n${params.excerpt}\n\nRead and reply: ${url(params.path)}`,
+    };
+  },
+
+  inquiryStatusChanged(params: {
+    name: string;
+    clinicName: string;
+    subject: string;
+    statusLabel: string;
+    confirmedDate?: string;
+    path: string;
+  }): EmailContent {
+    const dateLine = params.confirmedDate
+      ? `Confirmed date: <strong>${params.confirmedDate}</strong>.`
+      : "";
+    return {
+      subject: `${params.statusLabel}: your inquiry to ${params.clinicName}`,
+      html: layout(
+        `Inquiry ${params.statusLabel.toLowerCase()}`,
+        paragraphs(
+          `Hi ${params.name},`,
+          `<strong>${params.clinicName}</strong> updated your inquiry "${params.subject}" to <strong>${params.statusLabel}</strong>.`,
+          ...(dateLine ? [dateLine] : []),
+        ) + button(url(params.path), "View the conversation"),
+      ),
+      text: `Hi ${params.name},\n\n${params.clinicName} updated "${params.subject}" to ${params.statusLabel}.${params.confirmedDate ? ` Confirmed date: ${params.confirmedDate}.` : ""}\n${url(params.path)}`,
     };
   },
 } as const;
