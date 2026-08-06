@@ -27,9 +27,12 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { dayName, formatTime } from "@/lib/format";
 import { siteConfig } from "@/lib/site-config";
+import { getCurrentUser } from "@/modules/auth/server";
 import { getClinicBySlug } from "@/modules/clinics/queries";
 import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";
 import { VerificationBadge } from "@/modules/clinics/components/VerificationBadge";
+import { InquiryCta } from "@/modules/inquiries/components/InquiryCta";
+import { clinicAcceptsInquiries } from "@/modules/inquiries/queries";
 import { ClinicProfileMap } from "./profile-map";
 
 export const revalidate = 300;
@@ -67,6 +70,11 @@ export default async function ClinicProfilePage({ params }: PageProps) {
   const { slug } = await params;
   const clinic = await getClinicBySlug(slug);
   if (!clinic) notFound();
+
+  const [acceptsInquiries, user] = await Promise.all([
+    clinicAcceptsInquiries(clinic.id),
+    getCurrentUser(),
+  ]);
 
   const location =
     clinic.clinic_locations.find((l) => l.is_primary) ??
@@ -535,6 +543,14 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   ))}
                 </CardContent>
               </Card>
+
+              <InquiryCta
+                clinicId={clinic.id}
+                clinicName={clinic.name}
+                clinicSlug={clinic.slug}
+                accepts={acceptsInquiries}
+                signedIn={Boolean(user)}
+              />
 
               <Card>
                 <CardContent className="space-y-3 p-6 text-sm">

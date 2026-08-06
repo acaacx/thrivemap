@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 const accountNav = [
   { href: "/account", label: "Profile" },
   { href: "/account/favorites", label: "Favorites" },
+  { href: "/account/inquiries", label: "Inquiries" },
   { href: "/account/submissions", label: "Submissions" },
   { href: "/account/reports", label: "Reports" },
   { href: "/account/claims", label: "Claims" },
