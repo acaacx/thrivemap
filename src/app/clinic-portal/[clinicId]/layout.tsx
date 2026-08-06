@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 const sections = [
   { segment: "profile", label: "Profile" },
   { segment: "services", label: "Services" },
+  { segment: "team", label: "Team" },
   { segment: "hours", label: "Hours" },
   { segment: "images", label: "Images" },
   { segment: "inquiries", label: "Inquiries" },

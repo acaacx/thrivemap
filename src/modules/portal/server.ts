@@ -41,6 +41,7 @@ export async function requireManagedClinic(clinicId: string) {
        clinic_locations(*),
        clinic_hours(*),
        clinic_images(*),
+       clinic_therapists(*),
        clinic_services(service_id, delivery, notes, services(id, slug, name))`,
     )
     .eq("id", clinicId)
