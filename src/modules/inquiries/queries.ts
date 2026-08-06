@@ -1,4 +1,5 @@
 import "server-only";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { InquiryStatus } from "./schemas";
 
@@ -97,11 +98,20 @@ export function shapeThread(row: ThreadRow): InquiryThread {
   };
 }
 
-/** True when the clinic has at least one active manager. */
+/**
+ * True when the clinic has at least one active manager.
+ *
+ * Uses the admin client on purpose: RLS on clinic_managers ("own read")
+ * only lets a caller see rows where they themselves are the manager, so a
+ * caregiver's own RLS-scoped client always sees a count of 0 here — the
+ * inquiry CTA would report every claimed clinic as unclaimed. This function
+ * only ever returns a boolean (no row data leaves it), so bypassing RLS to
+ * compute that boolean is safe.
+ */
 export async function clinicAcceptsInquiries(
   clinicId: string,
 ): Promise<boolean> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { count } = await supabase
     .from("clinic_managers")
     .select("id", { count: "exact", head: true })
