@@ -29,6 +29,11 @@ limits, the existing email pipeline. Real scheduling would justify
 extracting a service — the module boundary (`modules/booking`) and the job
 queue interface are the seams.
 
+Shipped 2026-08-06: inquiry-only messaging with an optional requested date
+(no calendar/scheduling yet). Spec:
+[`docs/superpowers/specs/2026-08-06-inquiries-design.md`](superpowers/specs/2026-08-06-inquiries-design.md);
+plan: [`docs/superpowers/plans/2026-08-06-inquiries.md`](superpowers/plans/2026-08-06-inquiries.md).
+
 ### 4. Reviews / community signal
 
 Moderation-heavy. Reuse the reports/moderation machinery, add

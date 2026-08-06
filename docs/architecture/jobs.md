@@ -39,6 +39,7 @@ handlers.
 | `stale_listing_scan`         | Published listings untouched >365 days → sets `clinics.flagged_stale_at` (cleared automatically on next update). |
 | `search_document_refresh`    | One clinic or full rebuild of search documents.                                                                  |
 | `candidate_import`           | Places Text Search import (payload `{query, termSlug, citySlug, requestedBy}`); see below.                       |
+| `inquiry_notification`       | Emails clinic managers/caregivers on inquiry activity (payload `{inquiry_id, kind, message_id?, status?}`); see below. |
 
 All handlers are idempotent: enqueue-side idempotency keys plus
 upsert/update-shaped writes mean a retried job cannot double-send or
@@ -57,6 +58,32 @@ whole flow works offline. Results upsert into `external_place_candidates` on
 raw_payload) refresh on re-import, while `status`/`reviewed_by`/`reviewed_at`
 are untouched — a discarded candidate never resurrects. Failures retry with
 backoff and land in the `/admin/jobs` dead-letter view.
+
+### `inquiry_notification`
+
+Enqueued by `src/modules/inquiries/notify.ts` on inquiry creation, new
+messages, and status changes. Payload:
+`{ inquiry_id, kind: "created" | "message" | "status", message_id?, status? }`.
+Idempotency keys stop duplicate sends on retry:
+
+- `created` → `inquiry-notify:created:{inquiryId}`
+- `message` → `inquiry-notify:message:{messageId}`
+- `status` → `inquiry-notify:status:{inquiryId}:{status}:{statusChangedAt}`
+
+Recipients depend on `kind`:
+
+- `created` — every active clinic manager (`clinic_managers` rows with
+  `revoked_at is null`) for the clinic.
+- `message` — the side that didn't send the message (caregiver sent →
+  notify managers; manager/staff sent → notify the caregiver).
+- `status` — the caregiver.
+
+Each send resolves the recipient's address and honors
+`user_preferences.email_notifications` via `emailForUser` (opted-out users
+are skipped, not queued for retry). Message-based emails carry only a
+≤120-character excerpt of the message body (truncated with `…`), never the
+full text. The handler is defined as `runInquiryNotification` in
+`src/modules/jobs/handlers.ts`.
 
 ## Dead letter
 
