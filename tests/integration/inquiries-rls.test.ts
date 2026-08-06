@@ -341,7 +341,7 @@ describe("inquiries: reported-thread moderator access", () => {
 });
 
 describe("inquiry query shaping", () => {
-  it("maps thread rows newest-message-last and previews at 80 chars", async () => {
+  it("maps thread rows oldest-message-first", async () => {
     const { shapeThread } = await import("@/modules/inquiries/queries");
     const shaped = shapeThread(
       {

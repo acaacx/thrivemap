@@ -115,9 +115,8 @@ export async function listMyInquiries(): Promise<InquiryListItem[]> {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("inquiries")
-    .select(THREAD_SELECT)
-    .order("created_at", { ascending: false });
-  return ((data ?? []) as unknown as ThreadRow[]).map((row) => {
+    .select(THREAD_SELECT);
+  const items = ((data ?? []) as unknown as ThreadRow[]).map((row) => {
     const thread = shapeThread(row);
     const last = thread.messages[thread.messages.length - 1];
     return {
@@ -131,6 +130,7 @@ export async function listMyInquiries(): Promise<InquiryListItem[]> {
       lastMessagePreview: last ? preview(last.body) : "",
     };
   });
+  return items.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
 }
 
 /** Portal inbox: one clinic's threads, open first, then newest activity. */
