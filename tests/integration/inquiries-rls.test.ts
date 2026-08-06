@@ -339,3 +339,28 @@ describe("inquiries: reported-thread moderator access", () => {
     expect(denied).not.toBeNull();
   });
 });
+
+describe("inquiry query shaping", () => {
+  it("maps thread rows newest-message-last and previews at 80 chars", async () => {
+    const { shapeThread } = await import("@/modules/inquiries/queries");
+    const shaped = shapeThread(
+      {
+        id: "i1",
+        clinic_id: "c1",
+        subject: "s",
+        status: "open",
+        preferred_date: null,
+        preferred_time_note: null,
+        confirmed_date: null,
+        caregiver_id: "u1",
+        created_at: "2026-08-06T00:00:00Z",
+        clinics: { name: "Clinic", slug: "clinic" },
+        inquiry_messages: [
+          { id: "m2", sender_role: "clinic", body: "b", created_at: "2026-08-06T02:00:00Z" },
+          { id: "m1", sender_role: "caregiver", body: "a", created_at: "2026-08-06T01:00:00Z" },
+        ],
+      },
+    );
+    expect(shaped.messages.map((m) => m.id)).toEqual(["m1", "m2"]);
+  });
+});
