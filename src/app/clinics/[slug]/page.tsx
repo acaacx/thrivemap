@@ -32,6 +32,7 @@ import { FavoriteButton } from "@/modules/favorites/components/FavoriteButton";
 import { VerificationBadge } from "@/modules/clinics/components/VerificationBadge";
 import { InquiryCta } from "@/modules/inquiries/components/InquiryCta";
 import { clinicAcceptsInquiries } from "@/modules/inquiries/queries";
+import { CareTeamSection } from "@/modules/therapists/components/CareTeamSection";
 import { ClinicProfileMap } from "./profile-map";
 
 export const revalidate = 300;
@@ -372,6 +373,8 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   )}
                 </CardContent>
               </Card>
+
+              <CareTeamSection therapists={clinic.clinic_therapists} />
 
               {clinic.clinic_age_groups.length > 0 && (
                 <Card>

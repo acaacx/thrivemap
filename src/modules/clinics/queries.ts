@@ -164,7 +164,8 @@ async function getClinicBySlugUncached(slug: string) {
       clinic_languages ( language ),
       clinic_social_links ( platform, url ),
       clinic_contact_methods ( kind, value, label, sort_order ),
-      clinic_images ( storage_path, alt_text, kind, sort_order )
+      clinic_images ( storage_path, alt_text, kind, sort_order ),
+      clinic_therapists ( id, full_name, credentials, profession, specialties, bio, photo_path, display_order, created_at )
     `,
     )
     .eq("slug", slug)
