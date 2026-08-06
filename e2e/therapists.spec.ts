@@ -147,6 +147,9 @@ test.describe("therapist profiles", () => {
     ).toBeVisible();
     await expect(page.getByText(NAME_A)).toBeVisible();
     await expect(page.getByText("Occupational Therapist")).toBeVisible();
+    await expect(
+      page.getByText("Ten years of pediatric practice."),
+    ).toBeVisible();
   });
 
   test("manager uploads and removes a photo", async ({ page }) => {
