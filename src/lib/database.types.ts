@@ -553,6 +553,7 @@ export type Database = {
           created_at: string
           details: string | null
           id: string
+          inquiry_id: string | null
           report_type: Database["public"]["Enums"]["report_type"]
           reported_by: string | null
           resolution_note: string | null
@@ -566,6 +567,7 @@ export type Database = {
           created_at?: string
           details?: string | null
           id?: string
+          inquiry_id?: string | null
           report_type: Database["public"]["Enums"]["report_type"]
           reported_by?: string | null
           resolution_note?: string | null
@@ -579,6 +581,7 @@ export type Database = {
           created_at?: string
           details?: string | null
           id?: string
+          inquiry_id?: string | null
           report_type?: Database["public"]["Enums"]["report_type"]
           reported_by?: string | null
           resolution_note?: string | null
@@ -593,6 +596,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_reports_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
             referencedColumns: ["id"]
           },
         ]
@@ -1147,6 +1157,94 @@ export type Database = {
           },
         ]
       }
+      inquiries: {
+        Row: {
+          caregiver_id: string
+          clinic_id: string
+          confirmed_date: string | null
+          created_at: string
+          id: string
+          preferred_date: string | null
+          preferred_time_note: string | null
+          status: Database["public"]["Enums"]["inquiry_status"]
+          status_changed_at: string | null
+          status_changed_by: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          caregiver_id: string
+          clinic_id: string
+          confirmed_date?: string | null
+          created_at?: string
+          id?: string
+          preferred_date?: string | null
+          preferred_time_note?: string | null
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          caregiver_id?: string
+          clinic_id?: string
+          confirmed_date?: string | null
+          created_at?: string
+          id?: string
+          preferred_date?: string | null
+          preferred_time_note?: string | null
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiries_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inquiry_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          inquiry_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          inquiry_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          inquiry_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_messages_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           attempts: number
@@ -1387,6 +1485,16 @@ export type Database = {
         Args: { p_clinic_id: string }
         Returns: boolean
       }
+      create_inquiry: {
+        Args: {
+          p_body: string
+          p_clinic_id: string
+          p_preferred_date: string
+          p_preferred_time_note: string
+          p_subject: string
+        }
+        Returns: string
+      }
       find_duplicate_candidates: {
         Args: {
           p_clinic_id: string
@@ -1421,8 +1529,16 @@ export type Database = {
           status: Database["public"]["Enums"]["listing_status"]
         }[]
       }
+      get_reported_inquiry_thread: {
+        Args: { p_report_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      is_active_clinic_manager: {
+        Args: { p_clinic_id: string }
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
@@ -1477,6 +1593,10 @@ export type Database = {
       refresh_clinic_search_document: {
         Args: { p_clinic_id: string }
         Returns: undefined
+      }
+      reply_inquiry: {
+        Args: { p_body: string; p_inquiry_id: string }
+        Returns: string
       }
       requeue_stuck_jobs: { Args: never; Returns: number }
       scan_duplicate_candidates: {
@@ -1551,6 +1671,14 @@ export type Database = {
           score: number
         }[]
       }
+      set_inquiry_status: {
+        Args: {
+          p_confirmed_date?: string
+          p_inquiry_id: string
+          p_status: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       age_group:
@@ -1586,6 +1714,7 @@ export type Database = {
         | "confirmed_duplicate"
         | "not_duplicate"
         | "merged"
+      inquiry_status: "open" | "replied" | "confirmed" | "declined" | "closed"
       job_status: "pending" | "running" | "completed" | "failed" | "dead"
       listing_status:
         | "draft"
@@ -1791,6 +1920,7 @@ export const Constants = {
         "not_duplicate",
         "merged",
       ],
+      inquiry_status: ["open", "replied", "confirmed", "declined", "closed"],
       job_status: ["pending", "running", "completed", "failed", "dead"],
       listing_status: [
         "draft",
