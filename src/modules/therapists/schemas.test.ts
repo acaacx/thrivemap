@@ -60,6 +60,26 @@ describe("therapistInputSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("converts empty credentials and bio to undefined", () => {
+    const parsed = therapistInputSchema.parse({
+      ...valid,
+      credentials: "",
+      bio: "",
+    });
+    expect(parsed.credentials).toBeUndefined();
+    expect(parsed.bio).toBeUndefined();
+  });
+
+  it("converts whitespace-only credentials and bio to undefined", () => {
+    const parsed = therapistInputSchema.parse({
+      ...valid,
+      credentials: "  ",
+      bio: "  ",
+    });
+    expect(parsed.credentials).toBeUndefined();
+    expect(parsed.bio).toBeUndefined();
+  });
 });
 
 describe("moveTherapistSchema", () => {

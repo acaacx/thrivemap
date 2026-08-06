@@ -15,7 +15,7 @@ export const therapistInputSchema = z.object({
     .trim()
     .max(80, "Credentials are too long.")
     .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .transform((v) => (v === "" ? undefined : v)),
   profession: trimmed(1, 80, "Profession"),
   specialties: z
     .array(trimmed(1, 60, "Specialty"))
@@ -25,7 +25,7 @@ export const therapistInputSchema = z.object({
     .trim()
     .max(1000, "Bio is too long (1000 characters max).")
     .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .transform((v) => (v === "" ? undefined : v)),
 });
 
 export type TherapistInput = z.infer<typeof therapistInputSchema>;
