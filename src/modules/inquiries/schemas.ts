@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONVERSATION_REPORT_TYPES } from "@/modules/reports/report-types";
 
 export const INQUIRY_STATUSES = [
   "open",
@@ -84,18 +85,7 @@ export const setInquiryStatusSchema = z
 
 export const reportInquirySchema = z.object({
   inquiryId: z.string().uuid(),
-  reportType: z.enum([
-    "wrong_address",
-    "wrong_phone",
-    "incorrect_hours",
-    "incorrect_services",
-    "permanently_closed",
-    "temporarily_closed",
-    "duplicate_listing",
-    "misleading_information",
-    "inappropriate_content",
-    "other",
-  ]),
+  reportType: z.enum(CONVERSATION_REPORT_TYPES),
   details: z
     .string()
     .trim()

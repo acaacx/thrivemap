@@ -14,9 +14,9 @@ export function ReportedConversationPanel({
 
   return (
     <div className="mt-3 rounded-xl border bg-background p-4">
-      <h3 className="font-heading text-sm font-semibold">
+      <h2 className="font-heading text-sm font-semibold">
         Reported conversation
-      </h3>
+      </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {inquiry.subject} · {inquiry.status.replaceAll("_", " ")}
       </p>

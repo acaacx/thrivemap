@@ -82,6 +82,7 @@ export default async function PortalInquiriesPage({
             <Link
               key={filter.value}
               href={href}
+              aria-current={active ? "page" : undefined}
               className={`rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${
                 active
                   ? "border-primary/40 bg-primary/10 font-medium text-foreground"

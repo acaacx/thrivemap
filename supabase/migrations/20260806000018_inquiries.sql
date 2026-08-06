@@ -292,21 +292,20 @@ $$;
 -- null) never satisfy this — inquiry reports are for signed-in participants
 -- only, by design.
 --
--- Must be plpgsql, not sql: a `language sql` function is eligible for
--- planner inlining, and an inlined body loses its security-definer role
--- switch — its nested is_active_clinic_manager() call would then run under
--- the RLS policy's original caller (e.g. anon), who has no EXECUTE grant on
--- it. Postgres checks function/table privileges for every reference in a
--- query at parse time, even ones a runtime OR would short-circuit — so an
--- anon caller filing an ordinary (non-inquiry) clinic report, where
--- inquiry_id is null, would fail even though this branch never actually
--- runs. plpgsql is never inlined, so its EXECUTE grant is the only ACL
--- check the caller needs; everything inside runs as the definer. Folding
--- the clinic_id match in here too (rather than a separate `select clinic_id
--- from inquiries` in the policy) keeps the caller from ever touching
--- public.inquiries directly, which sidesteps the same inlining hazard in
--- *its* RLS policy (inquiries_participant_read also calls
--- is_active_clinic_manager).
+-- Must be a security-definer function, not a raw subquery in the policy:
+-- subqueries written directly in an RLS policy run as the original caller,
+-- so `select clinic_id from inquiries ...` inlined into the clinic_reports
+-- insert policy would be filtered by the caller's own RLS on
+-- public.inquiries (and would demand the caller's EXECUTE privilege on
+-- is_active_clinic_manager, which anon lacks — Postgres checks privileges
+-- for every reference in the query, even branches a runtime OR would
+-- short-circuit, so anon filing an ordinary non-inquiry report would fail).
+-- That caller-context subquery is exactly what broke the first version of
+-- this policy. Wrapping the whole check in security-definer plpgsql means
+-- the caller only needs EXECUTE on this one function; everything inside —
+-- the inquiries lookup and the is_active_clinic_manager call — runs as the
+-- definer. plpgsql (never inlined by the planner) rather than `language
+-- sql` keeps it that way.
 create or replace function public.can_report_inquiry(
   p_inquiry_id uuid,
   p_clinic_id uuid

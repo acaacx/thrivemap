@@ -30,7 +30,10 @@ Migrations in `supabase/migrations/` are the source of truth. Highlights only
   published_unverified clinic.
 - **clinic_change_requests** — corrections to existing listings; approved
   changes are applied field-by-field from the stored diff.
-- **clinic_reports** — problem reports (anonymous allowed).
+- **clinic_reports** — problem reports (anonymous allowed). May reference an
+  inquiry via `inquiry_id`; those conversation reports are restricted to
+  thread participants (`can_report_inquiry`) and are the only path that
+  grants moderators access to a thread (`get_reported_inquiry_thread` RPC).
 - **clinic_claims + clinic_claim_documents** — ownership claims; documents
   live in the private `claim-documents` bucket
   (`<user_id>/<claim_id>/...`), readable only via short-lived signed URLs,
@@ -41,6 +44,18 @@ Migrations in `supabase/migrations/` are the source of truth. Highlights only
   merges are manual (`merge_clinics` RPC) and fully audited.
 - **admin_actions / audit_logs** — append-only moderation trail; audit
   triggers cover moderation-sensitive tables.
+
+## Inquiries
+
+- **inquiries** — caregiver → clinic threads with `inquiry_status` lifecycle
+  (open → replied → confirmed/declined/closed; confirmed requires
+  `confirmed_date`, declined/closed are terminal). Read access is
+  participants-only (caregiver + active clinic managers via
+  `is_active_clinic_manager`); all writes go through security-definer RPCs
+  (`create_inquiry`, `reply_inquiry`, `set_inquiry_status`) — there are no
+  insert/update policies or grants on the tables themselves.
+- **inquiry_messages** — the back-and-forth bodies, `sender_role`
+  caregiver/clinic, same participants-only read model.
 
 ## Users
 

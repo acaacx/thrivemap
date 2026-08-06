@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  CONVERSATION_REPORT_TYPES,
+  REPORT_TYPE_LABELS,
+} from "@/modules/reports/report-types";
 import { reportInquiryAction } from "../actions";
-import { REPORT_LABELS } from "./report-labels";
 
 // Native select on purpose: consistent with other native-driven forms in
 // this app, and simpler for Playwright than a Base UI listbox.
@@ -74,9 +77,9 @@ export function ReportInquiryDialog({
               value={reportType}
               onChange={(event) => setReportType(event.target.value)}
             >
-              {Object.entries(REPORT_LABELS).map(([value, label]) => (
+              {CONVERSATION_REPORT_TYPES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {REPORT_TYPE_LABELS[value]}
                 </option>
               ))}
             </select>

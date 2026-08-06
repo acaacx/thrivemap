@@ -60,6 +60,22 @@ describe("inquiry email templates", () => {
     });
     expect(reply.html).toContain("Yes, we have slots on…");
     expect(reply.text).toContain("/account/inquiries/def");
+    // Default (caregiver) audience: the conversation is WITH the clinic.
+    expect(reply.html).toContain("your conversation with");
+
+    const managerReply = emailTemplates.inquiryReply({
+      name: "Rep",
+      clinicName: "Sunrise Center",
+      subject: "Assessment for 4yo",
+      excerpt: "Does Tuesday work?",
+      path: "/clinic-portal/abc/inquiries/def",
+      audience: "clinic",
+    });
+    // Manager audience: they ARE the clinic — copy must not read as if
+    // they were conversing with themselves.
+    expect(managerReply.html).not.toContain("your conversation with");
+    expect(managerReply.html).toContain("A caregiver replied");
+    expect(managerReply.text).toContain("/clinic-portal/abc/inquiries/def");
 
     const status = emailTemplates.inquiryStatusChanged({
       name: "Maria",

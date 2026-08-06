@@ -7,19 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { submitClinicReport } from "@/modules/submissions/actions";
-
-const REPORT_OPTIONS = [
-  ["wrong_address", "Wrong address"],
-  ["wrong_phone", "Wrong phone number"],
-  ["incorrect_hours", "Incorrect opening hours"],
-  ["incorrect_services", "Incorrect services"],
-  ["permanently_closed", "Clinic permanently closed"],
-  ["temporarily_closed", "Clinic temporarily closed"],
-  ["duplicate_listing", "Duplicate listing"],
-  ["misleading_information", "Misleading information"],
-  ["inappropriate_content", "Inappropriate content"],
-  ["other", "Other"],
-] as const;
+import {
+  REPORT_TYPES,
+  REPORT_TYPE_LABELS,
+} from "@/modules/reports/report-types";
 
 export function ReportForm({
   clinicId,
@@ -88,7 +79,7 @@ export function ReportForm({
           What&apos;s incorrect? *
         </legend>
         <div className="grid gap-2 sm:grid-cols-2">
-          {REPORT_OPTIONS.map(([value, label]) => (
+          {REPORT_TYPES.map((value) => (
             <label
               key={value}
               className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm transition-colors ${
@@ -105,7 +96,7 @@ export function ReportForm({
                 onChange={() => setReportType(value)}
                 className="accent-[var(--primary)]"
               />
-              {label}
+              {REPORT_TYPE_LABELS[value]}
             </label>
           ))}
         </div>

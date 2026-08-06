@@ -54,6 +54,7 @@ export async function createInquiryAction(
     p_preferred_time_note: parsed.data.preferredTimeNote || undefined,
   });
   if (error || !inquiryId) {
+    console.error("createInquiryAction: create_inquiry failed", error);
     return { error: friendlyRpcError(error?.message) };
   }
 
@@ -90,6 +91,7 @@ export async function replyInquiryAction(
     p_body: parsed.data.body,
   });
   if (error || !messageId) {
+    console.error("replyInquiryAction: reply_inquiry failed", error);
     return { error: friendlyRpcError(error?.message) };
   }
 
@@ -123,7 +125,10 @@ export async function setInquiryStatusAction(
     // (`string`, not nullable), so `undefined` — meaning "omit" — is valid.
     p_confirmed_date: parsed.data.confirmedDate || undefined,
   });
-  if (error) return { error: friendlyRpcError(error.message) };
+  if (error) {
+    console.error("setInquiryStatusAction: set_inquiry_status failed", error);
+    return { error: friendlyRpcError(error.message) };
+  }
 
   // status_changed_at was just stamped by the RPC; read it back for the
   // idempotency key so retries of THIS transition dedupe.
@@ -180,18 +185,34 @@ export async function reportInquiryAction(
     report_type: parsed.data.reportType,
     details: parsed.data.details || null,
   });
-  if (error) return { error: "Could not submit the report. Please retry." };
+  if (error) {
+    console.error("reportInquiryAction: clinic_reports insert failed", error);
+    return { error: "Could not submit the report. Please retry." };
+  }
 
   return { message: "Report submitted. Our moderators will review it." };
 }
 
+/** Maps the raise messages in migration 18's RPCs to user-facing copy. */
 function friendlyRpcError(message: string | undefined): string {
   if (!message) return "Something went wrong. Please try again.";
+  if (message.includes("sign in")) {
+    return SIGN_IN_MESSAGE;
+  }
+  if (message.includes("clinic not found")) {
+    return "Clinic not found.";
+  }
+  if (message.includes("inquiry not found")) {
+    return "Conversation not found.";
+  }
   if (message.includes("not accepting inquiries")) {
     return "This clinic isn't accepting inquiries yet.";
   }
   if (message.includes("conversation is closed")) {
     return "This conversation is closed.";
+  }
+  if (message.includes("invalid status change")) {
+    return "That status change isn't allowed anymore.";
   }
   if (message.includes("needs a date")) {
     return "Pick a date before confirming.";

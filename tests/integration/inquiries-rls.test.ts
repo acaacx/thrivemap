@@ -261,6 +261,37 @@ describe("inquiries: reply + status lifecycle", () => {
     expect(data!.status).toBe("confirmed");
   });
 
+  it("declined is terminal: rejects replies and further transitions", async () => {
+    const caregiver = await signedInClient("caregiver@thrivemap.test");
+    const { data: declinedId } = await caregiver.rpc("create_inquiry", {
+      p_clinic_id: await managedClinicId(),
+      p_subject: "[itest] declined thread",
+      p_body: "to be declined",
+    });
+    const rep = await signedInClient("clinicrep@thrivemap.test");
+    const { error: declineErr } = await rep.rpc("set_inquiry_status", {
+      p_inquiry_id: declinedId!,
+      p_status: "declined",
+    });
+    expect(declineErr).toBeNull();
+
+    const { error: replyErr } = await rep.rpc("reply_inquiry", {
+      p_inquiry_id: declinedId!,
+      p_body: "too late",
+    });
+    expect(replyErr?.message).toMatch(/closed/i);
+    const { error: caregiverReplyErr } = await caregiver.rpc("reply_inquiry", {
+      p_inquiry_id: declinedId!,
+      p_body: "please reconsider",
+    });
+    expect(caregiverReplyErr?.message).toMatch(/closed/i);
+    const { error: reopenErr } = await rep.rpc("set_inquiry_status", {
+      p_inquiry_id: declinedId!,
+      p_status: "replied",
+    });
+    expect(reopenErr?.message).toMatch(/closed/i);
+  });
+
   it("closed thread rejects replies and further transitions", async () => {
     const rep = await signedInClient("clinicrep@thrivemap.test");
     await rep.rpc("set_inquiry_status", {
@@ -338,6 +369,30 @@ describe("inquiries: clinic_reports insert policy", () => {
       inquiry_id: inquiryId,
       report_type: "inappropriate_content",
       details: "[itest] moderator is not a participant",
+    });
+    expect(error).not.toBeNull();
+  });
+
+  it("participant cannot report their inquiry against a different clinic id", async () => {
+    const caregiver = await signedInClient("caregiver@thrivemap.test");
+    const { data: me } = await caregiver.auth.getUser();
+    const clinicId = await managedClinicId();
+    const otherClinicId = await unclaimedClinicId();
+    const { data: inquiryId } = await caregiver.rpc("create_inquiry", {
+      p_clinic_id: clinicId,
+      p_subject: "[itest] clinic-mismatch report",
+      p_body: "report should only bind to the thread's own clinic",
+    });
+
+    // can_report_inquiry requires clinic_id to be the inquiry's actual
+    // clinic — pointing the report at another clinic must fail even for a
+    // genuine participant.
+    const { error } = await caregiver.from("clinic_reports").insert({
+      clinic_id: otherClinicId,
+      inquiry_id: inquiryId,
+      reported_by: me.user!.id,
+      report_type: "inappropriate_content",
+      details: "[itest] wrong clinic id",
     });
     expect(error).not.toBeNull();
   });

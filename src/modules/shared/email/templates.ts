@@ -292,18 +292,31 @@ export const emailTemplates = {
     subject: string;
     excerpt: string;
     path: string;
+    /**
+     * Who receives the email. A caregiver converses *with* the clinic; a
+     * manager receives replies *about* their clinic — the copy differs.
+     */
+    audience?: "caregiver" | "clinic";
   }): EmailContent {
+    const intro =
+      params.audience === "clinic"
+        ? `A caregiver replied in an inquiry conversation for <strong>${params.clinicName}</strong>:`
+        : `There's a new reply in your conversation with <strong>${params.clinicName}</strong>:`;
+    const textIntro =
+      params.audience === "clinic"
+        ? `New reply about "${params.subject}" in an inquiry conversation for ${params.clinicName}:`
+        : `New reply about "${params.subject}" from your conversation with ${params.clinicName}:`;
     return {
       subject: `New reply about "${params.subject}"`,
       html: layout(
         "New reply",
         paragraphs(
           `Hi ${params.name},`,
-          `There's a new reply in your conversation with <strong>${params.clinicName}</strong>:`,
+          intro,
           `<em>${escapeHtml(params.excerpt)}</em>`,
         ) + button(url(params.path), "Read and reply"),
       ),
-      text: `Hi ${params.name},\n\nNew reply about "${params.subject}" from your conversation with ${params.clinicName}:\n${params.excerpt}\n\nRead and reply: ${url(params.path)}`,
+      text: `Hi ${params.name},\n\n${textIntro}\n${params.excerpt}\n\nRead and reply: ${url(params.path)}`,
     };
   },
 

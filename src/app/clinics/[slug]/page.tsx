@@ -36,6 +36,13 @@ import { ClinicProfileMap } from "./profile-map";
 
 export const revalidate = 300;
 
+// No build-time prerender (thousands of clinics, and CI builds without a
+// reachable database) — but declaring generateStaticParams is what opts a
+// dynamic segment into on-demand ISR instead of per-request rendering.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }

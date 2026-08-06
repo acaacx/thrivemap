@@ -3,19 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-const REPORT_LABELS: Record<string, string> = {
-  wrong_address: "Wrong address",
-  wrong_phone: "Wrong phone number",
-  incorrect_hours: "Incorrect opening hours",
-  incorrect_services: "Incorrect services",
-  permanently_closed: "Permanently closed",
-  temporarily_closed: "Temporarily closed",
-  duplicate_listing: "Duplicate listing",
-  misleading_information: "Misleading information",
-  inappropriate_content: "Inappropriate content",
-  other: "Other",
-};
+import { REPORT_TYPE_LABELS } from "@/modules/reports/report-types";
 
 export default async function ReportsPage() {
   await requireUser();
@@ -41,7 +29,7 @@ export default async function ReportsPage() {
             <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
               <div>
                 <p className="font-medium">
-                  {REPORT_LABELS[report.report_type] ?? report.report_type}
+                  {REPORT_TYPE_LABELS[report.report_type] ?? report.report_type}
                   {report.clinics && (
                     <>
                       {" — "}

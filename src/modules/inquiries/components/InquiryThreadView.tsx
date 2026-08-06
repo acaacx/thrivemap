@@ -30,13 +30,22 @@ function formatMessageDate(iso: string): string {
   });
 }
 
+// Date-only columns ("2026-08-15") — parse as UTC so the calendar day never
+// shifts with the viewer's timezone.
+function formatDateOnly(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-PH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function InquiryThreadView({
   thread,
-  viewer,
   children,
 }: {
   thread: InquiryThread;
-  viewer: "caregiver" | "clinic";
   children?: React.ReactNode;
 }) {
   const router = useRouter();
@@ -66,7 +75,7 @@ export function InquiryThreadView({
   }
 
   return (
-    <div className="space-y-4" data-viewer={viewer}>
+    <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border bg-card p-4">
         <div className="min-w-0 space-y-1.5 text-sm">
           <div className="flex flex-wrap items-center gap-2">
@@ -77,13 +86,16 @@ export function InquiryThreadView({
           </div>
           {thread.confirmedDate && (
             <p className="text-muted-foreground">
-              Confirmed for {thread.confirmedDate}
+              Confirmed for {formatDateOnly(thread.confirmedDate)}
             </p>
           )}
           {(thread.preferredDate || thread.preferredTimeNote) && (
             <p className="text-muted-foreground">
               Preferred:{" "}
-              {[thread.preferredDate, thread.preferredTimeNote]
+              {[
+                thread.preferredDate && formatDateOnly(thread.preferredDate),
+                thread.preferredTimeNote,
+              ]
                 .filter(Boolean)
                 .join(" — ")}
             </p>

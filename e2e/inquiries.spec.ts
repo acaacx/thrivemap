@@ -267,6 +267,37 @@ test.describe("inquiries", () => {
     await expect(page.getByLabel("Your reply")).toHaveCount(0);
   });
 
+  test("manager cannot see the caregiver-side view of a thread", async ({
+    page,
+  }) => {
+    const clinic = await managedClinic();
+    const caregiverId = await caregiverUserId();
+    const db = adminDb();
+
+    const { data: inquiry, error: inquiryError } = await db
+      .from("inquiries")
+      .insert({
+        clinic_id: clinic.id,
+        caregiver_id: caregiverId,
+        subject: `${SUBJECT} (ownership)`,
+        status: "open",
+      })
+      .select("id")
+      .single();
+    if (inquiryError || !inquiry) {
+      throw new Error(`seed insert failed: ${inquiryError?.message}`);
+    }
+
+    // clinicrep@ is an RLS participant on this thread (manages the clinic),
+    // but the /account surfaces are caregiver-only — the app-level
+    // ownership guard, not RLS, is what's under test here.
+    await signIn(page, "clinicrep@thrivemap.test");
+    await page.goto("/account/inquiries");
+    await expect(page.getByText(`${SUBJECT} (ownership)`)).toHaveCount(0);
+    await page.goto(`/account/inquiries/${inquiry.id}`);
+    await expect(page.getByText(/could not be found/i)).toBeVisible();
+  });
+
   test("unclaimed clinic shows the claim hint", async ({ page }) => {
     const slug = await unclaimedClinicSlug();
     await signIn(page, "caregiver@thrivemap.test");

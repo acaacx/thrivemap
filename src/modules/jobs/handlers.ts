@@ -342,6 +342,7 @@ async function runInquiryNotification(payload: JobPayload): Promise<void> {
           subject: inquiry.subject,
           excerpt,
           path: portalPath,
+          audience: "clinic",
         }),
       );
     } else {

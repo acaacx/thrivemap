@@ -22,5 +22,5 @@ export default async function InquiryThreadPage({
   // (or guesses the URL) must not see it.
   if (!thread || thread.caregiverId !== user.id) notFound();
 
-  return <InquiryThreadView thread={thread} viewer="caregiver" />;
+  return <InquiryThreadView thread={thread} />;
 }

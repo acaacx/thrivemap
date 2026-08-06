@@ -21,7 +21,7 @@ export default async function PortalInquiryThreadPage({
   if (!thread || thread.clinicId !== clinicId) notFound();
 
   return (
-    <InquiryThreadView thread={thread} viewer="clinic">
+    <InquiryThreadView thread={thread}>
       <InquiryStatusControls
         inquiryId={thread.id}
         status={thread.status}

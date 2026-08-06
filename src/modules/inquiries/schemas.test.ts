@@ -171,4 +171,14 @@ describe("replyInquirySchema / reportInquirySchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("rejects clinic-listing report types for conversations", () => {
+    expect(
+      reportInquirySchema.safeParse({
+        inquiryId: uuid,
+        reportType: "wrong_address",
+        details: "",
+      }).success,
+    ).toBe(false);
+  });
 });

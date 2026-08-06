@@ -114,11 +114,14 @@ export async function clinicAcceptsInquiries(
 ): Promise<boolean> {
   return cachedClinicData(`inquiries-accepts|${clinicId}`, 300, async () => {
     const supabase = createSupabaseAdminClient();
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from("clinic_managers")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId)
       .is("revoked_at", null);
+    if (error) {
+      console.error("clinicAcceptsInquiries: manager count failed", error);
+    }
     return (count ?? 0) > 0;
   });
 }
@@ -135,10 +138,11 @@ export async function listMyInquiries(): Promise<InquiryListItem[]> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("inquiries")
     .select(THREAD_SELECT)
     .eq("caregiver_id", user.id);
+  if (error) console.error("listMyInquiries: select failed", error);
   const items = ((data ?? []) as unknown as ThreadRow[]).map((row) => {
     const thread = shapeThread(row);
     const last = thread.messages[thread.messages.length - 1];
@@ -167,7 +171,8 @@ export async function listClinicInquiries(
     .select(THREAD_SELECT)
     .eq("clinic_id", clinicId);
   if (statusFilter) query = query.eq("status", statusFilter);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) console.error("listClinicInquiries: select failed", error);
   const items = ((data ?? []) as unknown as ThreadRow[]).map((row) => {
     const thread = shapeThread(row);
     const last = thread.messages[thread.messages.length - 1];
@@ -194,11 +199,12 @@ export async function getInquiryThread(
   inquiryId: string,
 ): Promise<InquiryThread | null> {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("inquiries")
     .select(THREAD_SELECT)
     .eq("id", inquiryId)
     .maybeSingle();
+  if (error) console.error("getInquiryThread: select failed", error);
   if (!data) return null;
   return shapeThread(data as unknown as ThreadRow);
 }
