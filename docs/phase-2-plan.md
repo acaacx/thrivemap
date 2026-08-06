@@ -21,6 +21,11 @@ clinics; same lifecycle/verification pattern as listings. Search documents
 gain a weighted field. No schema conflicts — clinics stay the aggregate
 root.
 
+Shipped 2026-08-07: per-clinic care team managed from the clinic portal
+(no shared therapist identity or standalone pages yet). Spec:
+[`docs/superpowers/specs/2026-08-07-therapist-profiles-design.md`](superpowers/specs/2026-08-07-therapist-profiles-design.md);
+plan: [`docs/superpowers/plans/2026-08-07-therapist-profiles.md`](superpowers/plans/2026-08-07-therapist-profiles.md).
+
 ### 3. Booking / inquiries
 
 Highest-risk addition (write volume, notifications, no-shows). Start with

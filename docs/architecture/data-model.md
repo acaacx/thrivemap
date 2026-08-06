@@ -23,6 +23,14 @@ Migrations in `supabase/migrations/` are the source of truth. Highlights only
   safety net.
 - **ph_locations** — provinces/cities with centroids; powers dev geocoding,
   autocomplete, and location landing pages.
+- **clinic_therapists** — per-clinic care team rows (no shared therapist
+  identity or standalone pages): `full_name`, `credentials`, `profession`,
+  `specialties` (text array, max 10), `bio`, `photo_path`, `display_order`.
+  Owned by the clinic aggregate; RLS is public read
+  (`clinic_readable_or_managed`) / manager-or-admin manage
+  (`clinic_managed_or_admin`), same shape as the other clinic satellites.
+  Contributes to the search document: therapist names join weight B
+  (with locations), profession + specialties join weight C (with services).
 
 ## Contribution & moderation
 
