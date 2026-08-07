@@ -48,10 +48,11 @@ time, communication) instead of free text.
 
 ### 5. Multilingual (Filipino first)
 
-`preferred_language` already exists on user_preferences. Next.js i18n
-routing + translated static content first; translated clinic descriptions
-are a data problem (per-language columns on a satellite table), search
-needs a `filipino` text config.
+Deferred to v2.0 (decision 2026-08-07) — out of Phase 2 scope. Notes for
+when it returns: `preferred_language` already exists on user_preferences.
+Next.js i18n routing + translated static content first; translated clinic
+descriptions are a data problem (per-language columns on a satellite
+table), search needs a `filipino` text config.
 
 ### 6. Mobile/PWA
 
