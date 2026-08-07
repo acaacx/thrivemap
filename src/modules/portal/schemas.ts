@@ -31,7 +31,7 @@ export type PortalProfileInput = z.infer<typeof portalProfileSchema>;
 
 export const portalServicesSchema = z.object({
   service_ids: z
-    .array(z.string().uuid())
+    .array(z.uuid())
     .min(1, "Choose at least one service."),
 });
 
@@ -61,7 +61,7 @@ export const portalHoursSchema = z.object({
 export type PortalHoursInput = z.infer<typeof portalHoursSchema>;
 
 export const portalImageSchema = z.object({
-  clinic_id: z.string().uuid(),
+  clinic_id: z.uuid(),
   storage_path: z.string().min(1).max(500),
   alt_text: z.string().trim().max(300),
   kind: z.enum(["gallery", "logo", "cover"]),

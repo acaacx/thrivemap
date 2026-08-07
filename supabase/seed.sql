@@ -174,6 +174,39 @@ select c.id, '00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-00
 from public.clinics c where c.slug = 'little-steps-developmental-center'
 on conflict do nothing;
 
+-- Care teams for a few public demo clinics. Deliberately NOT on the
+-- rep-managed clinic (little-steps): e2e/therapists.spec.ts needs that
+-- roster to start empty (it asserts the Care team section disappears once
+-- its own rows are deleted), and the portal add-flow is the dogfood there.
+insert into public.clinic_therapists
+  (clinic_id, full_name, credentials, profession, specialties, bio, display_order)
+select c.id, t.full_name, t.credentials, t.profession, t.specialties, t.bio, t.display_order
+from public.clinics c
+join (values
+  ('rainbow-bridge-therapy-center', 'Maria Santos (Fictional)', 'OTRP', 'Occupational Therapist',
+   array['Sensory integration', 'Fine motor skills'],
+   'Fictional demo therapist. Maria has worked with autistic children for over a decade, focusing on sensory-friendly, play-based sessions that follow each child''s interests. She partners closely with caregivers on home routines, school transitions, and feeding, and mentors junior therapists in neurodiversity-affirming practice. Long enough on purpose: this bio demos the public page''s line-clamp and expand toggle.', 0),
+  ('rainbow-bridge-therapy-center', 'Jose Ramirez (Fictional)', 'SLP', 'Speech-Language Pathologist',
+   array['AAC', 'Early language'],
+   'Fictional demo therapist. Jose supports early communicators and families exploring augmentative and alternative communication.', 1),
+  ('rainbow-bridge-therapy-center', 'Ana Dela Cruz (Fictional)', null, 'Behavior Therapist',
+   array['Naturalistic teaching'],
+   null, 2),
+  ('kaleidoscope-child-development-clinic', 'Liza Manalo (Fictional)', 'PTRP', 'Physical Therapist',
+   array['Gross motor development'],
+   'Fictional demo therapist. Liza works on strength, balance, and coordination through movement games.', 0),
+  ('kaleidoscope-child-development-clinic', 'Ramon Aquino (Fictional)', null, 'Developmental Pediatrician',
+   array[]::text[],
+   null, 1),
+  ('cebu-children-first-center', 'Grace Uy (Fictional)', 'OTRP', 'Occupational Therapist',
+   array['Self-care skills', 'School readiness'],
+   'Fictional demo therapist. Grace partners with schools and families across Cebu on daily-living and classroom skills.', 0),
+  ('cebu-children-first-center', 'Paolo Lim (Fictional)', 'SLP', 'Speech-Language Pathologist',
+   array['Bilingual therapy'],
+   null, 1)
+) as t(slug, full_name, credentials, profession, specialties, bio, display_order)
+  on t.slug = c.slug;
+
 -- A favorite, a report, and a submission for the demo caregiver
 insert into public.favorites (user_id, clinic_id)
 select '00000000-0000-0000-0000-000000000003', id from public.clinics

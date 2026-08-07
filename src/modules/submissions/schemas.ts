@@ -55,7 +55,7 @@ export const suggestClinicSchema = z.object({
 export type SuggestClinicInput = z.infer<typeof suggestClinicSchema>;
 
 export const reportClinicSchema = z.object({
-  clinic_id: z.string().uuid(),
+  clinic_id: z.uuid(),
   report_type: z.enum([
     "wrong_address",
     "wrong_phone",
@@ -72,7 +72,7 @@ export const reportClinicSchema = z.object({
 });
 
 export const changeRequestSchema = z.object({
-  clinic_id: z.string().uuid(),
+  clinic_id: z.uuid(),
   message: z
     .string()
     .trim()

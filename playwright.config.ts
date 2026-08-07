@@ -34,7 +34,8 @@ export default defineConfig({
   // dev server's request log within a 15s expect() timeout. Capping workers
   // below the Docker VM's vCPU count trades wall-clock time for headroom
   // against that shared bottleneck.
-  workers: process.env.CI ? 1 : 2,
+  // PW_WORKERS overrides the local cap for machines with a bigger Docker VM.
+  workers: process.env.CI ? 1 : Number(process.env.PW_WORKERS ?? 2),
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",

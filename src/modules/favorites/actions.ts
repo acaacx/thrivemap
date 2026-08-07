@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/modules/auth/server";
 
-const clinicIdSchema = z.string().uuid();
+const clinicIdSchema = z.uuid();
 
 export async function saveFavorite(
   clinicId: string,

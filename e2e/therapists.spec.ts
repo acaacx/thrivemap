@@ -111,6 +111,7 @@ test.describe("therapist profiles", () => {
     await page.getByLabel(/Specialties/).fill("Sensory integration");
     await page.getByRole("button", { name: "Add team member" }).click();
     await expect(page.getByText(NAME_A)).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Team member added.");
 
     await page.getByRole("button", { name: "Add a team member" }).click();
     await page.getByLabel("Full name").fill(NAME_B);
@@ -125,6 +126,7 @@ test.describe("therapist profiles", () => {
     await expect(
       page.getByRole("button", { name: `Edit ${NAME_A}` }),
     ).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("Changes published.");
 
     // Reorder: move B up, expect B listed before A.
     await page.getByRole("button", { name: `Move ${NAME_B} up` }).click();

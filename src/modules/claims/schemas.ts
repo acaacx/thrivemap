@@ -57,7 +57,7 @@ export const CLAIM_DOCUMENT_KINDS = [
 export type ClaimDocumentKind = (typeof CLAIM_DOCUMENT_KINDS)[number]["value"];
 
 export const claimDocumentSchema = z.object({
-  claim_id: z.string().uuid(),
+  claim_id: z.uuid(),
   storage_path: z.string().min(1).max(500),
   kind: z.enum([
     "proof_of_affiliation",

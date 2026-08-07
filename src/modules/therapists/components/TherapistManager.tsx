@@ -49,7 +49,10 @@ export function TherapistManager({
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
   const supabase = createSupabaseBrowserClient();
 
   const ordered = [...therapists].sort(
@@ -63,13 +66,20 @@ export function TherapistManager({
       .publicUrl;
   }
 
-  async function withBusy(id: string, fn: () => Promise<{ error?: string }>) {
-    setError(null);
+  async function withBusy(
+    id: string,
+    fn: () => Promise<{ error?: string; message?: string }>,
+  ) {
+    setFeedback(null);
     setBusyId(id);
     try {
       const result = await fn();
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) {
+        setFeedback({ kind: "error", text: result.error });
+      } else {
+        setFeedback({ kind: "ok", text: result.message ?? "Saved." });
+        router.refresh();
+      }
     } finally {
       setBusyId(null);
     }
@@ -82,13 +92,13 @@ export function TherapistManager({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    setError(null);
+    setFeedback(null);
     if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
-      setError("Photos must be 5 MB or smaller.");
+      setFeedback({ kind: "error", text: "Photos must be 5 MB or smaller." });
       return;
     }
     if (!IMAGE_UPLOAD_MIME.includes(file.type)) {
-      setError("Upload a JPG, PNG, or WebP image.");
+      setFeedback({ kind: "error", text: "Upload a JPG, PNG, or WebP image." });
       return;
     }
     setBusyId(therapistId);
@@ -100,15 +110,19 @@ export function TherapistManager({
         .upload(path, file, { contentType: file.type });
       if (uploadError) {
         console.error("therapist photo upload failed:", uploadError.message);
-        setError("Upload failed. Please try again.");
+        setFeedback({ kind: "error", text: "Upload failed. Please try again." });
         return;
       }
       const result = await setTherapistPhoto(clinicId, {
         therapist_id: therapistId,
         storage_path: path,
       });
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) {
+        setFeedback({ kind: "error", text: result.error });
+      } else {
+        setFeedback({ kind: "ok", text: result.message ?? "Photo updated." });
+        router.refresh();
+      }
     } finally {
       setBusyId(null);
     }
@@ -116,12 +130,16 @@ export function TherapistManager({
 
   return (
     <div className="space-y-5">
-      {error && (
+      {feedback && (
         <p
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+          role={feedback.kind === "error" ? "alert" : "status"}
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            feedback.kind === "error"
+              ? "border-destructive/40 bg-destructive/10"
+              : "border-[var(--verified)]/40 bg-[var(--verified)]/10"
+          }`}
         >
-          {error}
+          {feedback.text}
         </p>
       )}
 
@@ -134,6 +152,10 @@ export function TherapistManager({
               const result = await createTherapist(clinicId, values);
               if (!result.error) {
                 setAdding(false);
+                setFeedback({
+                  kind: "ok",
+                  text: result.message ?? "Team member added.",
+                });
                 router.refresh();
               }
               return result;
@@ -172,6 +194,10 @@ export function TherapistManager({
                     );
                     if (!result.error) {
                       setEditingId(null);
+                      setFeedback({
+                        kind: "ok",
+                        text: result.message ?? "Changes published.",
+                      });
                       router.refresh();
                     }
                     return result;

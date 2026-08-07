@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { publicStorageUrl } from "@/lib/storage";
 import { initials } from "../lib";
+import { TherapistBio } from "./TherapistBio";
 
 interface Therapist {
   id: string;
@@ -84,9 +85,10 @@ export function CareTeamSection({ therapists }: { therapists: Therapist[] }) {
                   </p>
                 )}
                 {therapist.bio && (
-                  <p className="pt-1 text-sm leading-relaxed text-foreground/90">
-                    {therapist.bio}
-                  </p>
+                  <TherapistBio
+                    bio={therapist.bio}
+                    name={therapist.full_name}
+                  />
                 )}
               </div>
             </li>

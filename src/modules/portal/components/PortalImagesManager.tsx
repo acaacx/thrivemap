@@ -36,7 +36,14 @@ export function PortalImagesManager({
   const [kind, setKind] = useState<"gallery" | "logo" | "cover">("gallery");
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  function fail(text: string) {
+    setFeedback({ kind: "error", text });
+  }
 
   const supabase = createSupabaseBrowserClient();
 
@@ -49,17 +56,17 @@ export function PortalImagesManager({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    setError(null);
+    setFeedback(null);
     if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
-      setError("Images must be 5 MB or smaller.");
+      fail("Images must be 5 MB or smaller.");
       return;
     }
     if (!IMAGE_UPLOAD_MIME.includes(file.type)) {
-      setError("Upload a JPG, PNG, or WebP image.");
+      fail("Upload a JPG, PNG, or WebP image.");
       return;
     }
     if (!altText.trim()) {
-      setError(
+      fail(
         "Describe the image first (alt text) — it helps screen-reader users.",
       );
       return;
@@ -73,7 +80,7 @@ export function PortalImagesManager({
         .upload(path, file, { contentType: file.type });
       if (uploadError) {
         console.error("clinic image upload failed:", uploadError.message);
-        setError("Upload failed. Please try again.");
+        fail("Upload failed. Please try again.");
         return;
       }
       const result = await recordClinicImage({
@@ -83,10 +90,11 @@ export function PortalImagesManager({
         kind,
       });
       if (result.error) {
-        setError(result.error);
+        fail(result.error);
         return;
       }
       setAltText("");
+      setFeedback({ kind: "ok", text: result.message ?? "Image added." });
       router.refresh();
     } finally {
       setUploading(false);
@@ -94,12 +102,16 @@ export function PortalImagesManager({
   }
 
   async function onDelete(imageId: string) {
-    setError(null);
+    setFeedback(null);
     setRemoving(imageId);
     try {
       const result = await deleteClinicImage(clinicId, imageId);
-      if (result.error) setError(result.error);
-      else router.refresh();
+      if (result.error) {
+        fail(result.error);
+      } else {
+        setFeedback({ kind: "ok", text: result.message ?? "Image removed." });
+        router.refresh();
+      }
     } finally {
       setRemoving(null);
     }
@@ -107,12 +119,16 @@ export function PortalImagesManager({
 
   return (
     <div className="space-y-5">
-      {error && (
+      {feedback && (
         <p
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+          role={feedback.kind === "error" ? "alert" : "status"}
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            feedback.kind === "error"
+              ? "border-destructive/40 bg-destructive/10"
+              : "border-[var(--verified)]/40 bg-[var(--verified)]/10"
+          }`}
         >
-          {error}
+          {feedback.text}
         </p>
       )}
 

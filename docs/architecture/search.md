@@ -51,6 +51,8 @@ decimals (~110 m) so nearby searches share entries. Open-now searches use a
 
 ## Freshness
 
-Triggers on clinics/locations/services refresh `clinic_search_documents`
-inline; the nightly `search_document_refresh` job rebuilds everything as a
-safety net against drift.
+Triggers on clinics/locations/services/therapists refresh
+`clinic_search_documents` inline (the therapist trigger only fires on the
+columns that feed the vector: name, profession, specialties); the nightly
+`search_document_refresh` job rebuilds everything as a safety net against
+drift.

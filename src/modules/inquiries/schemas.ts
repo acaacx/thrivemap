@@ -47,7 +47,7 @@ const bodyField = z
   .max(4000, "Messages are limited to 4000 characters");
 
 export const createInquirySchema = z.object({
-  clinicId: z.string().uuid(),
+  clinicId: z.uuid(),
   subject: z
     .string()
     .trim()
@@ -63,13 +63,13 @@ export const createInquirySchema = z.object({
 });
 
 export const replyInquirySchema = z.object({
-  inquiryId: z.string().uuid(),
+  inquiryId: z.uuid(),
   body: bodyField,
 });
 
 export const setInquiryStatusSchema = z
   .object({
-    inquiryId: z.string().uuid(),
+    inquiryId: z.uuid(),
     status: z.enum(["replied", "confirmed", "declined", "closed"]),
     confirmedDate: optionalIsoDate,
   })
@@ -84,7 +84,7 @@ export const setInquiryStatusSchema = z
   });
 
 export const reportInquirySchema = z.object({
-  inquiryId: z.string().uuid(),
+  inquiryId: z.uuid(),
   reportType: z.enum(CONVERSATION_REPORT_TYPES),
   details: z
     .string()

@@ -32,11 +32,11 @@ export const therapistInputSchema = z.object({
 export type TherapistInput = z.infer<typeof therapistInputSchema>;
 
 export const moveTherapistSchema = z.object({
-  therapist_id: z.string().uuid(),
+  therapist_id: z.uuid(),
   direction: z.enum(["up", "down"]),
 });
 
 export const therapistPhotoSchema = z.object({
-  therapist_id: z.string().uuid(),
+  therapist_id: z.uuid(),
   storage_path: z.string().min(1).max(400),
 });
