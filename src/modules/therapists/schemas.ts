@@ -19,7 +19,8 @@ export const therapistInputSchema = z.object({
   profession: trimmed(1, 80, "Profession"),
   specialties: z
     .array(trimmed(1, 60, "Specialty"))
-    .max(10, "List up to 10 specialties."),
+    .max(10, "List up to 10 specialties.")
+    .transform((v) => [...new Set(v)]),
   bio: z
     .string()
     .trim()

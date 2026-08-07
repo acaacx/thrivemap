@@ -48,6 +48,17 @@ describe("therapistInputSchema", () => {
     ).toBe(false);
   });
 
+  it("dedupes repeated specialties", () => {
+    const parsed = therapistInputSchema.parse({
+      ...valid,
+      specialties: ["Sensory integration", "Sensory integration", "Fine motor skills"],
+    });
+    expect(parsed.specialties).toEqual([
+      "Sensory integration",
+      "Fine motor skills",
+    ]);
+  });
+
   it("rejects an empty specialty chip", () => {
     expect(
       therapistInputSchema.safeParse({ ...valid, specialties: ["  "] }).success,

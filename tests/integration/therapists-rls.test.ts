@@ -146,6 +146,30 @@ describe("clinic_therapists RLS", () => {
     });
     expect(error).not.toBeNull();
   });
+
+  it("admin can insert and delete rows for a clinic they don't manage", async () => {
+    const rep = await signedInClient("clinicrep@thrivemap.test");
+    const clinicId = await managedClinicId(rep);
+    const admin = await signedInClient("admin@thrivemap.test");
+
+    const { data: inserted, error: insertError } = await admin
+      .from("clinic_therapists")
+      .insert({
+        clinic_id: clinicId,
+        full_name: `${MARKER} Admin`,
+        profession: "Physical Therapist",
+        specialties: ["Gross motor skills"],
+      })
+      .select("id")
+      .single();
+    expect(insertError).toBeNull();
+
+    const { error: deleteError } = await admin
+      .from("clinic_therapists")
+      .delete()
+      .eq("id", inserted!.id);
+    expect(deleteError).toBeNull();
+  });
 });
 
 describe("clinic_therapists search integration", () => {

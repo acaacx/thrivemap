@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ export function TherapistForm({
   onSubmit,
   onCancel,
 }: TherapistFormProps) {
+  const uid = useId();
   const [serverError, setServerError] = useState<string | null>(null);
   const [specialtiesText, setSpecialtiesText] = useState(
     (initial?.specialties ?? []).join(", "),
@@ -74,8 +75,8 @@ export function TherapistForm({
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="therapist-name">Full name</Label>
-          <Input id="therapist-name" {...form.register("full_name")} />
+          <Label htmlFor={`${uid}-name`}>Full name</Label>
+          <Input id={`${uid}-name`} {...form.register("full_name")} />
           {form.formState.errors.full_name && (
             <p className="text-sm text-destructive">
               {form.formState.errors.full_name.message}
@@ -83,19 +84,19 @@ export function TherapistForm({
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="therapist-credentials">
+          <Label htmlFor={`${uid}-credentials`}>
             Credentials (optional, e.g. OTRP)
           </Label>
           <Input
-            id="therapist-credentials"
+            id={`${uid}-credentials`}
             {...form.register("credentials")}
           />
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="therapist-profession">Profession</Label>
+        <Label htmlFor={`${uid}-profession`}>Profession</Label>
         <Input
-          id="therapist-profession"
+          id={`${uid}-profession`}
           placeholder="e.g. Occupational Therapist"
           {...form.register("profession")}
         />
@@ -106,19 +107,19 @@ export function TherapistForm({
         )}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="therapist-specialties">
+        <Label htmlFor={`${uid}-specialties`}>
           Specialties (comma-separated, up to 10)
         </Label>
         <Input
-          id="therapist-specialties"
+          id={`${uid}-specialties`}
           value={specialtiesText}
           onChange={(e) => setSpecialtiesText(e.target.value)}
           placeholder="e.g. Sensory integration, Fine motor skills"
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="therapist-bio">Short bio (optional)</Label>
-        <Textarea id="therapist-bio" rows={4} {...form.register("bio")} />
+        <Label htmlFor={`${uid}-bio`}>Short bio (optional)</Label>
+        <Textarea id={`${uid}-bio`} rows={4} {...form.register("bio")} />
         {form.formState.errors.bio && (
           <p className="text-sm text-destructive">
             {form.formState.errors.bio.message}

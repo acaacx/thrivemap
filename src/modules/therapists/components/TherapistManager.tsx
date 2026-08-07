@@ -20,6 +20,7 @@ import {
   setTherapistPhoto,
   updateTherapist,
 } from "../actions";
+import { initials } from "../lib";
 import type { TherapistInput } from "../schemas";
 import { TherapistForm } from "./TherapistForm";
 
@@ -190,11 +191,7 @@ export function TherapistManager({
                       />
                     ) : (
                       <span aria-hidden className="text-sm font-medium">
-                        {therapist.full_name
-                          .split(/\s+/)
-                          .slice(0, 2)
-                          .map((part) => part[0]?.toUpperCase() ?? "")
-                          .join("")}
+                        {initials(therapist.full_name)}
                       </span>
                     )}
                   </div>
@@ -218,7 +215,7 @@ export function TherapistManager({
                       variant="ghost"
                       size="sm"
                       aria-label={`Move ${therapist.full_name} up`}
-                      disabled={index === 0 || busyId === therapist.id}
+                      disabled={index === 0 || busyId !== null}
                       onClick={() =>
                         withBusy(therapist.id, () =>
                           moveTherapist(clinicId, {
@@ -235,7 +232,7 @@ export function TherapistManager({
                       size="sm"
                       aria-label={`Move ${therapist.full_name} down`}
                       disabled={
-                        index === ordered.length - 1 || busyId === therapist.id
+                        index === ordered.length - 1 || busyId !== null
                       }
                       onClick={() =>
                         withBusy(therapist.id, () =>
@@ -252,6 +249,7 @@ export function TherapistManager({
                       variant="ghost"
                       size="sm"
                       aria-label={`Edit ${therapist.full_name}`}
+                      disabled={busyId !== null}
                       onClick={() => setEditingId(therapist.id)}
                     >
                       <Pencil aria-hidden className="h-4 w-4" />
@@ -261,7 +259,7 @@ export function TherapistManager({
                       size="sm"
                       className="text-destructive"
                       aria-label={`Remove ${therapist.full_name}`}
-                      disabled={busyId === therapist.id}
+                      disabled={busyId !== null}
                       onClick={() =>
                         withBusy(therapist.id, () =>
                           deleteTherapist(clinicId, therapist.id),
@@ -287,14 +285,14 @@ export function TherapistManager({
                       className="max-w-64"
                       type="file"
                       accept={IMAGE_UPLOAD_ACCEPT}
-                      disabled={busyId === therapist.id}
+                      disabled={busyId !== null}
                       onChange={(e) => onUploadPhoto(therapist.id, e)}
                     />
                     {therapist.photo_path && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={busyId === therapist.id}
+                        disabled={busyId !== null}
                         onClick={() =>
                           withBusy(therapist.id, () =>
                             removeTherapistPhoto(clinicId, therapist.id),

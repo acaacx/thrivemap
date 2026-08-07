@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { publicStorageUrl } from "@/lib/storage";
+import { initials } from "../lib";
 
 interface Therapist {
   id: string;
@@ -14,19 +16,9 @@ interface Therapist {
   created_at: string;
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
-
 /** Public storage URL for a clinic-images object (public bucket). */
 function photoUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  return `${base}/storage/v1/object/public/clinic-images/${path}`;
+  return publicStorageUrl("clinic-images", path);
 }
 
 export function CareTeamSection({ therapists }: { therapists: Therapist[] }) {

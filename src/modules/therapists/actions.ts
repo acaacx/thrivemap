@@ -155,7 +155,16 @@ export async function deleteTherapist(
     return { error: "Could not remove the team member. Please try again." };
   }
   if (row.photo_path) {
-    await supabase.storage.from("clinic-images").remove([row.photo_path]);
+    const { error: removeError } = await supabase.storage
+      .from("clinic-images")
+      .remove([row.photo_path]);
+    if (removeError) {
+      console.error(
+        "deleteTherapist: orphaned object",
+        row.photo_path,
+        removeError.message,
+      );
+    }
   }
   revalidateClinic(clinic.slug, clinicId);
   return { message: "Team member removed." };
@@ -250,7 +259,16 @@ export async function setTherapistPhoto(
     return { error: "Could not save the photo. Please try again." };
   }
   if (row.photo_path && row.photo_path !== parsed.data.storage_path) {
-    await supabase.storage.from("clinic-images").remove([row.photo_path]);
+    const { error: removeError } = await supabase.storage
+      .from("clinic-images")
+      .remove([row.photo_path]);
+    if (removeError) {
+      console.error(
+        "setTherapistPhoto: orphaned object",
+        row.photo_path,
+        removeError.message,
+      );
+    }
   }
   revalidateClinic(clinic.slug, clinicId);
   return { message: "Photo updated." };
@@ -286,7 +304,16 @@ export async function removeTherapistPhoto(
     console.error("removeTherapistPhoto failed:", error.message);
     return { error: "Could not remove the photo. Please try again." };
   }
-  await supabase.storage.from("clinic-images").remove([row.photo_path]);
+  const { error: removeError } = await supabase.storage
+    .from("clinic-images")
+    .remove([row.photo_path]);
+  if (removeError) {
+    console.error(
+      "removeTherapistPhoto: orphaned object",
+      row.photo_path,
+      removeError.message,
+    );
+  }
   revalidateClinic(clinic.slug, clinicId);
   return { message: "Photo removed." };
 }
