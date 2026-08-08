@@ -33,6 +33,7 @@ import { VerificationBadge } from "@/modules/clinics/components/VerificationBadg
 import { InquiryCta } from "@/modules/inquiries/components/InquiryCta";
 import { clinicAcceptsInquiries } from "@/modules/inquiries/queries";
 import { CareTeamSection } from "@/modules/therapists/components/CareTeamSection";
+import { RatingsSection } from "@/modules/ratings/components/RatingsSection";
 import { ClinicProfileMap } from "./profile-map";
 
 export const revalidate = 300;
@@ -375,6 +376,8 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               </Card>
 
               <CareTeamSection therapists={clinic.clinic_therapists} />
+
+              <RatingsSection clinicId={clinic.id} slug={clinic.slug} />
 
               {clinic.clinic_age_groups.length > 0 && (
                 <Card>
