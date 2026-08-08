@@ -1,14 +1,14 @@
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/modules/auth/server";
-import { getRatingContext } from "../queries";
-import { RatingForm } from "./RatingForm";
+import { getRatingStats } from "../queries";
 import { RatingSummary } from "./RatingSummary";
+import { RatingsViewerPanel } from "./RatingsViewerPanel";
 
 /**
- * Server component — resolves the viewer and manager state itself so the
- * clinic page doesn't need to plumb them through.
+ * Server component — renders the public stats surface using the cookie-free
+ * anon client (getRatingStats), so it stays compatible with the clinic
+ * page's ISR. Viewer-specific state (own rating, manager status, the form
+ * itself) is resolved client-side by RatingsViewerPanel — see that file for
+ * why it can't live here.
  */
 export async function RatingsSection({
   clinicId,
@@ -17,21 +17,7 @@ export async function RatingsSection({
   clinicId: string;
   slug: string;
 }) {
-  const user = await getCurrentUser();
-  const { stats, own } = await getRatingContext(clinicId, user?.id ?? null);
-
-  let isManager = false;
-  if (user) {
-    const supabase = await createSupabaseServerClient();
-    const { data: grant } = await supabase
-      .from("clinic_managers")
-      .select("id")
-      .eq("clinic_id", clinicId)
-      .eq("user_id", user.id)
-      .is("revoked_at", null)
-      .maybeSingle();
-    isManager = grant !== null;
-  }
+  const stats = await getRatingStats(clinicId);
 
   return (
     <Card>
@@ -42,19 +28,7 @@ export async function RatingsSection({
       </CardHeader>
       <CardContent className="space-y-6">
         <RatingSummary stats={stats} />
-        {!user ? (
-          <p className="text-sm text-muted-foreground">
-            <Link
-              href={`/login?next=${encodeURIComponent(`/clinics/${slug}`)}`}
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Sign in
-            </Link>{" "}
-            to rate this clinic.
-          </p>
-        ) : isManager ? null : (
-          <RatingForm clinicId={clinicId} slug={slug} own={own} />
-        )}
+        <RatingsViewerPanel clinicId={clinicId} slug={slug} />
       </CardContent>
     </Card>
   );
