@@ -132,6 +132,18 @@ export default async function ClinicProfilePage({ params }: PageProps) {
       })),
   };
 
+  const formattedAddress = location
+    ? [
+        location.address_line1,
+        location.barangay,
+        location.city,
+        location.province,
+        location.postal_code,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : null;
+
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -212,15 +224,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
               {location && (
                 <p className="flex items-start gap-1.5 text-muted-foreground">
                   <MapPin className="mt-1 size-4 shrink-0" aria-hidden />
-                  {[
-                    location.address_line1,
-                    location.barangay,
-                    location.city,
-                    location.province,
-                    location.postal_code,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
+                  {formattedAddress}
                 </p>
               )}
               {clinic.last_verified_at && (
@@ -443,6 +447,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                     latitude={location.latitude}
                     longitude={location.longitude}
                     verified={isVerified}
+                    address={formattedAddress}
                   />
                 </Card>
               )}
