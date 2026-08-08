@@ -261,6 +261,45 @@ export async function listJobs(limit = 100) {
   return data ?? [];
 }
 
+// ---------------------------------------------------------------------------
+// Clinics (lookup for per-clinic admin views, e.g. ratings moderation)
+
+export interface ClinicSummary {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+}
+
+export async function getClinicSummary(
+  clinicId: string,
+): Promise<ClinicSummary | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("clinics")
+    .select("id, slug, name, status")
+    .eq("id", clinicId)
+    .maybeSingle();
+  return data;
+}
+
+/** Simple name/slug search for admins jumping to a clinic's moderation view. */
+export async function searchClinicsBasic(
+  query: string,
+): Promise<ClinicSummary[]> {
+  const supabase = await createSupabaseServerClient();
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const { data } = await supabase
+    .from("clinics")
+    .select("id, slug, name, status")
+    .is("deleted_at", null)
+    .or(`name.ilike.%${trimmed}%,slug.ilike.%${trimmed}%`)
+    .order("name", { ascending: true })
+    .limit(25);
+  return data ?? [];
+}
+
 export async function countStaleClinics() {
   const supabase = createSupabaseAdminClient();
   const { count } = await supabase
