@@ -39,6 +39,12 @@ create table public.clinic_rating_stats (
   updated_at timestamptz not null default now()
 );
 
+-- Recomputes stats for one clinic. `insert ... on conflict do update` keeps
+-- concurrent writers on the same clinic from racing a delete-then-insert
+-- against each other (which could 23505 on clinic_rating_stats_pkey and
+-- abort a user's rating write) — the upsert just waits for the row lock and
+-- applies the newer aggregate. The row is deleted only once no live rating
+-- remains, not unconditionally on every write.
 create or replace function public.refresh_clinic_rating_stats()
 returns trigger
 language plpgsql
@@ -47,23 +53,47 @@ set search_path = public
 as $$
 declare
   target uuid;
+  targets uuid[];
+  live_count integer;
 begin
-  target := coalesce(new.clinic_id, old.clinic_id);
+  -- An UPDATE that retargets clinic_id moves a rating from one clinic's
+  -- aggregate to another's; both need recomputing or the old clinic's
+  -- stats go stale forever (it never fires its own insert/delete event).
+  if TG_OP = 'UPDATE' and old.clinic_id is distinct from new.clinic_id then
+    targets := array[old.clinic_id, new.clinic_id];
+  else
+    targets := array[coalesce(new.clinic_id, old.clinic_id)];
+  end if;
 
-  delete from public.clinic_rating_stats where clinic_id = target;
+  foreach target in array targets loop
+    select count(*) into live_count
+    from public.clinic_ratings
+    where clinic_id = target and voided_at is null;
 
-  insert into public.clinic_rating_stats (
-    clinic_id, rating_count,
-    avg_communication, avg_sensory_friendliness,
-    avg_affirming_approach, avg_scheduling, updated_at
-  )
-  select
-    target, count(*),
-    round(avg(communication), 2), round(avg(sensory_friendliness), 2),
-    round(avg(affirming_approach), 2), round(avg(scheduling), 2), now()
-  from public.clinic_ratings
-  where clinic_id = target and voided_at is null
-  having count(*) > 0;
+    if live_count = 0 then
+      delete from public.clinic_rating_stats where clinic_id = target;
+    else
+      insert into public.clinic_rating_stats (
+        clinic_id, rating_count,
+        avg_communication, avg_sensory_friendliness,
+        avg_affirming_approach, avg_scheduling, updated_at
+      )
+      select
+        target, count(*),
+        round(avg(communication), 2), round(avg(sensory_friendliness), 2),
+        round(avg(affirming_approach), 2), round(avg(scheduling), 2), now()
+      from public.clinic_ratings
+      where clinic_id = target and voided_at is null
+      group by clinic_id
+      on conflict (clinic_id) do update set
+        rating_count = excluded.rating_count,
+        avg_communication = excluded.avg_communication,
+        avg_sensory_friendliness = excluded.avg_sensory_friendliness,
+        avg_affirming_approach = excluded.avg_affirming_approach,
+        avg_scheduling = excluded.avg_scheduling,
+        updated_at = excluded.updated_at;
+    end if;
+  end loop;
 
   return null;
 end;
@@ -80,9 +110,10 @@ alter table public.clinic_rating_stats enable row level security;
 
 -- Authors manage their own rating on readable clinics, unless they manage
 -- the clinic. public.manages_clinic() is the existing active-management
--- check (clinic_managers.revoked_at is null) — it runs as the caller and
--- callers can always see their own manager rows, so it's exactly the
--- self-check we need.
+-- check (clinic_managers.revoked_at is null). It runs SECURITY DEFINER
+-- (bypassing clinic_managers' own RLS to read it at all), but it filters
+-- internally on auth.uid(), so it only ever reports the caller's own grants
+-- — exactly the self-check we need, regardless of how it's invoked.
 create policy clinic_ratings_insert_own on public.clinic_ratings
   for insert to authenticated
   with check (
@@ -104,16 +135,23 @@ create policy clinic_ratings_update_own on public.clinic_ratings
     and not public.manages_clinic(clinic_id)
   );
 
+-- voided_at guard: without it, a voided author could delete their own
+-- frozen row (the update policy blocks edits but not deletes) and re-insert
+-- a fresh live rating, since the unique (clinic_id, user_id) constraint
+-- that would otherwise stop them is gone once the old row is gone.
 create policy clinic_ratings_delete_own on public.clinic_ratings
   for delete to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select auth.uid()) and voided_at is null);
 
--- Authors read their own rating; admins read all (admin panel).
+-- Authors read their own rating; moderators/admins read all (admin panel
+-- reads through this policy now — see AdminRatingsPanel). Matches every
+-- sibling policy's staff arm (public.is_moderator_or_admin()) rather than
+-- is_admin(), since void/unvoid and the panel are gated on requireModerator().
 create policy clinic_ratings_select_own_or_admin on public.clinic_ratings
   for select to authenticated
   using (
     user_id = (select auth.uid())
-    or public.is_admin()
+    or public.is_moderator_or_admin()
   );
 
 -- Stats are visible wherever the underlying clinic is: ratings can exist on

@@ -63,6 +63,23 @@ export async function deleteRating(
   if (!idParsed.success) return { error: "Invalid clinic." };
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
+
+  // The delete RLS policy also excludes voided rows (voided_at is null),
+  // so a voided author's delete would silently affect 0 rows. Check first
+  // for a clean, specific error instead of a no-op "success".
+  const { data: existing } = await supabase
+    .from("clinic_ratings")
+    .select("voided_at")
+    .eq("clinic_id", idParsed.data)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing?.voided_at) {
+    return {
+      error:
+        "This rating was removed by moderators and cannot be changed.",
+    };
+  }
+
   const { error } = await supabase
     .from("clinic_ratings")
     .delete()

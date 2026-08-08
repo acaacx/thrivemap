@@ -198,7 +198,7 @@ describe("clinic_ratings RLS and stats trigger", () => {
     expect(error?.code).toBe("42501");
   });
 
-  it("keeps ratings private to their author (except admins)", async () => {
+  it("keeps ratings private to their author (except moderators/admins)", async () => {
     const { data: bSees, error: bError } = await b
       .from("clinic_ratings")
       .select("id")
@@ -214,6 +214,19 @@ describe("clinic_ratings RLS and stats trigger", () => {
       .eq("user_id", aId);
     expect(adminError).toBeNull();
     expect(adminSees).toHaveLength(1);
+
+    // Void/unvoid and the admin panel are gated on requireModerator(), not
+    // requireAdministrator() — the select policy's staff arm must match
+    // (public.is_moderator_or_admin()), so a moderator who isn't a full
+    // admin can still read through the panel.
+    const moderator = await signedInClient("moderator@thrivemap.test");
+    const { data: moderatorSees, error: moderatorError } = await moderator
+      .from("clinic_ratings")
+      .select("id")
+      .eq("clinic_id", clinicId)
+      .eq("user_id", aId);
+    expect(moderatorError).toBeNull();
+    expect(moderatorSees).toHaveLength(1);
   });
 
   it("computes stats correctly, readable anonymously", async () => {
@@ -279,6 +292,138 @@ describe("clinic_ratings RLS and stats trigger", () => {
     expect(statsAfterUnvoidError).toBeNull();
     expect(statsAfterUnvoid?.rating_count).toBe(2);
     expect(Number(statsAfterUnvoid?.avg_communication)).toBe(4.5);
+  });
+
+  it("blocks a voided author from deleting their row and re-rating (void bypass)", async () => {
+    const svc = serviceClient();
+
+    const { error: voidError } = await svc
+      .from("clinic_ratings")
+      .update({ voided_at: new Date().toISOString(), voided_by: adminId })
+      .eq("id", aRatingId);
+    expect(voidError).toBeNull();
+
+    // The delete policy also requires voided_at is null — a voided
+    // author's delete matches 0 rows rather than erroring.
+    const { data: aDeleteAttempt, error: aDeleteError } = await a
+      .from("clinic_ratings")
+      .delete()
+      .eq("id", aRatingId)
+      .select("id");
+    expect(aDeleteError).toBeNull();
+    expect(aDeleteAttempt ?? []).toHaveLength(0);
+
+    // The frozen row (still present — the delete above was a no-op) keeps
+    // the unique (clinic_id, user_id) constraint live, so a fresh insert
+    // for the same clinic hits it head-on.
+    const { error: reinsertError } = await a.from("clinic_ratings").insert({
+      clinic_id: clinicId,
+      user_id: aId,
+      communication: 5,
+      sensory_friendliness: 5,
+      affirming_approach: 5,
+      scheduling: 5,
+    });
+    expect(reinsertError).not.toBeNull();
+    expect(reinsertError?.code).toBe("23505");
+
+    // Restore for the tests below, which expect aRatingId to be a live,
+    // author-deletable row.
+    const { error: unvoidError } = await svc
+      .from("clinic_ratings")
+      .update({ voided_at: null, voided_by: null })
+      .eq("id", aRatingId);
+    expect(unvoidError).toBeNull();
+  });
+
+  it("recomputes both clinics' stats when a rating is retargeted (service-role update)", async () => {
+    const svc = serviceClient();
+    const anon = anonClient();
+
+    const { data: otherClinic, error: otherClinicError } = await svc
+      .from("clinics")
+      .select("id, clinic_ratings(id)")
+      .in("status", ["published_verified", "published_unverified"])
+      .is("deleted_at", null)
+      .neq("id", clinicId)
+      .limit(200);
+    expect(otherClinicError).toBeNull();
+    const otherClinicId = otherClinic?.find(
+      (c) => (c.clinic_ratings?.length ?? 0) === 0,
+    )?.id;
+    if (!otherClinicId) {
+      throw new Error(
+        "seed data: no second published clinic without ratings found",
+      );
+    }
+
+    // Baseline before retargeting: clinicId carries both live ratings
+    // (aRatingId, communication 5, and bId's, communication 4 — count 2,
+    // avg 4.5, per the earlier "excludes voided rows" test); otherClinicId
+    // has none.
+    const { data: beforeSource } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count")
+      .eq("clinic_id", clinicId)
+      .maybeSingle();
+    expect(beforeSource?.rating_count).toBe(2);
+    const { data: beforeTarget } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count")
+      .eq("clinic_id", otherClinicId)
+      .maybeSingle();
+    expect(beforeTarget).toBeNull();
+
+    const { error: retargetError } = await svc
+      .from("clinic_ratings")
+      .update({ clinic_id: otherClinicId })
+      .eq("id", aRatingId);
+    expect(retargetError).toBeNull();
+
+    // The old clinic's stats row must be recomputed too — down to just
+    // bId's rating (communication 4) — not left stale at count 2 / avg 4.5.
+    const { data: afterSource, error: afterSourceError } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count, avg_communication")
+      .eq("clinic_id", clinicId)
+      .maybeSingle();
+    expect(afterSourceError).toBeNull();
+    expect(afterSource?.rating_count).toBe(1);
+    expect(Number(afterSource?.avg_communication)).toBe(4);
+
+    const { data: afterTarget, error: afterTargetError } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count, avg_communication")
+      .eq("clinic_id", otherClinicId)
+      .maybeSingle();
+    expect(afterTargetError).toBeNull();
+    expect(afterTarget?.rating_count).toBe(1);
+    expect(Number(afterTarget?.avg_communication)).toBe(5);
+
+    // Move it back so downstream tests (which assume aRatingId lives on
+    // clinicId, alongside bId's rating) see the expected baseline.
+    const { error: restoreError } = await svc
+      .from("clinic_ratings")
+      .update({ clinic_id: clinicId })
+      .eq("id", aRatingId);
+    expect(restoreError).toBeNull();
+
+    const { data: afterRestore, error: afterRestoreError } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count, avg_communication")
+      .eq("clinic_id", clinicId)
+      .maybeSingle();
+    expect(afterRestoreError).toBeNull();
+    expect(afterRestore?.rating_count).toBe(2);
+    expect(Number(afterRestore?.avg_communication)).toBe(4.5);
+
+    const { data: targetGone, error: targetGoneError } = await anon
+      .from("clinic_rating_stats")
+      .select("rating_count")
+      .eq("clinic_id", otherClinicId)
+      .maybeSingle();
+    expect(targetGoneError).toBeNull();
+    expect(targetGone).toBeNull();
   });
 
   it("recomputes stats on delete, and removes the row when the last rating goes", async () => {

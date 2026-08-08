@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { RatingRowActions } from "./RatingRowActions";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,12 +43,16 @@ function buildDailyTimeline(rows: { created_at: string }[]): {
 }
 
 /** Moderation view for one clinic: all ratings (voided or not) + a 14-day
- * submission timeline for spotting review brigades. Service-role reads —
- * clinic_ratings has no admin select path over RLS beyond the owner. */
+ * submission timeline for spotting review brigades. This page is already
+ * gated by requireModerator() (admin/layout.tsx), and the select policy's
+ * staff arm (public.is_moderator_or_admin()) grants exactly that — so reads
+ * go through the caller's own session. The admin client is kept only for
+ * auth.admin.listUsers(), which has no RLS-scoped equivalent. */
 export async function AdminRatingsPanel({ clinicId }: { clinicId: string }) {
+  const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const { data: ratings, error } = await admin
+  const { data: ratings, error } = await supabase
     .from("clinic_ratings")
     .select(
       "id, user_id, communication, sensory_friendliness, affirming_approach, scheduling, created_at, updated_at, voided_at",
@@ -69,7 +74,8 @@ export async function AdminRatingsPanel({ clinicId }: { clinicId: string }) {
   const emailById = new Map<string, string>();
   if (userIds.length > 0) {
     // Mirrors listUsersWithRoles' approach — no bulk get-by-ids endpoint,
-    // so list once and match. Fine at admin-panel scale.
+    // so list once and match. Fine at admin-panel scale. Still needs the
+    // admin client: auth.admin.listUsers is a service-role-only API.
     const { data: authUsers } = await admin.auth.admin.listUsers({
       perPage: 200,
     });
