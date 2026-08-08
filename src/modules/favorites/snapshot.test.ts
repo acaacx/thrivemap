@@ -3,16 +3,27 @@ import { readSnapshot, writeSnapshot, SNAPSHOT_KEY } from "./snapshot";
 
 const item = { slug: "a-clinic", name: "A Clinic", address: "1 St, Manila", phone: "+63 2 1234" };
 
-// Stub localStorage for jsdom environment
+// Mock localStorage that preserves spy capability
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => { store[key] = value; },
-    removeItem: (key: string) => { delete store[key]; },
-    clear: () => { store = {}; },
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index: number) => Object.keys(store)[index] || null,
   };
 })();
+
 vi.stubGlobal("localStorage", mockLocalStorage);
 
 describe("favorites snapshot", () => {
@@ -34,7 +45,7 @@ describe("favorites snapshot", () => {
     expect(readSnapshot()).toBeNull();
   });
   it("write tolerates localStorage throwing", () => {
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    const spy = vi.spyOn(mockLocalStorage, "setItem").mockImplementation(() => {
       throw new Error("quota");
     });
     expect(() => writeSnapshot([item])).not.toThrow();
