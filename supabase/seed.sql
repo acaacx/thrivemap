@@ -207,6 +207,25 @@ join (values
 ) as t(slug, full_name, credentials, profession, specialties, bio, display_order)
   on t.slug = c.slug;
 
+-- Caregiver ratings on public demo clinics. rainbow-bridge gets three
+-- ratings (crosses the display threshold); kaleidoscope gets one (stays
+-- below it). Deliberately NOT on the rep-managed clinic (little-steps) or
+-- on bgc-kids-thrive-center: e2e/ratings.spec.ts needs both to start with
+-- zero ratings — the former as the standing clean-slate precedent shared
+-- with e2e/therapists.spec.ts, the latter as its own submit/remove target.
+insert into public.clinic_ratings
+  (clinic_id, user_id, communication, sensory_friendliness, affirming_approach, scheduling)
+select c.id, r.user_id, r.communication, r.sensory_friendliness, r.affirming_approach, r.scheduling
+from public.clinics c
+join (values
+  ('rainbow-bridge-therapy-center', '00000000-0000-0000-0000-000000000003'::uuid, 5, 4, 5, 4),
+  ('rainbow-bridge-therapy-center', '00000000-0000-0000-0000-000000000002'::uuid, 4, 4, 4, 3),
+  ('rainbow-bridge-therapy-center', '00000000-0000-0000-0000-000000000001'::uuid, 3, 5, 4, 5),
+  ('kaleidoscope-child-development-clinic', '00000000-0000-0000-0000-000000000002'::uuid, 4, 5, 3, 4)
+) as r(slug, user_id, communication, sensory_friendliness, affirming_approach, scheduling)
+  on r.slug = c.slug
+on conflict do nothing;
+
 -- A favorite, a report, and a submission for the demo caregiver
 insert into public.favorites (user_id, clinic_id)
 select '00000000-0000-0000-0000-000000000003', id from public.clinics

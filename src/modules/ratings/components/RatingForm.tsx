@@ -37,14 +37,20 @@ export function RatingForm({ clinicId, slug, own }: RatingFormProps) {
   const [removePending, startRemove] = useTransition();
 
   const form = useForm<RatingInput>({
+    // react-hook-form marks a radio "checked" on mount by strictly
+    // comparing defaultValues against the DOM input's `.value`, which is
+    // always a string — so numeric defaults (own.communication is a
+    // number from the DB) never match and the form renders with nothing
+    // selected. Stringify to match, same cast EMPTY_VALUES already uses
+    // for its placeholder `undefined`s.
     defaultValues:
       own && !own.voided
-        ? {
-            communication: own.communication,
-            sensoryFriendliness: own.sensoryFriendliness,
-            affirmingApproach: own.affirmingApproach,
-            scheduling: own.scheduling,
-          }
+        ? ({
+            communication: String(own.communication),
+            sensoryFriendliness: String(own.sensoryFriendliness),
+            affirmingApproach: String(own.affirmingApproach),
+            scheduling: String(own.scheduling),
+          } as unknown as RatingInput)
         : EMPTY_VALUES,
   });
 
