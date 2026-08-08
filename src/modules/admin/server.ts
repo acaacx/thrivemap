@@ -290,11 +290,18 @@ export async function searchClinicsBasic(
   const supabase = await createSupabaseServerClient();
   const trimmed = query.trim();
   if (!trimmed) return [];
+  // PostgREST's .or() filter syntax treats `,` and `()` as structural
+  // separators inside the filter string, so a term containing them (e.g.
+  // "Smith, Jones" or "(main)") would silently truncate/mis-parse the
+  // filter and yield unexpected — often empty — results. Strip them from
+  // the search term; they're not meaningful in a name/slug substring match.
+  const safe = trimmed.replaceAll(/[,()]/g, "");
+  if (!safe) return [];
   const { data } = await supabase
     .from("clinics")
     .select("id, slug, name, status")
     .is("deleted_at", null)
-    .or(`name.ilike.%${trimmed}%,slug.ilike.%${trimmed}%`)
+    .or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`)
     .order("name", { ascending: true })
     .limit(25);
   return data ?? [];
