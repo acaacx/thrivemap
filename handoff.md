@@ -32,15 +32,14 @@ Since previous handoff (therapist-profiles session end, `080aee8`):
 ## Half-done / not started
 
 - Nothing half-done in code.
-- **Push pending**: `main` local at `5d19e49` (maps fix + this handoff) may be ahead of origin — push if user confirms, or check `git status`.
-- **Deployment dry-run** (`docs/operations/deployment.md`) — biggest outstanding item; recommended before new features.
+- **Deployment dry-run DONE 2026-08-08** — local rehearsal all green, record in `docs/operations/deployment.md` ("Dry-run record" section). Remaining deploy work needs real accounts: hosted Supabase project + `db push`, dashboard auth settings, Vercel env/cron, GH Actions `production` environment. User's call when to go live.
 - Live Google imports still need real `GOOGLE_MAPS_SERVER_API_KEY` (user's call).
 - Remote branch `claude/goofy-kapitsa-86365d` on origin redundant (content = `5d19e49`) — `git push origin --delete claude/goofy-kapitsa-86365d` when convenient.
 - Cosmetic: unused `_drop` lint warning in `src/modules/ratings/schemas.test.ts:21`.
 
 ## Single next action
 
-Ask user: deployment dry-run (recommended), v2.0 planning (multilingual), or backlog. Phase 2 is done.
+Ask user: go live (needs their hosted Supabase/Vercel accounts — see deployment.md one-time setup), v2.0 planning (multilingual), or backlog. Phase 2 done; dry-run done.
 
 ## Traps / non-obvious facts
 

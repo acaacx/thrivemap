@@ -97,6 +97,36 @@ Additional manual checks against the prod build before/after a release:
   and an install prompt is offered (or "Add to Home Screen" works) on a
   prod build — `next dev` does not register the SW.
 
+## Dry-run record
+
+2026-08-08, local rehearsal of the first-deploy path on `main` `f6b2796`
+(no hosted credentials — everything except the actual Vercel/Supabase
+hosted steps):
+
+- Fresh database from migrations only (`supabase db reset --no-seed`, the
+  local equivalent of `db push`): all 21 migrations apply cleanly;
+  reference data present (8 services, 15 `ph_locations`), zero clinics.
+- `pnpm build` against that empty database: clean; `/services/[slug]`
+  prerenders all 8 slugs from reference data.
+- `next start` smoke: `/api/health` all-ok; `/`, `/clinics`,
+  `/services/*`, `/locations/*`, `/offline` all 200 with sane empty
+  states; admin dashboard renders all-zero queues.
+- Manifest 200 (`ThriveMap`, `standalone`, 3 icons) + all icon URLs 200;
+  service worker registers, activates, and controls the page on the prod
+  build.
+- Jobs route auth matrix: POST no/wrong `x-jobs-secret` → 401; correct →
+  200; GET `Authorization: Bearer` (Vercel-cron path) → 200; with
+  `JOBS_PROCESSOR_SECRET`/`CRON_SECRET` blank → 503 both paths, as
+  documented.
+- Admin bootstrap: fresh signup gets role `user` via `handle_new_user`;
+  the promote-SQL above grants `administrator`; `/admin` then reachable.
+- `[DEV ADAPTER]` boot lines appear for unconfigured Upstash
+  (cache + rate limiter), confirming fallback detection.
+
+Not rehearsed (needs real accounts): `supabase link`/`db push` against a
+hosted project, dashboard auth settings, Vercel env/cron, GitHub Actions
+`production` environment gating.
+
 ## Documented but not configured (deliberate)
 
 Cloudflare (DNS/WAF/cache), Terraform, read replicas. See
