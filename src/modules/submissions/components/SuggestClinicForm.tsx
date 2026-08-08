@@ -19,6 +19,7 @@ import {
   type DuplicateMatch,
 } from "../actions";
 import { suggestClinicSchema, type SuggestClinicInput } from "../schemas";
+import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 
 const ClinicMap = dynamic(
   () => import("@/modules/maps/components/ClinicMap").then((m) => m.ClinicMap),
@@ -255,25 +256,34 @@ export function SuggestClinicForm({
         </p>
         <LocationSearchBox onLocation={(loc) => setMapCenter(loc)} />
         <div className="h-64 overflow-hidden rounded-xl border">
-          <ClinicMap
-            markers={
-              pin
-                ? [
-                    {
-                      id: "pin",
-                      slug: "",
-                      name: "Clinic location",
-                      verified: false,
-                      ...pin,
-                    },
-                  ]
-                : []
+          <MapErrorBoundary
+            fallback={
+              <div className="grid h-full place-items-center bg-secondary px-4 text-center text-sm text-muted-foreground">
+                Map unavailable in this browser — skip the pin, the address
+                above is enough.
+              </div>
             }
-            center={pin ?? mapCenter}
-            zoom={pin ? 16 : 12}
-            onMapClick={setPinAndSync}
-            className="h-full w-full"
-          />
+          >
+            <ClinicMap
+              markers={
+                pin
+                  ? [
+                      {
+                        id: "pin",
+                        slug: "",
+                        name: "Clinic location",
+                        verified: false,
+                        ...pin,
+                      },
+                    ]
+                  : []
+              }
+              center={pin ?? mapCenter}
+              zoom={pin ? 16 : 12}
+              onMapClick={setPinAndSync}
+              className="h-full w-full"
+            />
+          </MapErrorBoundary>
         </div>
         {pin && (
           <p className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -22,6 +22,7 @@ import {
 import dynamic from "next/dynamic";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
+import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
 import { LocationSearchBox } from "./LocationSearchBox";
 import { SearchFilters, type FilterState } from "./SearchFilters";
@@ -256,20 +257,29 @@ export function SearchPageClient({
 
   const mapElement = (
     <div className="relative h-full min-h-[320px]">
-      <ClinicMap
-        markers={markers}
-        center={mapCenter}
-        zoom={params.lat != null ? 13 : 11}
-        selectedId={selectedId}
-        onSelect={(id) => {
-          setSelectedId(id);
-          document
-            .querySelector(`[data-clinic-id="${id}"]`)
-            ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        }}
-        onMoved={(bounds, center) => setPendingBounds({ bounds, center })}
-        className="h-full w-full"
-      />
+      <MapErrorBoundary
+        fallback={
+          <div className="grid h-full min-h-[320px] place-items-center bg-secondary px-4 text-center text-sm text-muted-foreground">
+            Map unavailable in this browser. All clinics are shown in the
+            results list.
+          </div>
+        }
+      >
+        <ClinicMap
+          markers={markers}
+          center={mapCenter}
+          zoom={params.lat != null ? 13 : 11}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            document
+              .querySelector(`[data-clinic-id="${id}"]`)
+              ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }}
+          onMoved={(bounds, center) => setPendingBounds({ bounds, center })}
+          className="h-full w-full"
+        />
+      </MapErrorBoundary>
       {pendingBounds && (
         <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
           <Button onClick={onSearchThisArea} className="rounded-full shadow-lg">
