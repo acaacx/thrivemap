@@ -91,10 +91,18 @@ create policy clinic_ratings_insert_own on public.clinic_ratings
     and not public.manages_clinic(clinic_id)
   );
 
+-- with check repeats the insert policy's clinic checks so an author can't
+-- retarget an existing row's clinic_id onto a clinic they manage (or one
+-- that never passed the readability check) via UPDATE.
 create policy clinic_ratings_update_own on public.clinic_ratings
   for update to authenticated
   using (user_id = (select auth.uid()) and voided_at is null)
-  with check (user_id = (select auth.uid()) and voided_at is null);
+  with check (
+    user_id = (select auth.uid())
+    and voided_at is null
+    and public.clinic_readable_or_managed(clinic_id)
+    and not public.manages_clinic(clinic_id)
+  );
 
 create policy clinic_ratings_delete_own on public.clinic_ratings
   for delete to authenticated
@@ -108,10 +116,15 @@ create policy clinic_ratings_select_own_or_admin on public.clinic_ratings
     or public.is_admin()
   );
 
--- Stats are public; writes happen only inside the security-definer trigger.
+-- Stats are visible wherever the underlying clinic is: ratings can exist on
+-- non-public clinics (moderators/admins can rate drafts, which pass
+-- clinic_readable_or_managed), so `using (true)` here would leak the
+-- clinic_id + aggregates of hidden clinics. This subquery runs as the
+-- caller, so it inherits exactly what the clinics select policies already
+-- allow them to see. Writes happen only inside the security-definer trigger.
 create policy clinic_rating_stats_select_all on public.clinic_rating_stats
   for select to anon, authenticated
-  using (true);
+  using (exists (select 1 from public.clinics c where c.id = clinic_rating_stats.clinic_id));
 
 -- Grants ---------------------------------------------------------------
 
