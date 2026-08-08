@@ -46,6 +46,13 @@ Moderation-heavy. Reuse the reports/moderation machinery, add
 clear anti-defamation policy; consider structured ratings only (waiting
 time, communication) instead of free text.
 
+Shipped 2026-08-08: structured ratings only, no free-text reviews. Four
+1-5 dimensions (communication, sensory friendliness, affirming approach,
+scheduling), one editable rating per clinic per user, moderator void/unvoid
+(audited, no hard delete) instead of a reports flow. Spec:
+[`docs/superpowers/specs/2026-08-08-clinic-ratings-design.md`](superpowers/specs/2026-08-08-clinic-ratings-design.md);
+plan: [`docs/superpowers/plans/2026-08-08-clinic-ratings.md`](superpowers/plans/2026-08-08-clinic-ratings.md).
+
 ### 5. Multilingual (Filipino first)
 
 Deferred to v2.0 (decision 2026-08-07) — out of Phase 2 scope. Notes for

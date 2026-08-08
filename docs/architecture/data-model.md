@@ -31,6 +31,18 @@ Migrations in `supabase/migrations/` are the source of truth. Highlights only
   (`clinic_managed_or_admin`), same shape as the other clinic satellites.
   Contributes to the search document: therapist names join weight B
   (with locations), profession + specialties join weight C (with services).
+- **clinic_ratings / clinic_rating_stats** — structured 1-5 caregiver
+  ratings, no free text. Four dimensions (`communication`,
+  `sensory_friendliness`, `affirming_approach`, `scheduling`); one rating per
+  clinic per user (`unique (clinic_id, user_id)`), editable by its author,
+  soft-voided by moderators (`voided_at`/`voided_by`) rather than deleted so
+  the audit trail survives. `clinic_rating_stats` is trigger-maintained
+  (`refresh_clinic_rating_stats`): voided ratings are excluded from the
+  averages, and the stats row is removed once a clinic has zero live
+  ratings. It's the only publicly readable surface — its select policy
+  re-checks the caller's visibility into the underlying clinic, since
+  ratings can exist on non-public (draft) clinics. Clinic pages show the
+  panel once `rating_count` reaches 3.
 
 ## Contribution & moderation
 

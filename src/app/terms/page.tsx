@@ -42,6 +42,14 @@ export default function TermsPage() {
           accurate and safe.
         </li>
       </ul>
+      <h2>Ratings</h2>
+      <p>
+        Signed-in caregivers can rate a clinic on a set of structured 1-5
+        scores &mdash; there are no written reviews on ThriveMap. Each person
+        may leave one rating per clinic, and can edit it any time. Ratings
+        found to be manipulated (fake accounts, coordinated brigading, and
+        similar) may be removed by our moderation team.
+      </p>
       <h2>Accounts</h2>
       <p>
         You&apos;re responsible for activity on your account. We may suspend
