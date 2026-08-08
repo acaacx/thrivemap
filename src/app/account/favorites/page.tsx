@@ -16,7 +16,7 @@ export default async function FavoritesPage() {
       clinics (
         id, slug, name, status, logo_url, last_verified_at, phone,
         offers_online_services,
-        clinic_locations ( address_line1, city, province, latitude, longitude ),
+        clinic_locations ( address_line1, city, province, latitude, longitude, is_primary ),
         clinic_services ( services ( name ) )
       )
     `,
@@ -27,7 +27,12 @@ export default async function FavoritesPage() {
 
   const snapshotItems: SnapshotItem[] = favorites.map((favorite) => {
     const clinic = favorite.clinics!;
-    const location = clinic.clinic_locations[0];
+    // clinic_locations comes back in whatever order PostgREST happens to
+    // return embedded rows in — pick the same way the clinic profile page
+    // does (src/app/clinics/[slug]/page.tsx) rather than an arbitrary [0].
+    const location =
+      clinic.clinic_locations.find((l) => l.is_primary) ??
+      clinic.clinic_locations[0];
     return {
       slug: clinic.slug,
       name: clinic.name,
@@ -56,7 +61,9 @@ export default async function FavoritesPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {favorites.map((favorite) => {
             const clinic = favorite.clinics!;
-            const location = clinic.clinic_locations[0];
+            const location =
+              clinic.clinic_locations.find((l) => l.is_primary) ??
+              clinic.clinic_locations[0];
             return (
               <ClinicCard
                 key={clinic.id}

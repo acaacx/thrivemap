@@ -121,7 +121,44 @@ test.describe("/offline", () => {
     await expect(page.getByText("Pasig, Metro Manila")).toBeVisible();
     await expect(
       page.getByRole("link", { name: "+63 2 8100 0001" }),
-    ).toHaveAttribute("href", "tel:+63 2 8100 0001");
+    ).toHaveAttribute("href", "tel:+63281000001");
+  });
+
+  // C1 regression: /offline is precached by the service worker as HTML,
+  // but its JS chunks are NOT precached (see public/sw.js — only "/offline"
+  // itself is in PRECACHE). A real offline visit therefore has zero access
+  // to _next/static bundles. Block them here to reproduce that, and assert
+  // the snapshot still renders — proving the page's inline <script> (not
+  // React hydration) is what's putting the clinic on screen.
+  test("renders the snapshot with no JS bundles reachable", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      {
+        key: SNAPSHOT_KEY,
+        value: JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          items: [
+            {
+              slug: "rainbow-bridge-therapy-center",
+              name: "Rainbow Bridge Therapy Center (Fictional)",
+              address: "Pasig, Metro Manila",
+              phone: "+63 2 8100 0001",
+            },
+          ],
+        }),
+      },
+    );
+    await page.route("**/_next/static/**", (route) => route.abort());
+    await page.goto("/offline");
+    await expect(
+      page.getByText("Rainbow Bridge Therapy Center (Fictional)"),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "+63 2 8100 0001" }),
+    ).toHaveAttribute("href", "tel:+63281000001");
   });
 });
 
@@ -151,5 +188,34 @@ test.describe("favorites snapshot wiring", () => {
     const parsed = JSON.parse(raw!);
     const slugs = parsed.items.map((item: { slug: string }) => item.slug);
     expect(slugs).toContain("rainbow-bridge-therapy-center");
+  });
+
+  // I2 regression: on a shared device, the snapshot must not survive
+  // sign-out — otherwise the next caregiver sees the previous one's saved
+  // clinics on /offline.
+  test("signing out clears the on-device snapshot", async ({ page }) => {
+    await authenticateAsCaregiver(page);
+    await page.goto("/account/favorites");
+
+    // Wait for FavoritesSnapshot's post-hydration write, same as above,
+    // so there's actually something present for sign-out to clear.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (key) => window.localStorage.getItem(key),
+          SNAPSHOT_KEY,
+        ),
+      )
+      .not.toBeNull();
+
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await page.waitForURL("/");
+
+    const raw = await page.evaluate(
+      (key) => window.localStorage.getItem(key),
+      SNAPSHOT_KEY,
+    );
+    expect(raw).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { signOut } from "@/modules/auth/actions";
+import { SNAPSHOT_KEY } from "@/modules/favorites/snapshot";
 
 /**
  * Auth state resolved client-side so SiteHeader stays static and ISR pages
@@ -101,7 +102,28 @@ export function AccountMenu() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={signOut}>
-          <DropdownMenuItem render={<button type="submit" className="w-full" />}>
+          <DropdownMenuItem
+            render={
+              <button
+                type="submit"
+                className="w-full"
+                // Shared-device safety: the offline favorites snapshot
+                // (src/modules/favorites/snapshot.ts) lives in localStorage,
+                // which sign-out does not otherwise touch. Clear it here so
+                // the next caregiver on this device doesn't see the
+                // previous one's saved clinics on /offline. Runs
+                // synchronously before the form's submit event proceeds to
+                // the signOut server action.
+                onClick={() => {
+                  try {
+                    window.localStorage.removeItem(SNAPSHOT_KEY);
+                  } catch {
+                    // Private mode / unavailable storage — nothing to clear.
+                  }
+                }}
+              />
+            }
+          >
             Sign out
           </DropdownMenuItem>
         </form>

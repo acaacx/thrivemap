@@ -1,5 +1,5 @@
 export const SNAPSHOT_KEY = "thrivemap.favorites-snapshot";
-const VERSION = 1;
+export const SNAPSHOT_VERSION = 1;
 
 export interface SnapshotItem {
   slug: string;
@@ -12,7 +12,7 @@ export function writeSnapshot(items: SnapshotItem[]): void {
   try {
     localStorage.setItem(
       SNAPSHOT_KEY,
-      JSON.stringify({ version: VERSION, savedAt: new Date().toISOString(), items }),
+      JSON.stringify({ version: SNAPSHOT_VERSION, savedAt: new Date().toISOString(), items }),
     );
   } catch {
     // Private mode / quota — offline snapshot is best-effort.
@@ -26,7 +26,7 @@ export function readSnapshot(): SnapshotItem[] | null {
     const parsed: unknown = JSON.parse(raw);
     if (
       typeof parsed !== "object" || parsed === null ||
-      (parsed as { version?: unknown }).version !== VERSION ||
+      (parsed as { version?: unknown }).version !== SNAPSHOT_VERSION ||
       !Array.isArray((parsed as { items?: unknown }).items)
     )
       return null;

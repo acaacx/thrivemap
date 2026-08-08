@@ -68,9 +68,18 @@ architectural blocker.
 
 Shipped 2026-08-08: web app manifest + service worker (offline app-shell,
 no runtime caching of dynamic content), `/offline` fallback page rendering
-a client-side snapshot of the caregiver's favorites (name, address, phone)
-written to `localStorage` whenever `/account/favorites` loads. No push
-notifications, no background sync.
+a snapshot of the caregiver's favorites (name, address, phone) written to
+`localStorage` whenever `/account/favorites` loads. Cleared on sign-out so
+a shared device doesn't leak the previous caregiver's saved clinics.
+
+`/offline` renders that snapshot with an inline `<style>`/`<script>` in
+the page itself rather than React — it's precached as HTML by the service
+worker, but its JS chunks are not, so with no signal it never hydrates.
+An inline script reading `localStorage` directly is the only path that
+actually runs with zero network. The service worker also re-fetches
+`/offline` on every `activate` so the precached shell doesn't go stale
+(reference stale, no-longer-deployed chunk hashes) across deploys where
+`sw.js` itself is unchanged. No push notifications, no background sync.
 
 ### 7. Job runner upgrade
 
