@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/modules/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
+import { FavoritesSnapshot } from "@/modules/favorites/FavoritesSnapshot";
+import type { SnapshotItem } from "@/modules/favorites/snapshot";
 
 export default async function FavoritesPage() {
   await requireUser();
@@ -12,7 +14,7 @@ export default async function FavoritesPage() {
       `
       clinic_id,
       clinics (
-        id, slug, name, status, logo_url, last_verified_at,
+        id, slug, name, status, logo_url, last_verified_at, phone,
         offers_online_services,
         clinic_locations ( address_line1, city, province, latitude, longitude ),
         clinic_services ( services ( name ) )
@@ -23,8 +25,22 @@ export default async function FavoritesPage() {
 
   const favorites = (data ?? []).filter((f) => f.clinics);
 
+  const snapshotItems: SnapshotItem[] = favorites.map((favorite) => {
+    const clinic = favorite.clinics!;
+    const location = clinic.clinic_locations[0];
+    return {
+      slug: clinic.slug,
+      name: clinic.name,
+      address: [location?.address_line1, location?.city, location?.province]
+        .filter(Boolean)
+        .join(", "),
+      phone: clinic.phone,
+    };
+  });
+
   return (
     <div className="space-y-6">
+      <FavoritesSnapshot items={snapshotItems} />
       <h1 className="font-heading text-2xl font-semibold">Favorites</h1>
       {favorites.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">

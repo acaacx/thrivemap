@@ -89,7 +89,15 @@ write a new corrective migration rather than reverting; the state machine
 and additive schema style keep old app versions compatible with newer
 schemas within one release.
 
+Additional manual checks against the prod build before/after a release:
+
+- `curl -s https://<host>/manifest.webmanifest` returns 200 with
+  `"name": "ThriveMap"`, three icons, and `"display": "standalone"`.
+- The service worker registers (DevTools → Application → Service Workers)
+  and an install prompt is offered (or "Add to Home Screen" works) on a
+  prod build — `next dev` does not register the SW.
+
 ## Documented but not configured (deliberate)
 
-Cloudflare (DNS/WAF/cache), Terraform, PWA, read replicas. See
+Cloudflare (DNS/WAF/cache), Terraform, read replicas. See
 [scaling-triggers.md](scaling-triggers.md) for when to revisit.

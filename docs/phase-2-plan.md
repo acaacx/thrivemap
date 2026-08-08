@@ -66,6 +66,12 @@ table), search needs a `filipino` text config.
 Manifest + offline shell for saved favorites. Deferred from Phase 1; no
 architectural blocker.
 
+Shipped 2026-08-08: web app manifest + service worker (offline app-shell,
+no runtime caching of dynamic content), `/offline` fallback page rendering
+a client-side snapshot of the caregiver's favorites (name, address, phone)
+written to `localStorage` whenever `/account/favorites` loads. No push
+notifications, no background sync.
+
 ### 7. Job runner upgrade
 
 If handler volume outgrows the pg queue: implement the same handler map on
