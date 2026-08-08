@@ -547,6 +547,94 @@ export type Database = {
           },
         ]
       }
+      clinic_rating_stats: {
+        Row: {
+          avg_affirming_approach: number
+          avg_communication: number
+          avg_scheduling: number
+          avg_sensory_friendliness: number
+          clinic_id: string
+          rating_count: number
+          updated_at: string
+        }
+        Insert: {
+          avg_affirming_approach: number
+          avg_communication: number
+          avg_scheduling: number
+          avg_sensory_friendliness: number
+          clinic_id: string
+          rating_count: number
+          updated_at?: string
+        }
+        Update: {
+          avg_affirming_approach?: number
+          avg_communication?: number
+          avg_scheduling?: number
+          avg_sensory_friendliness?: number
+          clinic_id?: string
+          rating_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_rating_stats_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: true
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinic_ratings: {
+        Row: {
+          affirming_approach: number
+          clinic_id: string
+          communication: number
+          created_at: string
+          id: string
+          scheduling: number
+          sensory_friendliness: number
+          updated_at: string
+          user_id: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          affirming_approach: number
+          clinic_id: string
+          communication: number
+          created_at?: string
+          id?: string
+          scheduling: number
+          sensory_friendliness: number
+          updated_at?: string
+          user_id: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          affirming_approach?: number
+          clinic_id?: string
+          communication?: number
+          created_at?: string
+          id?: string
+          scheduling?: number
+          sensory_friendliness?: number
+          updated_at?: string
+          user_id?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_ratings_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_reports: {
         Row: {
           clinic_id: string
