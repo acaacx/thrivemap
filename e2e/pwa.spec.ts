@@ -1,4 +1,6 @@
+import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
+import type { Database } from "@/lib/database.types";
 import { SNAPSHOT_KEY } from "@/modules/favorites/snapshot";
 
 /**
@@ -11,15 +13,56 @@ import { SNAPSHOT_KEY } from "@/modules/favorites/snapshot";
  * addInitScript, which is redundant to verify per-browser-engine.
  */
 
-async function signIn(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("password123");
-  await page
-    .locator("#main-content")
-    .getByRole("button", { name: /^sign in$/i })
-    .click();
-  await page.waitForURL("**/account");
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
+const ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+// Standard supabase-local demo value; not a production secret. Matches
+// .env.local, which the dev server (spawned by playwright.config.ts) loads
+// on its own — this constant just lets the test PROCESS see the same value.
+
+/**
+ * Signs in as the demo caregiver directly against GoTrue and injects the
+ * resulting session as a cookie, instead of going through the app's login
+ * form. The form's `signIn` server action rate-limits `auth:signin` to 10
+ * attempts per email per 15 minutes (`src/modules/auth/actions.ts`,
+ * in-memory limiter, no Upstash configured locally) — and the shared demo
+ * caregiver account already sits at that ceiling from
+ * caregiver-flows.spec.ts, inquiries.spec.ts, and ratings.spec.ts combined.
+ * A direct GoTrue sign-in doesn't touch that app-level limiter at all.
+ *
+ * Cookie name/shape (`sb-<host-label>-auth-token`, `base64-` prefix +
+ * base64url JSON session) verified empirically against this app's actual
+ * post-login cookie output — @supabase/ssr's `createServerClient` (used in
+ * `src/lib/supabase/server.ts`) reads exactly this format.
+ */
+async function authenticateAsCaregiver(page: Page) {
+  const supabase = createClient<Database>(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: "caregiver@thrivemap.test",
+    password: "password123",
+  });
+  if (error || !data.session) {
+    throw new Error(`direct sign-in failed: ${error?.message}`);
+  }
+  const hostLabel = new URL(SUPABASE_URL).hostname.split(".")[0];
+  const value =
+    "base64-" +
+    Buffer.from(JSON.stringify(data.session)).toString("base64url");
+  await page.context().addCookies([
+    {
+      name: `sb-${hostLabel}-auth-token`,
+      value,
+      domain: "localhost",
+      path: "/",
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+    },
+  ]);
 }
 
 test.beforeEach(({}, testInfo) => {
@@ -86,7 +129,7 @@ test.describe("favorites snapshot wiring", () => {
   test("visiting favorites while signed in writes the on-device snapshot", async ({
     page,
   }) => {
-    await signIn(page, "caregiver@thrivemap.test");
+    await authenticateAsCaregiver(page);
     await page.goto("/account/favorites");
     await expect(
       page.getByRole("heading", { name: "Favorites" }),
