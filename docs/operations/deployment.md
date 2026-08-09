@@ -58,7 +58,9 @@ never requires them to build.
    `Authorization: Bearer $CRON_SECRET` (no POST, no custom headers), so set a
    `CRON_SECRET` env var to the same value as `JOBS_PROCESSOR_SECRET` — the
    platform attaches the header itself. Note: per-minute schedules need a Pro
-   plan; on Hobby the cron silently runs once a day. External schedulers can
+   plan; Hobby rejects them at deploy time, so `vercel.json` ships a daily
+   schedule (`0 0 * * *`) — tighten it after upgrading to Pro, or point an
+   external scheduler at the POST endpoint for more frequent ticks. External schedulers can
    still use `POST` with `x-jobs-secret: $JOBS_PROCESSOR_SECRET`. Without the
    secret set the route refuses to run in production (503), so the queue
    silently stops draining — `/api/health` reports the jobs check.
