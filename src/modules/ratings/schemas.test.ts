@@ -18,7 +18,8 @@ describe("ratingInputSchema", () => {
     ).toBe(false);
   });
   it("rejects a missing dimension", () => {
-    const { scheduling: _drop, ...partial } = valid;
+    const partial: Partial<typeof valid> = { ...valid };
+    delete partial.scheduling;
     expect(ratingInputSchema.safeParse(partial).success).toBe(false);
   });
 });
