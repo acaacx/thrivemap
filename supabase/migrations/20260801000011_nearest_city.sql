@@ -1,3 +1,8 @@
+-- Hosted db push runs under a login role whose search_path excludes the
+-- extensions schema; set it so pg_trgm/postgis references resolve.
+
+set search_path to public, extensions;
+
 -- ThriveMap: nearest-city lookup for submission approval.
 -- A moderator-approved submission carries only a free-text address plus an
 -- optional map pin; clinic_locations needs structured city/province, so we

@@ -1,3 +1,8 @@
+-- Hosted db push runs under a login role whose search_path excludes the
+-- extensions schema; set it so pg_trgm/postgis references resolve.
+
+set search_path to public, extensions;
+
 -- Expose clinic coordinates as generated columns so PostgREST selects can
 -- return plain lat/lng without RPC round-trips. The geography column remains
 -- the source of truth for spatial queries.

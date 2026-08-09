@@ -1,3 +1,8 @@
+-- Hosted db push runs under a login role whose search_path excludes the
+-- extensions schema; set it so pg_trgm/postgis references resolve.
+
+set search_path to public, extensions;
+
 -- ThriveMap: candidate-vs-clinic matching + promotion for Places imports.
 -- match_candidate_clinics: fuzzy match one external candidate against live
 -- clinics (trigram name, PostGIS proximity, exact google_place_id).

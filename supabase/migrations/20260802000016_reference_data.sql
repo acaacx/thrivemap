@@ -1,3 +1,8 @@
+-- Hosted db push runs under a login role whose search_path excludes the
+-- extensions schema; set it so pg_trgm/postgis references resolve.
+
+set search_path to public, extensions;
+
 -- ThriveMap: reference data that every environment needs.
 --
 -- The service taxonomy and the PH location table are not demo data — search

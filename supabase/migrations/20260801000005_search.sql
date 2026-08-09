@@ -1,3 +1,8 @@
+-- Hosted db push runs under a login role whose search_path excludes the
+-- extensions schema; set it so pg_trgm/postgis references resolve.
+
+set search_path to public, extensions;
+
 -- ThriveMap: search documents, geospatial + text search RPCs
 
 create table public.clinic_search_documents (
