@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.15.1",
   "scripts": {
+    "postinstall": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

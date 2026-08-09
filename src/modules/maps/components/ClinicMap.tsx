@@ -6,6 +6,11 @@ import { useEffect, useRef } from "react";
 import type { Point } from "geojson";
 import type { MapBounds } from "../types";
 
+// Turbopack doesn't emit the worker chunk MapLibre resolves relative to
+// import.meta.url (the request 404s), so vector tiles never parse. Serve the
+// worker ourselves — copied to public/ by scripts/copy-maplibre-worker.mjs.
+maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
 export interface ClinicMapMarker {
   id: string;
   slug: string;
@@ -32,9 +37,8 @@ interface ClinicMapProps {
 }
 
 /**
- * Interactive clinic map. Renders OpenStreetMap raster tiles via MapLibre —
- * a key-free renderer that also serves as the dev fallback for Google Maps.
- * Clustering is native MapLibre GeoJSON clustering.
+ * Interactive clinic map. Renders OpenFreeMap vector tiles (keyless, no usage
+ * cap) via MapLibre. Clustering is native MapLibre GeoJSON clustering.
  *
  * Accessibility: the map is a supplement — every clinic shown here is also in
  * the results list, which is the primary accessible surface.
@@ -68,20 +72,9 @@ export function ClinicMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        // Required for symbol layers (cluster counts).
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
-          },
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm" }],
-      },
+      // OpenFreeMap: keyless vector tiles, no usage cap — raw
+      // tile.openstreetmap.org raster is off-limits for production apps.
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: [center.longitude, center.latitude],
       zoom,
       attributionControl: { compact: true },
@@ -158,7 +151,8 @@ export function ClinicMap({
           filter: ["has", "point_count"],
           layout: {
             "text-field": "{point_count_abbreviated}",
-            "text-font": ["Open Sans Semibold"],
+            // Must exist in the style's glyph set (OpenFreeMap fonts).
+            "text-font": ["Noto Sans Bold"],
             "text-size": 13,
           },
           paint: { "text-color": "#ffffff" },

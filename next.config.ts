@@ -22,17 +22,18 @@ const posthogOrigin = (() => {
  * CSP notes:
  * - script-src keeps 'unsafe-inline' (Next.js inline bootstrap without a nonce
  *   pipeline) and adds 'unsafe-eval' only in dev (react-refresh).
- * - MapLibre needs blob: workers and OSM raster tiles (fetched via XHR →
- *   connect-src, and rendered → img-src).
+ * - MapLibre needs blob: workers plus the OpenFreeMap origin (style JSON,
+ *   vector/raster tiles, sprites, glyphs — all fetched via XHR → connect-src;
+ *   sprite/raster also rendered → img-src).
  * - Supabase/PostHog origins come from env so the policy follows deployment.
  */
 const csp = [
   `default-src 'self'`,
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline'`,
-  `img-src 'self' data: blob: https://*.tile.openstreetmap.org ${supabaseOrigin}`,
+  `img-src 'self' data: blob: https://tiles.openfreemap.org ${supabaseOrigin}`,
   `font-src 'self' data:`,
-  `connect-src 'self' ${supabaseOrigin} ${posthogOrigin} https://*.tile.openstreetmap.org${isDev ? " ws:" : ""}`,
+  `connect-src 'self' ${supabaseOrigin} ${posthogOrigin} https://tiles.openfreemap.org${isDev ? " ws:" : ""}`,
   `worker-src 'self' blob:`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
