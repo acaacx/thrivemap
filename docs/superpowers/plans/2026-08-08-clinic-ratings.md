@@ -29,10 +29,12 @@
 ### Task 1: Migration 21 — tables, trigger, RLS, grants, audit
 
 **Files:**
+
 - Create: `supabase/migrations/20260808000021_clinic_ratings.sql`
 - Modify: `src/lib/database.types.ts` (generated — run `pnpm db:types`)
 
 **Interfaces:**
+
 - Produces: tables `public.clinic_ratings`, `public.clinic_rating_stats`; trigger function `public.refresh_clinic_rating_stats()`. Later tasks rely on the exact column names in Global Constraints.
 
 - [ ] **Step 1: Write the migration**
@@ -188,9 +190,11 @@ git commit -m "feat: clinic_ratings schema, stats trigger, RLS (migration 21)"
 ### Task 2: Integration tests — RLS and stats math
 
 **Files:**
+
 - Create: `tests/integration/ratings-rls.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 tables/trigger.
 
 Copy the harness (clients, signup helper, cleanup style) from `tests/integration/therapists-rls.test.ts`. Use fresh users `itest-ratings-a@thrivemap.test`, `itest-ratings-b@thrivemap.test`, plus the seeded manager `clinicrep@thrivemap.test` and admin `admin@thrivemap.test` (password `password123`). Target a seeded published clinic WITHOUT seed ratings and not rep-managed (pick one in the test via service client query: published, no `clinic_ratings` rows, no `clinic_managers` rows). Clean up own rows in `beforeAll`/`afterAll` via service client.
@@ -224,12 +228,14 @@ git commit -m "test: clinic_ratings RLS and stats trigger integration coverage"
 ### Task 3: Ratings module — schema, queries, actions
 
 **Files:**
+
 - Create: `src/modules/ratings/schemas.ts`
 - Create: `src/modules/ratings/schemas.test.ts`
 - Create: `src/modules/ratings/queries.ts`
 - Create: `src/modules/ratings/actions.ts`
 
 **Interfaces:**
+
 - Consumes: `requireUser` from `@/modules/auth/server`; `createSupabaseServerClient` from `@/lib/supabase/server`; `checkRateLimit(key, userId, max, windowSeconds)` from `@/modules/shared/rate-limit`.
 - Produces:
   - `ratingInputSchema` (zod object: `communication`, `sensoryFriendliness`, `affirmingApproach`, `scheduling` — all `z.number().int().min(1).max(5)`), type `RatingInput = z.infer<...>`.
@@ -383,7 +389,8 @@ export async function upsertRating(
   const idParsed = clinicIdSchema.safeParse(clinicId);
   if (!idParsed.success) return { error: "Invalid clinic." };
   const parsed = ratingInputSchema.safeParse(raw);
-  if (!parsed.success) return { error: "Please rate all four areas from 1 to 5." };
+  if (!parsed.success)
+    return { error: "Please rate all four areas from 1 to 5." };
 
   const user = await requireUser();
   const limited = await checkRateLimit(
@@ -393,7 +400,9 @@ export async function upsertRating(
     RATE_LIMIT.windowSeconds,
   );
   if (!limited.allowed)
-    return { error: "Too many rating changes in a short time. Please try again later." };
+    return {
+      error: "Too many rating changes in a short time. Please try again later.",
+    };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("clinic_ratings").upsert(
@@ -458,12 +467,14 @@ git commit -m "feat: ratings module — schema, queries, upsert/delete actions"
 ### Task 4: Clinic page UI — summary + form
 
 **Files:**
+
 - Create: `src/modules/ratings/components/RatingSummary.tsx` (server component)
 - Create: `src/modules/ratings/components/RatingForm.tsx` (client component)
 - Create: `src/modules/ratings/components/RatingsSection.tsx` (server component composing both)
 - Modify: `src/app/clinics/[slug]/page.tsx` (insert `<RatingsSection …/>` after the `<CareTeamSection …/>` render around line 377; pass `clinicId`, `slug`, and whether the current user manages this clinic — the page already resolves the viewer for other sections; follow how it does that)
 
 **Interfaces:**
+
 - Consumes: `getRatingContext`, `upsertRating`, `deleteRating`, `RatingStats`, `OwnRating` from Task 3.
 - Produces: `RatingsSection({ clinicId, slug }: { clinicId: string; slug: string })` — resolves user + manager state itself if the page doesn't already provide it.
 
@@ -495,11 +506,13 @@ git commit -m "feat: caregiver ratings section on clinic page"
 ### Task 5: Admin ratings panel + void actions
 
 **Files:**
+
 - Create: `src/modules/ratings/admin-actions.ts`
 - Create: `src/modules/ratings/components/AdminRatingsPanel.tsx`
 - Modify: the admin clinic detail page (find it: `grep -rn "clinic" src/app/admin --include=page.tsx -l` — follow how existing panels are added there)
 
 **Interfaces:**
+
 - Consumes: admin client from `@/lib/supabase/admin`; the admin role-check helper used by `src/modules/admin/actions.ts` (grep `requireAdmin` there and reuse it exactly).
 - Produces: `voidRating(ratingId: string): Promise<{ error?: string; message?: string }>`, `unvoidRating(ratingId: string)` same shape.
 
@@ -521,10 +534,12 @@ git commit -m "feat: admin ratings panel with void/unvoid moderation"
 ### Task 6: Seeds + e2e
 
 **Files:**
+
 - Modify: `supabase/seed.sql` (after the clinic_therapists block ~line 181)
 - Create: `e2e/ratings.spec.ts`
 
 **Interfaces:**
+
 - Consumes: everything above; seeded demo users.
 
 - [ ] **Step 1: Seeds** — insert ratings from seeded demo users onto public demo clinics: one clinic gets 3 ratings (aggregate visible), a second gets 1 (below-threshold state). NONE for the rep-managed clinic (e2e clean-slate precedent from therapists). Seeded auth users already exist; reference them by email subquery: `(select id from auth.users where email = 'caregiver@thrivemap.test')` etc. — check how seed.sql references users today and copy that. Three distinct users are needed for the 3-rating clinic (unique constraint): reuse `caregiver@`, `moderator@`, `admin@` (roles don't block rating; only managers of THAT clinic are blocked). Run `pnpm db:reset` → verify stats rows: `select * from clinic_rating_stats` shows counts 3 and 1.
@@ -548,6 +563,7 @@ git commit -m "feat: rating seeds and e2e coverage"
 ### Task 7: Docs, terms copy, full-suite verification
 
 **Files:**
+
 - Modify: `docs/architecture/data-model.md` (add clinic_ratings + clinic_rating_stats to the table inventory, matching the style of the clinic_therapists entry)
 - Modify: `docs/phase-2-plan.md` (mark feature 4 shipped, structured-ratings scope, date 2026-08-08)
 - Modify: the terms page (`src/app/terms/` — one paragraph: ratings are structured 1–5 scores from signed-in users, one per clinic, editable; ThriveMap hosts no written reviews; ratings may be removed by moderators for manipulation)

@@ -119,11 +119,7 @@ export function RatingForm({ clinicId, slug, own }: RatingFormProps) {
   }
 
   return (
-    <form
-      onSubmit={form.handleSubmit(submit)}
-      className="space-y-5"
-      noValidate
-    >
+    <form onSubmit={form.handleSubmit(submit)} className="space-y-5" noValidate>
       {feedback && (
         <p
           role={feedback.kind === "error" ? "alert" : "status"}

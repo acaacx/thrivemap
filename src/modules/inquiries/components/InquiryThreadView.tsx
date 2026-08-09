@@ -128,7 +128,9 @@ export function InquiryThreadView({
             >
               <div
                 aria-label={
-                  fromCaregiver ? "Message from caregiver" : "Message from clinic"
+                  fromCaregiver
+                    ? "Message from caregiver"
+                    : "Message from clinic"
                 }
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                   fromCaregiver ? "bg-primary/10" : "border bg-card"
@@ -164,7 +166,9 @@ export function InquiryThreadView({
           />
           <div className="flex justify-end">
             <Button type="submit" disabled={pending || !body.trim()}>
-              {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {pending && (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              )}
               Send reply
             </Button>
           </div>

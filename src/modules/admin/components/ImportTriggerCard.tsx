@@ -39,8 +39,8 @@ export function ImportTriggerCard({
     <section className="mt-6 rounded-2xl border bg-card p-5">
       <h2 className="font-heading text-lg font-semibold">Run an import</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Queues a Google Places search for one service in one city. Results
-        land here for review — nothing publishes automatically.
+        Queues a Google Places search for one service in one city. Results land
+        here for review — nothing publishes automatically.
       </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div className="grid gap-1.5">

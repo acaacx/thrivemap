@@ -28,11 +28,13 @@ Spec: `docs/superpowers/specs/2026-08-06-places-import-design.md`.
 ### Task 1: Migration 17 — matching + promotion RPCs
 
 **Files:**
+
 - Create: `supabase/migrations/20260806000017_candidate_matching.sql`
 - Create: `tests/integration/candidate-matching.test.ts`
 - Modify (generated): `src/lib/database.types.ts`
 
 **Interfaces:**
+
 - Consumes: existing tables (`external_place_candidates`, `clinics`, `clinic_locations`, `clinic_source_records`, `ph_locations`), helpers `public.nearest_ph_city(lat, lng)`, `public.is_moderator_or_admin()`.
 - Produces (used by Tasks 5–7):
   - `match_candidate_clinics(p_candidate_id uuid, p_distance_m float8 default 500, p_name_similarity float8 default 0.45)` → rows `(clinic_id uuid, clinic_name text, clinic_slug text, name_similarity real, distance_m float8, same_place_id boolean)`
@@ -591,6 +593,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: Imports module core — types, normalizer, query builder, fixture provider, factory
 
 **Files:**
+
 - Create: `src/modules/imports/types.ts`
 - Create: `src/modules/imports/normalize.ts`
 - Create: `src/modules/imports/query.ts`
@@ -601,6 +604,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Test: `src/modules/imports/normalize.test.ts`, `src/modules/imports/query.test.ts`, `src/modules/imports/providers/fixtures.test.ts`
 
 **Interfaces:**
+
 - Consumes: `logger` from `@/lib/logger` (same import handlers.ts uses).
 - Produces (used by Tasks 3–5):
   - `NormalizedPlace { externalId: string; name: string; address: string | null; latitude: number | null; longitude: number | null; rawPayload: Record<string, unknown> }`
@@ -715,13 +719,19 @@ describe("FixturePlacesProvider", () => {
   });
 
   it("is deterministic", async () => {
-    const a = await provider.searchText("Autism therapy in Quezon City, Philippines");
-    const b = await provider.searchText("Autism therapy in Quezon City, Philippines");
+    const a = await provider.searchText(
+      "Autism therapy in Quezon City, Philippines",
+    );
+    const b = await provider.searchText(
+      "Autism therapy in Quezon City, Philippines",
+    );
     expect(a).toEqual(b);
   });
 
   it("falls back to the generic fixture for unknown queries", async () => {
-    const { places } = await provider.searchText("Speech therapy in Davao City, Philippines");
+    const { places } = await provider.searchText(
+      "Speech therapy in Davao City, Philippines",
+    );
     expect(places.length).toBeGreaterThanOrEqual(1);
     expect(places.map((p) => p.name)).toContain("Fixture Developmental Clinic");
   });
@@ -996,10 +1006,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Google Places provider
 
 **Files:**
+
 - Modify: `src/modules/imports/providers/google.ts` (replace the skeleton body)
 - Test: `src/modules/imports/providers/google.test.ts`
 
 **Interfaces:**
+
 - Consumes: `normalizeGooglePlace`, `PlacesProvider`, `PlacesSearchResult` from Task 2.
 - Produces: working `GooglePlacesProvider` with constructor `(apiKey: string, fetchImpl: typeof fetch = fetch)`; exports `MAX_PAGES = 3`.
 
@@ -1027,7 +1039,9 @@ const PLACE = {
 
 describe("GooglePlacesProvider", () => {
   it("sends the right request: URL, key header, field mask, body", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ places: [PLACE] }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ places: [PLACE] }));
     const provider = new GooglePlacesProvider("test-key", fetchMock);
     await provider.searchText("Autism therapy in Quezon City, Philippines");
 
@@ -1053,9 +1067,9 @@ describe("GooglePlacesProvider", () => {
   });
 
   it("normalizes places and counts unparseable ones as skipped", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse({ places: [PLACE, { noId: true }] }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ places: [PLACE, { noId: true }] }));
     const provider = new GooglePlacesProvider("k", fetchMock);
     const { places, skipped } = await provider.searchText("q");
     expect(places).toHaveLength(1);
@@ -1075,7 +1089,9 @@ describe("GooglePlacesProvider", () => {
   });
 
   it("stops when there is no nextPageToken", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ places: [PLACE] }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ places: [PLACE] }));
     const provider = new GooglePlacesProvider("k", fetchMock);
     await provider.searchText("q");
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -1200,11 +1216,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: Import job — `runPlacesImport` + handler wiring
 
 **Files:**
+
 - Create: `src/modules/imports/server.ts`
 - Modify: `src/modules/jobs/handlers.ts` (replace `runCandidateImport`, lines ~247–263)
 - Test: `tests/integration/places-import.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getPlacesProvider()` (Task 2), `createSupabaseAdminClient` from `@/lib/supabase/admin`, `JobPayload` type from handlers.ts (check its actual export — reuse whatever `runCandidateImport` currently receives).
 - Produces: `runPlacesImport(payload: { query?: unknown }): Promise<{ fetched: number; created: number; updated: number; skipped: number }>` — throws when `payload.query` is not a non-empty string.
 
@@ -1338,7 +1356,9 @@ export async function runPlacesImport(payload: {
         places.map((p) => p.externalId),
       );
     if (existingError) {
-      throw new Error(`candidate_import: lookup failed: ${existingError.message}`);
+      throw new Error(
+        `candidate_import: lookup failed: ${existingError.message}`,
+      );
     }
     const existing = new Set(existingRows?.map((r) => r.external_id));
 
@@ -1359,7 +1379,9 @@ export async function runPlacesImport(payload: {
         { onConflict: "provider,external_id" },
       );
     if (upsertError) {
-      throw new Error(`candidate_import: upsert failed: ${upsertError.message}`);
+      throw new Error(
+        `candidate_import: upsert failed: ${upsertError.message}`,
+      );
     }
     created = places.filter((p) => !existing.has(p.externalId)).length;
     updated = places.length - created;
@@ -1416,10 +1438,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Admin server queries + actions
 
 **Files:**
+
 - Modify: `src/modules/admin/server.ts` (append after `listCandidates`, ~line 122)
 - Modify: `src/modules/admin/actions.ts` (append to the "External candidates" section, ~line 745)
 
 **Interfaces:**
+
 - Consumes: Task 1 RPCs; `buildImportQuery`, `IMPORT_SERVICE_TERMS` (Task 2); existing `requireModerator`, `logAdminAction`, `AdminActionResult`, `enqueueJob`, `checkRateLimit` from `@/modules/shared/rate-limit`.
 - Produces (used by Task 6):
   - `listImportCities(): Promise<{ id: string; city: string; province: string }[]>`
@@ -1497,7 +1521,12 @@ export async function triggerCandidateImportAction(
   locationId: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireModerator();
-  const { allowed } = await checkRateLimit("candidate-import", user.id, 10, 3600);
+  const { allowed } = await checkRateLimit(
+    "candidate-import",
+    user.id,
+    10,
+    3600,
+  );
   if (!allowed) {
     return { error: "Import rate limit reached — try again in an hour." };
   }
@@ -1525,7 +1554,9 @@ export async function triggerCandidateImportAction(
       requestedBy: user.id,
     },
     // One import per term+city per day; repeat clicks are no-ops.
-    { idempotencyKey: `candidate-import:${term.slug}:${location.city_slug}:${day}` },
+    {
+      idempotencyKey: `candidate-import:${term.slug}:${location.city_slug}:${day}`,
+    },
   );
   await logAdminAction(user.id, "trigger_candidate_import", "job", null, null, {
     query,
@@ -1615,10 +1646,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: Admin candidates UI
 
 **Files:**
+
 - Create: `src/modules/admin/components/ImportTriggerCard.tsx`
 - Modify: `src/app/admin/candidates/page.tsx` (full rewrite of the page body)
 
 **Interfaces:**
+
 - Consumes: everything from Task 5; `ReviewActions` (`{ actions: ReviewActionSpec[] }`, `ReviewActionSpec = { label; variant?; requiresReason?; run: (reason: string) => Promise<AdminActionResult> }`); existing `discardCandidate(candidateId, reason)`.
 - Produces: the finished workspace page. e2e (Task 7) relies on: a `<select>` labeled "Service", a `<select>` labeled "City", a button named "Queue import", buttons named "Promote" / "Discard", per-match buttons named `Attach to <clinic name>`.
 
@@ -1666,8 +1699,8 @@ export function ImportTriggerCard({
     <section className="mt-6 rounded-2xl border bg-card p-5">
       <h2 className="font-heading text-lg font-semibold">Run an import</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Queues a Google Places search for one service in one city. Results
-        land here for review — nothing publishes automatically.
+        Queues a Google Places search for one service in one city. Results land
+        here for review — nothing publishes automatically.
       </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div className="grid gap-1.5">
@@ -1748,8 +1781,8 @@ export default async function AdminCandidatesPage() {
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Places found by imports. Promote a candidate into a draft listing,
-        attach it to a clinic we already have, or discard noise. Nothing here
-        is public until a draft is reviewed and published.
+        attach it to a clinic we already have, or discard noise. Nothing here is
+        public until a draft is reviewed and published.
       </p>
 
       <ImportTriggerCard terms={IMPORT_SERVICE_TERMS} cities={cities} />
@@ -1867,6 +1900,7 @@ export default async function AdminCandidatesPage() {
 - [ ] **Step 3: Verify in the browser**
 
 Run: `pnpm typecheck && pnpm lint`, then start the dev server via the preview tooling (never Bash) and open `/admin/candidates` signed in as `admin@thrivemap.test` / `password123`:
+
 1. Trigger card renders with 5 service terms and seeded cities.
 2. Queue an import (Autism therapy / Quezon City) → toast "Import queued: …".
 3. Go to `/admin/jobs`, click "Run tick now".
@@ -1892,6 +1926,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: e2e test + docs + full verification
 
 **Files:**
+
 - Create: `e2e/places-import.spec.ts`
 - Modify: `.env.example` (Google Maps section, ~line 17)
 - Modify: `docs/architecture/jobs.md` (candidate_import section)
@@ -1899,6 +1934,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `docs/operations/deployment.md` (env vars / optional providers section)
 
 **Interfaces:**
+
 - Consumes: the full flow from Tasks 1–6; e2e helpers copied from `e2e/stage3-flows.spec.ts` (`signIn`, `adminDb`, chromium-only skip).
 
 - [ ] **Step 1: Write the e2e spec**
@@ -1939,10 +1975,7 @@ async function cleanupFixtureData() {
   await db.from("clinics").delete().like("google_place_id", "fixture-%");
   // Allow the import to re-enqueue today: the trigger action idempotency-keys
   // per term+city+day.
-  await db
-    .from("jobs")
-    .delete()
-    .like("idempotency_key", "candidate-import:%");
+  await db.from("jobs").delete().like("idempotency_key", "candidate-import:%");
 }
 
 async function signIn(page: Page, email: string) {
@@ -1986,18 +2019,14 @@ test.describe("places import", () => {
     await page.getByRole("button", { name: "Run tick now" }).click();
 
     await page.goto("/admin/candidates");
-    await expect(
-      page.getByText("Fixture Autism Care Center"),
-    ).toBeVisible();
+    await expect(page.getByText("Fixture Autism Care Center")).toBeVisible();
 
     const card = page.locator("li", {
       hasText: "Fixture Autism Care Center",
     });
     await card.getByRole("button", { name: "Promote" }).click();
     await expect(page.getByText(/draft clinic created/i)).toBeVisible();
-    await expect(
-      page.getByText("Fixture Autism Care Center"),
-    ).toBeHidden();
+    await expect(page.getByText("Fixture Autism Care Center")).toBeHidden();
 
     const { data: clinic } = await adminDb()
       .from("clinics")
@@ -2035,6 +2064,7 @@ Expected: 1 passed (chromium), 1 skipped (mobile). Known traps: never `waitForLo
 - [ ] **Step 4: Full verification**
 
 Run, in order:
+
 1. `pnpm typecheck`
 2. `pnpm lint`
 3. `pnpm test`

@@ -54,30 +54,30 @@ page query, and gives a future "highest rated" sort a free path.
 
 ### `clinic_ratings`
 
-| column                 | type        | notes                                    |
-| ---------------------- | ----------- | ---------------------------------------- |
-| `id`                   | uuid pk     | `gen_random_uuid()`                      |
-| `clinic_id`            | uuid        | → `clinics`, `on delete cascade`         |
-| `user_id`              | uuid        | → `auth.users`, `on delete cascade`      |
-| `communication`        | smallint    | `not null check (between 1 and 5)`       |
-| `sensory_friendliness` | smallint    | same                                     |
-| `affirming_approach`   | smallint    | same                                     |
-| `scheduling`           | smallint    | same                                     |
-| `voided_at`            | timestamptz | null = live                              |
-| `voided_by`            | uuid        | admin who voided; null when live         |
-| `created_at`           | timestamptz | default now()                            |
-| `updated_at`           | timestamptz | `set_updated_at` trigger                 |
+| column                 | type        | notes                               |
+| ---------------------- | ----------- | ----------------------------------- |
+| `id`                   | uuid pk     | `gen_random_uuid()`                 |
+| `clinic_id`            | uuid        | → `clinics`, `on delete cascade`    |
+| `user_id`              | uuid        | → `auth.users`, `on delete cascade` |
+| `communication`        | smallint    | `not null check (between 1 and 5)`  |
+| `sensory_friendliness` | smallint    | same                                |
+| `affirming_approach`   | smallint    | same                                |
+| `scheduling`           | smallint    | same                                |
+| `voided_at`            | timestamptz | null = live                         |
+| `voided_by`            | uuid        | admin who voided; null when live    |
+| `created_at`           | timestamptz | default now()                       |
+| `updated_at`           | timestamptz | `set_updated_at` trigger            |
 
 `unique (clinic_id, user_id)`. Index on `clinic_id`.
 
 ### `clinic_rating_stats`
 
-| column                                     | type          |
-| ------------------------------------------ | ------------- |
-| `clinic_id`                                | uuid pk → clinics |
-| `rating_count`                             | integer       |
-| `avg_communication` … `avg_scheduling`     | numeric(3,2)  |
-| `updated_at`                               | timestamptz   |
+| column                                 | type              |
+| -------------------------------------- | ----------------- |
+| `clinic_id`                            | uuid pk → clinics |
+| `rating_count`                         | integer           |
+| `avg_communication` … `avg_scheduling` | numeric(3,2)      |
+| `updated_at`                           | timestamptz       |
 
 Recomputed by an `after insert or update or delete` trigger on
 `clinic_ratings` (statement-level per-row recompute of the affected clinic is

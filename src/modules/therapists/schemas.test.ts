@@ -51,7 +51,11 @@ describe("therapistInputSchema", () => {
   it("dedupes repeated specialties", () => {
     const parsed = therapistInputSchema.parse({
       ...valid,
-      specialties: ["Sensory integration", "Sensory integration", "Fine motor skills"],
+      specialties: [
+        "Sensory integration",
+        "Sensory integration",
+        "Fine motor skills",
+      ],
     });
     expect(parsed.specialties).toEqual([
       "Sensory integration",

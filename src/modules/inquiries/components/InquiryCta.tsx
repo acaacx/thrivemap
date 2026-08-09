@@ -167,9 +167,7 @@ export function InquiryCta({
                       name="preferredDate"
                       type="date"
                       value={preferredDate}
-                      onChange={(event) =>
-                        setPreferredDate(event.target.value)
-                      }
+                      onChange={(event) => setPreferredDate(event.target.value)}
                       className={DATE_INPUT_CLASSES}
                     />
                   </div>

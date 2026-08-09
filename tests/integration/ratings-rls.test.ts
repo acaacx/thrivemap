@@ -36,7 +36,10 @@ async function signedInClient(email: string) {
 }
 
 /** Creates the user if they don't already exist (idempotent across runs). */
-async function ensureUser(svc: ReturnType<typeof serviceClient>, email: string) {
+async function ensureUser(
+  svc: ReturnType<typeof serviceClient>,
+  email: string,
+) {
   const { data: list, error: listError } = await svc.auth.admin.listUsers();
   if (listError) throw new Error(`listUsers failed: ${listError.message}`);
   const existing = list.users.find((u) => u.email === email);
@@ -74,7 +77,9 @@ async function targetClinicId(svc: ReturnType<typeof serviceClient>) {
 }
 
 /** The clinic clinicrep@ actively manages. */
-async function managedClinicId(rep: Awaited<ReturnType<typeof signedInClient>>) {
+async function managedClinicId(
+  rep: Awaited<ReturnType<typeof signedInClient>>,
+) {
   const { data: me } = await rep.auth.getUser();
   const { data: grant } = await rep
     .from("clinic_managers")
@@ -435,11 +440,12 @@ describe("clinic_ratings RLS and stats trigger", () => {
       .eq("id", aRatingId);
     expect(aDeleteError).toBeNull();
 
-    const { data: statsAfterADelete, error: statsAfterADeleteError } = await anon
-      .from("clinic_rating_stats")
-      .select("rating_count, avg_communication")
-      .eq("clinic_id", clinicId)
-      .single();
+    const { data: statsAfterADelete, error: statsAfterADeleteError } =
+      await anon
+        .from("clinic_rating_stats")
+        .select("rating_count, avg_communication")
+        .eq("clinic_id", clinicId)
+        .single();
     expect(statsAfterADeleteError).toBeNull();
     expect(statsAfterADelete?.rating_count).toBe(1);
     expect(Number(statsAfterADelete?.avg_communication)).toBe(4);

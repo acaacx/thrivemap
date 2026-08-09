@@ -4,8 +4,7 @@ import type { Database } from "@/lib/database.types";
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
-const ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 function anonClient() {
@@ -432,24 +431,32 @@ describe("inquiries: clinic_reports insert policy", () => {
 describe("inquiry query shaping", () => {
   it("maps thread rows oldest-message-first", async () => {
     const { shapeThread } = await import("@/modules/inquiries/queries");
-    const shaped = shapeThread(
-      {
-        id: "i1",
-        clinic_id: "c1",
-        subject: "s",
-        status: "open",
-        preferred_date: null,
-        preferred_time_note: null,
-        confirmed_date: null,
-        caregiver_id: "u1",
-        created_at: "2026-08-06T00:00:00Z",
-        clinics: { name: "Clinic", slug: "clinic" },
-        inquiry_messages: [
-          { id: "m2", sender_role: "clinic", body: "b", created_at: "2026-08-06T02:00:00Z" },
-          { id: "m1", sender_role: "caregiver", body: "a", created_at: "2026-08-06T01:00:00Z" },
-        ],
-      },
-    );
+    const shaped = shapeThread({
+      id: "i1",
+      clinic_id: "c1",
+      subject: "s",
+      status: "open",
+      preferred_date: null,
+      preferred_time_note: null,
+      confirmed_date: null,
+      caregiver_id: "u1",
+      created_at: "2026-08-06T00:00:00Z",
+      clinics: { name: "Clinic", slug: "clinic" },
+      inquiry_messages: [
+        {
+          id: "m2",
+          sender_role: "clinic",
+          body: "b",
+          created_at: "2026-08-06T02:00:00Z",
+        },
+        {
+          id: "m1",
+          sender_role: "caregiver",
+          body: "a",
+          created_at: "2026-08-06T01:00:00Z",
+        },
+      ],
+    });
     expect(shaped.messages.map((m) => m.id)).toEqual(["m1", "m2"]);
   });
 });

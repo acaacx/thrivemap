@@ -30,15 +30,15 @@ handlers.
 
 ## Handlers (`modules/jobs/handlers.ts`)
 
-| Type                         | What it does                                                                                                     |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `send_email`                 | Delivers a templated email (`{user_id                                                                            | to, template, params}`) or a moderator broadcast (`{moderators: true, subject, body}`). Resolves addresses at send time and honors `user_preferences.email_notifications`. |
-| `submission_process`         | Acknowledges the submitter and notifies moderators of a new suggestion.                                          |
-| `duplicate_scan`             | `scan_duplicate_candidates` RPC → scored pairs into `duplicate_match_candidates`. Merges stay manual.            |
-| `verification_reminder_scan` | Verified clinics stale >180 days → reminder email per active manager, max once per clinic/manager/month.         |
-| `stale_listing_scan`         | Published listings untouched >365 days → sets `clinics.flagged_stale_at` (cleared automatically on next update). |
-| `search_document_refresh`    | One clinic or full rebuild of search documents.                                                                  |
-| `candidate_import`           | Places Text Search import (payload `{query, termSlug, citySlug, requestedBy}`); see below.                       |
+| Type                         | What it does                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `send_email`                 | Delivers a templated email (`{user_id                                                                                  | to, template, params}`) or a moderator broadcast (`{moderators: true, subject, body}`). Resolves addresses at send time and honors `user_preferences.email_notifications`. |
+| `submission_process`         | Acknowledges the submitter and notifies moderators of a new suggestion.                                                |
+| `duplicate_scan`             | `scan_duplicate_candidates` RPC → scored pairs into `duplicate_match_candidates`. Merges stay manual.                  |
+| `verification_reminder_scan` | Verified clinics stale >180 days → reminder email per active manager, max once per clinic/manager/month.               |
+| `stale_listing_scan`         | Published listings untouched >365 days → sets `clinics.flagged_stale_at` (cleared automatically on next update).       |
+| `search_document_refresh`    | One clinic or full rebuild of search documents.                                                                        |
+| `candidate_import`           | Places Text Search import (payload `{query, termSlug, citySlug, requestedBy}`); see below.                             |
 | `inquiry_notification`       | Emails clinic managers/caregivers on inquiry activity (payload `{inquiry_id, kind, message_id?, status?}`); see below. |
 
 All handlers are idempotent: enqueue-side idempotency keys plus

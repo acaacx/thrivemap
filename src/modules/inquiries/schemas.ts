@@ -36,9 +36,7 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Please pick a valid date");
 
-const optionalIsoDate = z
-  .union([isoDate, z.literal("")])
-  .optional();
+const optionalIsoDate = z.union([isoDate, z.literal("")]).optional();
 
 const bodyField = z
   .string()

@@ -23,7 +23,8 @@ export async function upsertRating(
   const idParsed = clinicIdSchema.safeParse(clinicId);
   if (!idParsed.success) return { error: "Invalid clinic." };
   const parsed = ratingInputSchema.safeParse(raw);
-  if (!parsed.success) return { error: "Please rate all four areas from 1 to 5." };
+  if (!parsed.success)
+    return { error: "Please rate all four areas from 1 to 5." };
 
   const user = await requireUser();
   const limited = await checkRateLimit(
@@ -33,7 +34,9 @@ export async function upsertRating(
     RATE_LIMIT.windowSeconds,
   );
   if (!limited.allowed)
-    return { error: "Too many rating changes in a short time. Please try again later." };
+    return {
+      error: "Too many rating changes in a short time. Please try again later.",
+    };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("clinic_ratings").upsert(
@@ -75,8 +78,7 @@ export async function deleteRating(
     .maybeSingle();
   if (existing?.voided_at) {
     return {
-      error:
-        "This rating was removed by moderators and cannot be changed.",
+      error: "This rating was removed by moderators and cannot be changed.",
     };
   }
 

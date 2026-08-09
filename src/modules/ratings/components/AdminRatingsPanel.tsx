@@ -68,9 +68,7 @@ export async function AdminRatingsPanel({ clinicId }: { clinicId: string }) {
     );
   }
 
-  const userIds = Array.from(
-    new Set((ratings ?? []).map((r) => r.user_id)),
-  );
+  const userIds = Array.from(new Set((ratings ?? []).map((r) => r.user_id)));
   const emailById = new Map<string, string>();
   if (userIds.length > 0) {
     // Mirrors listUsersWithRoles' approach — no bulk get-by-ids endpoint,

@@ -97,7 +97,9 @@ export function ReportInquiryDialog({
           </div>
           <DialogFooter>
             <Button type="submit" disabled={pending}>
-              {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {pending && (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              )}
               Submit report
             </Button>
           </DialogFooter>

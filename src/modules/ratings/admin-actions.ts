@@ -27,9 +27,7 @@ async function revalidateRatingPaths(
   if (clinic?.slug) revalidatePath(`/clinics/${clinic.slug}`);
 }
 
-export async function voidRating(
-  ratingId: string,
-): Promise<AdminActionResult> {
+export async function voidRating(ratingId: string): Promise<AdminActionResult> {
   const parsed = ratingIdSchema.safeParse(ratingId);
   if (!parsed.success) return { error: "Invalid rating." };
   const { user } = await requireModerator();

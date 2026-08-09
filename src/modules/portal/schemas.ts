@@ -30,9 +30,7 @@ export const portalProfileSchema = z.object({
 export type PortalProfileInput = z.infer<typeof portalProfileSchema>;
 
 export const portalServicesSchema = z.object({
-  service_ids: z
-    .array(z.uuid())
-    .min(1, "Choose at least one service."),
+  service_ids: z.array(z.uuid()).min(1, "Choose at least one service."),
 });
 
 export type PortalServicesInput = z.infer<typeof portalServicesSchema>;

@@ -87,10 +87,7 @@ export function TherapistForm({
           <Label htmlFor={`${uid}-credentials`}>
             Credentials (optional, e.g. OTRP)
           </Label>
-          <Input
-            id={`${uid}-credentials`}
-            {...form.register("credentials")}
-          />
+          <Input id={`${uid}-credentials`} {...form.register("credentials")} />
         </div>
       </div>
       <div className="space-y-1.5">

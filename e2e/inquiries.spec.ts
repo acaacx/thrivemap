@@ -20,7 +20,8 @@ const SERVICE_ROLE_KEY =
 // .env.local, which the dev server (spawned by playwright.config.ts) loads
 // on its own — this constant just lets the test PROCESS see the same value.
 const JOBS_PROCESSOR_SECRET =
-  process.env.JOBS_PROCESSOR_SECRET ?? "local-dev-jobs-secret-not-for-production";
+  process.env.JOBS_PROCESSOR_SECRET ??
+  "local-dev-jobs-secret-not-for-production";
 
 const SUBJECT = "[e2e] Assessment availability";
 
@@ -109,7 +110,8 @@ async function completedNotificationJobs(inquiryId: string): Promise<number> {
     .eq("job_type", "inquiry_notification")
     .eq("status", "completed");
   return (data ?? []).filter(
-    (row) => (row.payload as { inquiry_id?: string } | null)?.inquiry_id === inquiryId,
+    (row) =>
+      (row.payload as { inquiry_id?: string } | null)?.inquiry_id === inquiryId,
   ).length;
 }
 
@@ -190,7 +192,9 @@ test.describe("inquiries", () => {
       page.getByRole("link").filter({ hasText: SUBJECT }),
     ).toBeVisible();
     await page.getByRole("link").filter({ hasText: SUBJECT }).click();
-    await page.waitForURL(`**/clinic-portal/${clinic.id}/inquiries/${inquiryId}`);
+    await page.waitForURL(
+      `**/clinic-portal/${clinic.id}/inquiries/${inquiryId}`,
+    );
 
     // 6: rep replies.
     const replyBody = "Yes, we have a slot that morning.";
@@ -213,7 +217,10 @@ test.describe("inquiries", () => {
           .select("status, confirmed_date")
           .eq("id", inquiryId)
           .maybeSingle();
-        return { status: data?.status ?? null, date: data?.confirmed_date ?? null };
+        return {
+          status: data?.status ?? null,
+          date: data?.confirmed_date ?? null,
+        };
       })
       .toEqual({ status: "confirmed", date: "2026-09-20" });
 

@@ -26,13 +26,13 @@ with human review before anything reaches the public directory.
 
 New module `src/modules/imports/`:
 
-| File | Responsibility |
-| --- | --- |
-| `types.ts` | `PlacesProvider` interface (`searchText(query, opts) → NormalizedPlace[]`), `NormalizedPlace` (externalId, name, address, lat, lng, phone?, website?, rawPayload) |
-| `providers/google.ts` | Places API (New) `places:searchText` POST; field mask `places.id,places.displayName,places.formattedAddress,places.location,places.internationalPhoneNumber,places.websiteUri,nextPageToken`; pagination via `nextPageToken`, hard cap 3 pages (~60 results); zod-parses responses |
-| `providers/fixtures.ts` | `[DEV ADAPTER]` — deterministic synthetic PH places from `fixtures/places/*.json` keyed by query slug; unknown query → small generic set; logs the standard `[DEV ADAPTER]` line |
-| `index.ts` | Factory: `GOOGLE_MAPS_SERVER_API_KEY` present → Google provider, else fixtures |
-| `server.ts` | `runPlacesImport(payload)` — the job handler body |
+| File                    | Responsibility                                                                                                                                                                                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`              | `PlacesProvider` interface (`searchText(query, opts) → NormalizedPlace[]`), `NormalizedPlace` (externalId, name, address, lat, lng, phone?, website?, rawPayload)                                                                                                                  |
+| `providers/google.ts`   | Places API (New) `places:searchText` POST; field mask `places.id,places.displayName,places.formattedAddress,places.location,places.internationalPhoneNumber,places.websiteUri,nextPageToken`; pagination via `nextPageToken`, hard cap 3 pages (~60 results); zod-parses responses |
+| `providers/fixtures.ts` | `[DEV ADAPTER]` — deterministic synthetic PH places from `fixtures/places/*.json` keyed by query slug; unknown query → small generic set; logs the standard `[DEV ADAPTER]` line                                                                                                   |
+| `index.ts`              | Factory: `GOOGLE_MAPS_SERVER_API_KEY` present → Google provider, else fixtures                                                                                                                                                                                                     |
+| `server.ts`             | `runPlacesImport(payload)` — the job handler body                                                                                                                                                                                                                                  |
 
 `runCandidateImport` in `src/modules/jobs/handlers.ts` delegates to
 `runPlacesImport`; the stub and its key-present throw are removed.

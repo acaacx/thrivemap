@@ -51,9 +51,7 @@ export default async function AdminClinicsPage({
                 >
                   {clinic.name}
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  {clinic.slug}
-                </p>
+                <p className="text-xs text-muted-foreground">{clinic.slug}</p>
               </div>
               <Badge variant="outline" className="shrink-0 text-xs">
                 {clinic.status.replaceAll("_", " ")}

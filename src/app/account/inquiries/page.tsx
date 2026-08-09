@@ -4,14 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireUser } from "@/modules/auth/server";
 import { listMyInquiries } from "@/modules/inquiries/queries";
-import { INQUIRY_STATUS_LABELS, type InquiryStatus } from "@/modules/inquiries/schemas";
+import {
+  INQUIRY_STATUS_LABELS,
+  type InquiryStatus,
+} from "@/modules/inquiries/schemas";
 
 export const metadata: Metadata = {
   title: "Your inquiries",
   robots: { index: false },
 };
 
-function statusVariant(status: InquiryStatus): "default" | "secondary" | "destructive" {
+function statusVariant(
+  status: InquiryStatus,
+): "default" | "secondary" | "destructive" {
   if (status === "confirmed") return "default";
   if (status === "declined") return "destructive";
   return "secondary";

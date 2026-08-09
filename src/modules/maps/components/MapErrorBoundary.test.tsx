@@ -34,7 +34,9 @@ describe("MapErrorBoundary", () => {
         <ThrowsOnRender />
       </MapErrorBoundary>,
     );
-    expect(screen.getByText("123 Fallback St, Quezon City")).toBeInTheDocument();
+    expect(
+      screen.getByText("123 Fallback St, Quezon City"),
+    ).toBeInTheDocument();
     vi.restoreAllMocks();
   });
 

@@ -50,8 +50,7 @@ async function authenticateAsCaregiver(page: Page) {
   }
   const hostLabel = new URL(SUPABASE_URL).hostname.split(".")[0];
   const value =
-    "base64-" +
-    Buffer.from(JSON.stringify(data.session)).toString("base64url");
+    "base64-" + Buffer.from(JSON.stringify(data.session)).toString("base64url");
   await page.context().addCookies([
     {
       name: `sb-${hostLabel}-auth-token`,
@@ -201,10 +200,7 @@ test.describe("favorites snapshot wiring", () => {
     // so there's actually something present for sign-out to clear.
     await expect
       .poll(() =>
-        page.evaluate(
-          (key) => window.localStorage.getItem(key),
-          SNAPSHOT_KEY,
-        ),
+        page.evaluate((key) => window.localStorage.getItem(key), SNAPSHOT_KEY),
       )
       .not.toBeNull();
 

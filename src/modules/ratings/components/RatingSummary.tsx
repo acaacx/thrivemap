@@ -44,8 +44,8 @@ export function RatingSummary({ stats }: { stats: RatingStats | null }) {
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Ratings are structured scores from signed-in caregivers. ThriveMap
-        does not host written reviews.
+        Ratings are structured scores from signed-in caregivers. ThriveMap does
+        not host written reviews.
       </p>
     </div>
   );

@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readSnapshot, writeSnapshot, SNAPSHOT_KEY } from "./snapshot";
 
-const item = { slug: "a-clinic", name: "A Clinic", address: "1 St, Manila", phone: "+63 2 1234" };
+const item = {
+  slug: "a-clinic",
+  name: "A Clinic",
+  address: "1 St, Manila",
+  phone: "+63 2 1234",
+};
 
 // Mock localStorage that preserves spy capability
 const mockLocalStorage = (() => {
@@ -41,7 +46,10 @@ describe("favorites snapshot", () => {
     expect(readSnapshot()).toBeNull();
   });
   it("returns null on version mismatch", () => {
-    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ version: 2, savedAt: "", items: [item] }));
+    localStorage.setItem(
+      SNAPSHOT_KEY,
+      JSON.stringify({ version: 2, savedAt: "", items: [item] }),
+    );
     expect(readSnapshot()).toBeNull();
   });
   it("write tolerates localStorage throwing", () => {

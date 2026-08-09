@@ -29,11 +29,13 @@
 ### Task 1: Migration 18 — schema, RLS, RPCs, grants
 
 **Files:**
+
 - Create: `supabase/migrations/20260806000018_inquiries.sql`
 - Create: `tests/integration/inquiries-rls.test.ts`
 - Modify: `src/lib/database.types.ts` (regenerated, not hand-edited)
 
 **Interfaces:**
+
 - Produces (used by every later task):
   - tables `public.inquiries`, `public.inquiry_messages`; column `public.clinic_reports.inquiry_id uuid null`
   - enum `public.inquiry_status`: `'open' | 'replied' | 'confirmed' | 'declined' | 'closed'`
@@ -53,8 +55,7 @@ import type { Database } from "@/lib/database.types";
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
-const ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 function anonClient() {
@@ -388,6 +389,7 @@ Note on the two seed-data helpers: if the seed has no unclaimed published clinic
 ```bash
 pnpm test:integration -- inquiries-rls
 ```
+
 Expected: failures like `relation "public.inquiries" does not exist` / unknown RPC. Anything else (sign-in failures, unreachable Supabase) — fix the environment first (`pnpm db:start`).
 
 - [ ] **Step 3: Write the migration**
@@ -705,6 +707,7 @@ grant execute on function public.get_reported_inquiry_thread(uuid) to authentica
 pnpm db:reset
 pnpm db:types
 ```
+
 Expected: reset replays all 18 migrations cleanly; `git diff src/lib/database.types.ts` shows the new tables/RPCs.
 
 - [ ] **Step 5: Run the integration tests, verify they pass**
@@ -712,6 +715,7 @@ Expected: reset replays all 18 migrations cleanly; `git diff src/lib/database.ty
 ```bash
 pnpm test:integration -- inquiries-rls
 ```
+
 Expected: all pass. If `clinic status` check fails on `create_inquiry` for seed data, check which statuses the seeded managed clinic has — the RPC accepts the three public statuses only.
 
 - [ ] **Step 6: Run existing suites to catch regressions**
@@ -719,6 +723,7 @@ Expected: all pass. If `clinic status` check fails on `create_inquiry` for seed 
 ```bash
 pnpm test:integration && pnpm typecheck
 ```
+
 Expected: all green (types regenerated, nothing else touched).
 
 - [ ] **Step 7: Commit**
@@ -735,10 +740,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: Module schemas + status-transition map
 
 **Files:**
+
 - Create: `src/modules/inquiries/schemas.ts`
 - Test: `src/modules/inquiries/schemas.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `INQUIRY_STATUSES = ["open", "replied", "confirmed", "declined", "closed"] as const`; `type InquiryStatus = (typeof INQUIRY_STATUSES)[number]`
   - `INQUIRY_STATUS_LABELS: Record<InquiryStatus, string>`
@@ -909,6 +916,7 @@ describe("replyInquirySchema / reportInquirySchema", () => {
 ```bash
 pnpm test -- src/modules/inquiries/schemas.test.ts
 ```
+
 Expected: FAIL — cannot resolve `./schemas`.
 
 - [ ] **Step 3: Implement**
@@ -953,9 +961,7 @@ const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Please pick a valid date");
 
-const optionalIsoDate = z
-  .union([isoDate, z.literal("")])
-  .optional();
+const optionalIsoDate = z.union([isoDate, z.literal("")]).optional();
 
 const bodyField = z
   .string()
@@ -1028,6 +1034,7 @@ export type ReportInquiryInput = z.infer<typeof reportInquirySchema>;
 ```bash
 pnpm test -- src/modules/inquiries/schemas.test.ts
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1044,6 +1051,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Notifications — payload builders, email templates, job handler
 
 **Files:**
+
 - Create: `src/modules/inquiries/notify.ts`
 - Test: `src/modules/inquiries/notify.test.ts`
 - Modify: `src/modules/jobs/queue.ts` (add `"inquiry_notification"` to `JobType`)
@@ -1051,6 +1059,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/modules/shared/email/templates.ts` (3 new templates)
 
 **Interfaces:**
+
 - Consumes: `enqueueJob(jobType, payload, { idempotencyKey })` from `src/modules/jobs/queue.ts`; `emailTemplates` / `EmailContent` from `src/modules/shared/email`.
 - Produces:
   - `type InquiryNotificationPayload = { inquiry_id: string; kind: "created" | "message" | "status"; message_id?: string; status?: string }`
@@ -1151,6 +1160,7 @@ describe("inquiry email templates", () => {
 ```bash
 pnpm test -- src/modules/inquiries/notify.test.ts
 ```
+
 Expected: FAIL — `./notify` unresolved, `inquiryReceived` not a template.
 
 - [ ] **Step 3: Implement `notify.ts`**
@@ -1435,6 +1445,7 @@ Register it in `JOB_HANDLERS`:
 ```bash
 pnpm test -- src/modules/inquiries/notify.test.ts && pnpm typecheck
 ```
+
 Expected: PASS, no type errors. Watch the `inquiry.clinics` join type — Supabase generates it as an object (FK to one row); if types come back as an array, change the select to `clinics!inner(name)` and adjust, matching how `handlers.ts` reads `clinic_managers` joins today.
 
 - [ ] **Step 7: Commit**
@@ -1451,10 +1462,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: Queries
 
 **Files:**
+
 - Create: `src/modules/inquiries/queries.ts`
 - Test: append a `describe` block to `tests/integration/inquiries-rls.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createSupabaseServerClient` from `@/lib/supabase/server`; tables from Task 1.
 - Produces (all `import "server-only"`; RLS does the scoping — callers must be signed in):
   - `clinicAcceptsInquiries(clinicId: string): Promise<boolean>`
@@ -1467,9 +1480,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 Append to `tests/integration/inquiries-rls.test.ts` (the integration config stubs `server-only`, so importing the module works):
 
 ```ts
-import {
-  clinicAcceptsInquiries,
-} from "@/modules/inquiries/queries";
+import { clinicAcceptsInquiries } from "@/modules/inquiries/queries";
 ```
 
 Wait — `queries.ts` uses `createSupabaseServerClient`, which needs Next.js `cookies()`; that does NOT run under vitest. Test the underlying data shape instead: keep `queries.ts` thin, and put the one pure piece — the list-item mapper — in a separately exported function tested here. Concretely:
@@ -1478,24 +1489,32 @@ Wait — `queries.ts` uses `createSupabaseServerClient`, which needs Next.js `co
 describe("inquiry query shaping", () => {
   it("maps thread rows newest-message-last and previews at 80 chars", async () => {
     const { shapeThread } = await import("@/modules/inquiries/queries");
-    const shaped = shapeThread(
-      {
-        id: "i1",
-        clinic_id: "c1",
-        subject: "s",
-        status: "open",
-        preferred_date: null,
-        preferred_time_note: null,
-        confirmed_date: null,
-        caregiver_id: "u1",
-        created_at: "2026-08-06T00:00:00Z",
-        clinics: { name: "Clinic", slug: "clinic" },
-        inquiry_messages: [
-          { id: "m2", sender_role: "clinic", body: "b", created_at: "2026-08-06T02:00:00Z" },
-          { id: "m1", sender_role: "caregiver", body: "a", created_at: "2026-08-06T01:00:00Z" },
-        ],
-      },
-    );
+    const shaped = shapeThread({
+      id: "i1",
+      clinic_id: "c1",
+      subject: "s",
+      status: "open",
+      preferred_date: null,
+      preferred_time_note: null,
+      confirmed_date: null,
+      caregiver_id: "u1",
+      created_at: "2026-08-06T00:00:00Z",
+      clinics: { name: "Clinic", slug: "clinic" },
+      inquiry_messages: [
+        {
+          id: "m2",
+          sender_role: "clinic",
+          body: "b",
+          created_at: "2026-08-06T02:00:00Z",
+        },
+        {
+          id: "m1",
+          sender_role: "caregiver",
+          body: "a",
+          created_at: "2026-08-06T01:00:00Z",
+        },
+      ],
+    });
     expect(shaped.messages.map((m) => m.id)).toEqual(["m1", "m2"]);
   });
 });
@@ -1508,6 +1527,7 @@ describe("inquiry query shaping", () => {
 ```bash
 pnpm test:integration -- inquiries-rls
 ```
+
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `queries.ts`**
@@ -1701,6 +1721,7 @@ export async function getInquiryThread(
 ```bash
 pnpm test:integration -- inquiries-rls && pnpm typecheck
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1717,9 +1738,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Server actions
 
 **Files:**
+
 - Create: `src/modules/inquiries/actions.ts`
 
 **Interfaces:**
+
 - Consumes: schemas (Task 2), notify builders (Task 3), `enqueueJob`, `checkRateLimit`, `getCurrentUser` from `@/modules/auth/server`, `createSupabaseServerClient`.
 - Produces:
   - `interface InquiryActionResult { error?: string; message?: string; inquiryId?: string }`
@@ -1945,6 +1968,7 @@ Check one thing before finishing: whether `clinic_reports` has an INSERT RLS pol
 ```bash
 pnpm typecheck && pnpm lint
 ```
+
 Expected: clean.
 
 - [ ] **Step 3: Commit**
@@ -1961,6 +1985,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: Caregiver UI — clinic CTA, account list, thread view
 
 **Files:**
+
 - Create: `src/modules/inquiries/components/InquiryCta.tsx` (client)
 - Create: `src/modules/inquiries/components/InquiryThreadView.tsx` (client — shared by caregiver and portal)
 - Create: `src/modules/inquiries/components/ReportInquiryDialog.tsx` (client)
@@ -1970,6 +1995,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/app/clinics/[slug]/page.tsx` (render CTA)
 
 **Interfaces:**
+
 - Consumes: `createInquiryAction`, `replyInquiryAction`, `reportInquiryAction` (Task 5); `clinicAcceptsInquiries`, `listMyInquiries`, `getInquiryThread` (Task 4); `INQUIRY_STATUS_LABELS` (Task 2); ui kit from `@/components/ui/*`; toasts via the sonner setup already in `providers.tsx` (`import { toast } from "sonner"` — check how existing forms fire toasts and copy that import).
 - Produces: `InquiryThreadView` props — `{ thread: InquiryThread; viewer: "caregiver" | "clinic"; children?: React.ReactNode }` (children = portal status controls slot, used in Task 7).
 
@@ -1978,8 +2004,9 @@ Design language: Warm Horizon (Fraunces display + Nunito Sans body already globa
 - [ ] **Step 1: Build `InquiryCta`**
 
 Client component. Props: `{ clinicId: string; clinicName: string; clinicSlug: string; accepts: boolean; signedIn: boolean }`. Renders a `Card` titled "Contact this clinic":
+
 - `signedIn && accepts` → button "Send an inquiry" opening a `Dialog` (from `@/components/ui/dialog`) with a form: subject (`Input`), message (`Textarea`), preferred date (**native** `<input type="date" name="preferredDate">` styled with the input classes), time note (`Input`, placeholder "e.g. weekday mornings"). Submit calls `createInquiryAction`; on success toast the message and `router.push(\`/account/inquiries/${result.inquiryId}\`)`; on error toast destructive.
-- `signedIn && !accepts` → muted text: "This clinic hasn't been claimed yet, so it can't receive inquiries." plus a `Link` to `/clinics/[slug]/claim` labeled "Represent this clinic? Claim it."  (pass `clinicSlug` as an extra prop for the link).
+- `signedIn && !accepts` → muted text: "This clinic hasn't been claimed yet, so it can't receive inquiries." plus a `Link` to `/clinics/[slug]/claim` labeled "Represent this clinic? Claim it." (pass `clinicSlug` as an extra prop for the link).
 - `!signedIn` → text + `Link` to `/login` ("Sign in to send an inquiry").
 
 Form state: `useState` per field + a pending flag, matching the simplest existing client form in the codebase (see `src/app/clinics/[slug]/report/` for the closest precedent — copy its action-calling pattern). Base UI rule: `render={<Link …/>}`, never `asChild`.
@@ -1992,6 +2019,7 @@ In `src/app/clinics/[slug]/page.tsx`, locate where sidebar cards render (contact
 const acceptsInquiries = await clinicAcceptsInquiries(clinic.id);
 const user = await getCurrentUser();
 ```
+
 (check what the page already fetches — it likely already has the user; reuse, don't duplicate) and render:
 
 ```tsx
@@ -2023,6 +2051,7 @@ Nav: in `src/app/account/layout.tsx` add `{ href: "/account/inquiries", label: "
 ```bash
 # dev server via the preview tooling (never Bash) — then:
 ```
+
 Sign in as `caregiver@thrivemap.test` / `password123`, open a claimed clinic (one managed by clinicrep@ — find via the portal or seed), send an inquiry, confirm redirect to the thread, reply, check `/account/inquiries` list renders. Check an unclaimed clinic shows the claim hint. Check signed-out state shows the sign-in prompt. Trap: verify flows via Playwright/manual browser if the preview pane misbehaves (`read_page` "(empty page)" flakiness).
 
 - [ ] **Step 6: Typecheck + lint + commit**
@@ -2040,12 +2069,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: Portal UI — inbox + status controls
 
 **Files:**
+
 - Create: `src/modules/inquiries/components/InquiryStatusControls.tsx` (client)
 - Create: `src/app/clinic-portal/[clinicId]/inquiries/page.tsx`
 - Create: `src/app/clinic-portal/[clinicId]/inquiries/[inquiryId]/page.tsx`
 - Modify: `src/app/clinic-portal/[clinicId]/layout.tsx` (nav item)
 
 **Interfaces:**
+
 - Consumes: `listClinicInquiries`, `getInquiryThread` (Task 4); `setInquiryStatusAction`, `replyInquiryAction` (Task 5); `InquiryThreadView` (Task 6); the portal's existing manager guard — check how `src/app/clinic-portal/[clinicId]/profile/page.tsx` verifies access and copy that exact pattern.
 - Produces: nothing consumed later.
 
@@ -2064,10 +2095,11 @@ In `src/app/clinic-portal/[clinicId]/layout.tsx`, add to `sections`:
 - [ ] **Step 3: Thread page + status controls**
 
 `InquiryStatusControls` (client). Props: `{ inquiryId: string; status: InquiryStatus; preferredDate: string | null }`. Uses `canTransition` to decide what to render; nothing when status is terminal. Buttons:
+
 - "Confirm" → inline row with **native** `<input type="date">` defaulting to `preferredDate ?? ""` + "Confirm date" submit → `setInquiryStatusAction({ inquiryId, status: "confirmed", confirmedDate })`
 - "Decline" → `setInquiryStatusAction({ inquiryId, status: "declined" })` behind a one-step confirm (button turns into "Really decline?" on first click — no dialog needed)
 - "Close" → same pattern as Decline
-Toast results; `router.refresh()` on success.
+  Toast results; `router.refresh()` on success.
 
 Thread page `src/app/clinic-portal/[clinicId]/inquiries/[inquiryId]/page.tsx` (RSC): guard, `getInquiryThread`, `notFound()` when null or `thread.clinicId !== clinicId`, then:
 
@@ -2088,6 +2120,7 @@ As `clinicrep@thrivemap.test`: portal → managed clinic → Inquiries tab shows
 ```bash
 curl -X POST -H "x-jobs-secret: $JOBS_PROCESSOR_SECRET" http://localhost:<preview-port>/api/internal/jobs/process
 ```
+
 (secret from `.env.local`).
 
 - [ ] **Step 5: Typecheck + lint + commit**
@@ -2105,10 +2138,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 8: Admin — reported-thread view
 
 **Files:**
+
 - Modify: the admin reports UI — find it first: `src/app/admin/reports/page.tsx` and whatever component renders a single report (grep `clinic_reports` under `src/app/admin` and `src/modules/admin`). Add the thread panel where report details render.
 - Modify: `src/modules/admin/server.ts` (add `getReportedInquiryThread`)
 
 **Interfaces:**
+
 - Consumes: RPC `get_reported_inquiry_thread` (Task 1).
 - Produces: `getReportedInquiryThread(reportId: string)` in `src/modules/admin/server.ts` returning `{ inquiry: { id: string; subject: string; status: string; created_at: string }; messages: Array<{ id: string; sender_role: string; body: string; created_at: string }> } | null`.
 
@@ -2163,9 +2198,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 9: End-to-end coverage
 
 **Files:**
+
 - Create: `e2e/inquiries.spec.ts`
 
 **Interfaces:**
+
 - Consumes: everything; demo accounts; service-role client pattern from `e2e/places-import.spec.ts` (copy its supabase client setup + DB-polling helpers).
 
 - [ ] **Step 1: Write the spec**
@@ -2241,6 +2278,7 @@ Flesh the comments into real steps — every selector should target accessible n
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:<preview-port> pnpm test:e2e -- inquiries
 ```
+
 Traps: port 3000 squatter (another app answers there — always pass `PLAYWRIGHT_BASE_URL` for the preview server); restart the dev server first if sign-ins start timing out (rate limiter accumulation).
 Expected: 3 passed (chromium), skipped on mobile project.
 
@@ -2250,6 +2288,7 @@ Expected: 3 passed (chromium), skipped on mobile project.
 pnpm test && pnpm test:integration
 PLAYWRIGHT_BASE_URL=http://localhost:<preview-port> pnpm test:e2e
 ```
+
 Expected: everything green; the 6 pre-existing by-design skips remain.
 
 - [ ] **Step 4: Commit**
@@ -2266,6 +2305,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 10: Documentation + final verification
 
 **Files:**
+
 - Modify: `docs/architecture/jobs.md` (document `inquiry_notification`: payload shape, idempotency keys, recipient rules — mirror the `candidate_import` section's format)
 - Modify: `docs/phase-2-plan.md` (feature 3: one-line note that inquiry-only shipped 2026-08-06, spec/plan paths)
 - Check: `docs/operations/deployment.md` and `docs/architecture/dev-adapters.md` need NO changes (no new env vars, no new adapters) — verify, don't edit blindly.
@@ -2277,10 +2317,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```bash
 pnpm typecheck && pnpm lint && pnpm test && pnpm test:integration && pnpm build
 ```
+
 Then restart the dev server and:
+
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:<preview-port> pnpm test:e2e
 ```
+
 Expected: all green, prod build clean.
 
 - [ ] **Step 3: Commit + push**

@@ -29,11 +29,13 @@
 ### Task 1: Migration 19 — table, RLS, grants, search integration
 
 **Files:**
+
 - Create: `supabase/migrations/20260807000019_clinic_therapists.sql`
 - Create: `tests/integration/therapists-rls.test.ts`
 - Modify: `src/lib/database.types.ts` (regenerated, not hand-edited)
 
 **Interfaces:**
+
 - Produces: table `public.clinic_therapists` (columns below), search vector containing therapist names (weight B) and profession+specialties (weight C). Later tasks rely on column names exactly: `id, clinic_id, full_name, credentials, profession, specialties, bio, photo_path, display_order, created_at, updated_at`.
 
 - [ ] **Step 1: Write the failing integration test**
@@ -380,10 +382,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: Therapist schemas (zod) + unit tests
 
 **Files:**
+
 - Create: `src/modules/therapists/schemas.ts`
 - Test: `src/modules/therapists/schemas.test.ts`
 
 **Interfaces:**
+
 - Produces: `therapistInputSchema` (zod object; input `{ full_name: string; credentials?: string; profession: string; specialties: string[]; bio?: string }` — output has trimmed strings), `moveTherapistSchema` (`{ therapist_id: string (uuid); direction: "up" | "down" }`), `therapistPhotoSchema` (`{ therapist_id: string (uuid); storage_path: string }`), and type `TherapistInput = z.infer<typeof therapistInputSchema>`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -548,11 +552,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Server actions
 
 **Files:**
+
 - Create: `src/modules/therapists/actions.ts`
 - Modify: `src/modules/portal/server.ts` (export the manager-access guard)
 - Modify: `src/modules/portal/actions.ts` (import the moved guard)
 
 **Interfaces:**
+
 - Consumes: `therapistInputSchema`, `moveTherapistSchema`, `therapistPhotoSchema` from Task 2; `clinic_therapists` table from Task 1.
 - Produces (all return `Promise<TherapistActionResult>` where `TherapistActionResult = { error?: string; message?: string }`):
   - `createTherapist(clinicId: string, raw: unknown)`
@@ -904,11 +910,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: Public "Care team" section on the clinic page
 
 **Files:**
+
 - Create: `src/modules/therapists/components/CareTeamSection.tsx`
 - Modify: `src/modules/clinics/queries.ts` (`getClinicBySlugUncached` select, ~line 152)
 - Modify: `src/app/clinics/[slug]/page.tsx` (insert section after the Services card, ~line 374)
 
 **Interfaces:**
+
 - Consumes: `clinic_therapists` columns from Task 1.
 - Produces: `CareTeamSection({ therapists })` — server component; `therapists` is the array from the extended `getClinicBySlug` result (`ClinicProfile["clinic_therapists"]`). Renders nothing when empty.
 
@@ -1065,6 +1073,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Portal "Team" tab
 
 **Files:**
+
 - Create: `src/app/clinic-portal/[clinicId]/team/page.tsx`
 - Create: `src/modules/therapists/components/TherapistManager.tsx`
 - Create: `src/modules/therapists/components/TherapistForm.tsx`
@@ -1072,6 +1081,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/modules/portal/server.ts` (`requireManagedClinic` select)
 
 **Interfaces:**
+
 - Consumes: actions from Task 3 (exact names/signatures listed there), `therapistInputSchema`/`TherapistInput` from Task 2, `IMAGE_UPLOAD_ACCEPT`, `IMAGE_UPLOAD_MAX_BYTES`, `IMAGE_UPLOAD_MIME` from `@/modules/portal/schemas`.
 - Produces: `/clinic-portal/[clinicId]/team` page; `TherapistManager({ clinicId, therapists })` client component.
 
@@ -1188,10 +1198,7 @@ export function TherapistForm({
           <Label htmlFor="therapist-credentials">
             Credentials (optional, e.g. OTRP)
           </Label>
-          <Input
-            id="therapist-credentials"
-            {...form.register("credentials")}
-          />
+          <Input id="therapist-credentials" {...form.register("credentials")} />
         </div>
       </div>
       <div className="space-y-1.5">
@@ -1622,9 +1629,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: e2e — portal flow + public rendering + photo upload
 
 **Files:**
+
 - Create: `e2e/therapists.spec.ts`
 
 **Interfaces:**
+
 - Consumes: everything shipped in Tasks 1–5; seeded `clinicrep@thrivemap.test`; helper patterns from `e2e/inquiries.spec.ts` (`adminDb`, `signIn`, `managedClinic` — copy them, don't import across spec files).
 
 - [ ] **Step 1: Write the spec**
@@ -1650,8 +1659,7 @@ async function cleanup() {
   const paths = (rows ?? [])
     .map((r) => r.photo_path)
     .filter((p): p is string => Boolean(p));
-  if (paths.length > 0)
-    await db.storage.from("clinic-images").remove(paths);
+  if (paths.length > 0) await db.storage.from("clinic-images").remove(paths);
   await db.from("clinic_therapists").delete().like("full_name", "[e2e]%");
 }
 
@@ -1735,7 +1743,9 @@ test.describe("therapist profiles", () => {
         mimeType: "image/png",
         buffer: PNG_BYTES,
       });
-    await expect(page.getByRole("button", { name: "Remove photo" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Remove photo" }),
+    ).toBeVisible();
 
     // Row now has a stored photo_path.
     const db = adminDb();
@@ -1796,6 +1806,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: Docs + full verification sweep
 
 **Files:**
+
 - Modify: `docs/architecture/data-model.md` (add `clinic_therapists` alongside the other clinic satellite tables)
 - Modify: `docs/phase-2-plan.md` (feature 2 shipped note)
 

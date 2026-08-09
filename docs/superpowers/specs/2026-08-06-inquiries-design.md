@@ -80,7 +80,7 @@ view can load that thread via a security-definer query.
 ### RPCs (security definer, explicit grants — hardened-defaults convention)
 
 - `create_inquiry(p_clinic_id, p_subject, p_preferred_date,
-  p_preferred_time_note, p_body)` — verifies the clinic has an active
+p_preferred_time_note, p_body)` — verifies the clinic has an active
   manager, inserts the inquiry and its first message in one transaction,
   returns the inquiry id. Caller must be authenticated; caregiver_id =
   `auth.uid()`.

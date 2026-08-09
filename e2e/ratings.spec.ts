@@ -92,9 +92,7 @@ test.describe("clinic ratings", () => {
     );
   });
 
-  test("clinic with 3+ ratings shows dimension averages", async ({
-    page,
-  }) => {
+  test("clinic with 3+ ratings shows dimension averages", async ({ page }) => {
     await page.goto(`/clinics/${THREE_RATING_SLUG}`);
     await expect(
       page.getByRole("heading", { name: "Caregiver ratings" }),
@@ -120,9 +118,7 @@ test.describe("clinic ratings", () => {
     await expect(page.getByText(/^Based on/)).toHaveCount(0);
   });
 
-  test("caregiver submits, updates, and removes a rating", async ({
-    page,
-  }) => {
+  test("caregiver submits, updates, and removes a rating", async ({ page }) => {
     await cleanOwnRating(CLEAN_SLUG);
     await signIn(page, "caregiver@thrivemap.test");
     await page.goto(`/clinics/${CLEAN_SLUG}`);

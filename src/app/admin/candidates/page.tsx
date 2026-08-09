@@ -32,8 +32,8 @@ export default async function AdminCandidatesPage() {
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Places found by imports. Promote a candidate into a draft listing,
-        attach it to a clinic we already have, or discard noise. Nothing here
-        is public until a draft is reviewed and published.
+        attach it to a clinic we already have, or discard noise. Nothing here is
+        public until a draft is reviewed and published.
       </p>
 
       <ImportTriggerCard terms={IMPORT_SERVICE_TERMS} cities={cities} />

@@ -198,8 +198,8 @@ export default function OfflinePage() {
       <main id="main-content" className="offline-main">
         <h1 className="offline-title">You&rsquo;re offline</h1>
         <p className="offline-lede">
-          Your saved clinics are below. Details may have changed — reconnect
-          for current information.
+          Your saved clinics are below. Details may have changed — reconnect for
+          current information.
         </p>
         <div
           suppressHydrationWarning

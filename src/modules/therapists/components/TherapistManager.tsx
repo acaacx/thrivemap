@@ -110,7 +110,10 @@ export function TherapistManager({
         .upload(path, file, { contentType: file.type });
       if (uploadError) {
         console.error("therapist photo upload failed:", uploadError.message);
-        setFeedback({ kind: "error", text: "Upload failed. Please try again." });
+        setFeedback({
+          kind: "error",
+          text: "Upload failed. Please try again.",
+        });
         return;
       }
       const result = await setTherapistPhoto(clinicId, {
@@ -257,9 +260,7 @@ export function TherapistManager({
                       variant="ghost"
                       size="sm"
                       aria-label={`Move ${therapist.full_name} down`}
-                      disabled={
-                        index === ordered.length - 1 || busyId !== null
-                      }
+                      disabled={index === ordered.length - 1 || busyId !== null}
                       onClick={() =>
                         withBusy(therapist.id, () =>
                           moveTherapist(clinicId, {

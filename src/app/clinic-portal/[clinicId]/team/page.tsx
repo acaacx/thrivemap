@@ -15,8 +15,8 @@ export default async function ManageTeamPage({ params }: PageProps) {
         {clinic.name} — team
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Introduce the therapists families will meet. Names and specialties
-        also help your clinic show up in search.
+        Introduce the therapists families will meet. Names and specialties also
+        help your clinic show up in search.
       </p>
       <div className="mt-6">
         <TherapistManager
