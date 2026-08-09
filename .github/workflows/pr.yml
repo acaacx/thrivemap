@@ -44,6 +44,15 @@ jobs:
         run: supabase start
       - name: Lint database schema
         run: supabase db lint --level error
+      - name: Configure app env from local Supabase
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } > .env.local
       - name: Run integration tests
         run: pnpm test:integration
 
