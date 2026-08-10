@@ -55,8 +55,9 @@ plan: [`docs/superpowers/plans/2026-08-08-clinic-ratings.md`](superpowers/plans/
 
 ### 5. Multilingual (Filipino first)
 
-Deferred to v2.0 (decision 2026-08-07) — out of Phase 2 scope. Notes for
-when it returns: `preferred_language` already exists on user_preferences.
+Dropped (decision 2026-08-10; previously deferred to v2.0 on 2026-08-07).
+Not on any roadmap. Notes kept in case it ever returns:
+`preferred_language` already exists on user_preferences.
 Next.js i18n routing + translated static content first; translated clinic
 descriptions are a data problem (per-language columns on a satellite
 table), search needs a `filipino` text config.
