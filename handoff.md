@@ -47,12 +47,13 @@ conditional-only — skip unless the pg queue outgrows itself.
 
 ## Finished and verified
 
-`main` = `bd34d4d`, pushed to `origin/main`. Latest CI green on that commit
-(`Main` workflow validate ✅; `PR checks` ✅ — pr.yml also triggers on push to
-main, so `format:check` does gate main despite main.yml omitting it).
+`main` = `e26e0b7`, pushed to `origin/main`. Full `Main` pipeline green on that
+commit — validate ✅, migrate ✅, deploy ✅ (`PR checks` ✅ too; pr.yml also
+triggers on push to main, so `format:check` does gate main despite main.yml
+omitting it).
 
-Latest **production** deploy = `a5bb172` at the time of writing; `bd34d4d` is
-docs-only and deploys on Vercel's next git-integration build.
+The **GitHub Actions deploy pipeline is live as of 2026-08-10** — see the
+dedicated section below.
 
 Go-live wave (2026-08-09), after the phase-2 feature work:
 
@@ -80,6 +81,27 @@ Go-live wave (2026-08-09), after the phase-2 feature work:
   masked this before — they decode on the main thread.
 - `bd34d4d` multilingual dropped from the roadmap.
 
+### Deploy pipeline activation (2026-08-10)
+
+`.github/workflows/main.yml` is no longer inert. Repository variable
+`DEPLOY_ENABLED=true`; all five secrets set: `SUPABASE_ACCESS_TOKEN`,
+`SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `DEPLOY_HOOK_URL`, `SMOKE_URL`.
+Verified end-to-end by empty commit `e26e0b7`: `Remote database is up to date.`
+then deploy hook + smoke test returning
+`{"status":"ok","checks":{"app":"ok","db":"ok","jobs":"ok"}}`.
+
+Values worth not re-deriving:
+
+- `SUPABASE_PROJECT_REF` = `slwguxbeijcpixsegtzm` (also in the gitignored
+  `supabase/.temp/project-ref`).
+- `SMOKE_URL` = `https://thrivemap.vercel.app` — the stable production alias.
+  Do NOT use the per-deployment URLs that show up in the GitHub deployments
+  API (`thrivemap-<hash>-abensontech.vercel.app`); those are immutable and
+  would smoke-test a frozen old build. `thrivemap-abensontech.vercel.app`
+  302s — only the bare `thrivemap.vercel.app` returns 200.
+- Vercel project `thrivemap`, org `abensontech`; Supabase migrations 1–21 all
+  applied on the hosted project.
+
 Also closed since the last handoff: remote branch `claude/goofy-kapitsa-86365d`
 deleted from origin; the superseded handoff-draft stash dropped (the remaining
 `stash@{0}` on `c5bd966` is pre-existing and NOT ours — leave it alone).
@@ -88,14 +110,24 @@ deleted from origin; the superseded handoff-draft stash dropped (the remaining
 
 - Nothing half-done in code. Working tree carries one uncommitted edit:
   `.gitignore` + `.devswarm-temp/` (DevSwarm workspace scratch dir).
-- **GitHub Actions deploy pipeline is still inert.** Repository variable
-  `DEPLOY_ENABLED` is unset, so the `migrate` and `deploy` jobs skip on every
-  Main run. Production deploys currently come from Vercel's own git
-  integration, and **hosted migrations are pushed by hand**. To activate: set
-  `DEPLOY_ENABLED=true` plus secrets `SUPABASE_ACCESS_TOKEN`,
-  `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `DEPLOY_HOOK_URL`,
-  `SMOKE_URL`, and protect the `production` environment with a required
-  reviewer (see `docs/operations/deployment.md` step 6).
+- **Rotate `SUPABASE_DB_PASSWORD`.** During the 2026-08-10 activation the
+  production DB password was pasted into an assistant chat transcript to
+  unblock the failing job. The pipeline is proven now, so rotating is a
+  two-minute job: reset it in Supabase → Project Settings → Database, then
+  `gh secret set SUPABASE_DB_PASSWORD` and `gh run rerun <id> --failed`.
+- **No approval gate on production migrations.** `docs/operations/deployment.md`
+  step 6 says to protect the `production` environment with a required reviewer.
+  GitHub refuses: required reviewers need a Pro/Team plan on a private repo and
+  `acaacx/thrivemap` is private on Free. So every push to main runs
+  `supabase db push` against production unattended. Either upgrade the plan or
+  accept it knowingly — it is not an oversight.
+- **Every push to main deploys twice.** Vercel's git integration builds on its
+  own AND the `deploy` job fires `DEPLOY_HOOK_URL`. Confirmed on `e26e0b7`
+  (Vercel 19:31:48, hook 19:37:07). To keep migrate without the redundant
+  build, split the `if: vars.DEPLOY_ENABLED` condition so it gates `migrate`
+  only, or drop the `deploy` job and let Vercel own deploys. Note the smoke
+  test lives in the `deploy` job, so dropping it loses the post-deploy
+  `/api/health` check.
 - **Job queue drains once a day** (Hobby-plan cron limit). Tighten `vercel.json`
   after upgrading to Pro, or point an external scheduler at the POST endpoint.
   If `JOBS_PROCESSOR_SECRET` is unset in production the route 503s and the
@@ -109,13 +141,24 @@ deleted from origin; the superseded handoff-draft stash dropped (the remaining
 
 ## Single next action
 
-Ask the user which of the post-launch items to take: activate the GH Actions
-deploy/migrate pipeline (removes hand-run hosted migrations), fix the
-once-a-day job drain, turn on real Google Places imports, activate the optional
-providers, or start new feature work. Phase 2 is done and shipped.
+Rotate `SUPABASE_DB_PASSWORD` (see above — the current value was exposed in a
+chat transcript). After that, ask the user which post-launch item to take: fix
+the double deploy, fix the once-a-day job drain, turn on real Google Places
+imports, activate the optional providers, or start new feature work. Phase 2 is
+done and shipped; the deploy pipeline is live and verified.
 
 ## Traps / non-obvious facts
 
+- **The linked Supabase CLI reads the DB password from the OS keychain, not
+  `SUPABASE_DB_PASSWORD`.** So a green local `supabase migration list --linked`
+  proves NOTHING about whether the CI secret is correct — that is exactly how
+  the first pipeline run failed with `failed to connect to postgres … set the
+  env var correctly: SUPABASE_DB_PASSWORD` while local checks passed. Note
+  `supabase link` succeeding only validates the access token + project ref; the
+  DB password is not exercised until `db push` connects.
+- **GitHub environment names are case-insensitive**: main.yml says
+  `environment: production` and matches the existing `Production` environment
+  Vercel created. Not a bug, don't "fix" it.
 - **Hosted vs local search_path**: local roles include the `extensions` schema,
   hosted CLI push roles do not. Any migration touching pg_trgm/postgis
   operators or types needs an explicit `set search_path` — green locally proves
