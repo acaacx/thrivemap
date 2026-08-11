@@ -132,20 +132,38 @@ deleted from origin; the superseded handoff-draft stash dropped (the remaining
   after upgrading to Pro, or point an external scheduler at the POST endpoint.
   If `JOBS_PROCESSOR_SECRET` is unset in production the route 503s and the
   queue silently stops draining — `/api/health` reports the jobs check.
-- **Live Google Places imports** still need a real `GOOGLE_MAPS_SERVER_API_KEY`
-  (Places API (New) enabled). Without it the fixture provider serves the flow.
-  User's call.
+- **Google Places imports — key added 2026-08-11, NOT yet active.**
+  `GOOGLE_MAPS_SERVER_API_KEY` is set in Vercel (Production scope) and the
+  Google key is API-restricted to **Places API (New) + Geocoding API** — both
+  are required: `src/modules/maps/providers/google.ts` calls
+  `places.googleapis.com/v1/places:{searchText,autocomplete,searchNearby}` AND
+  `maps.googleapis.com/maps/api/geocode/json`. Application restriction is left
+  as None deliberately: Vercel serverless egress IPs are dynamic and static
+  egress is a paid feature, so the API restriction + quota caps are the
+  controls. `docs/operations/deployment.md` still says "IP-restricted" for this
+  key — that row is now wrong and should be corrected.
+  **Vercel env vars only apply to NEW builds**, and the live build predates the
+  key, so it is still running `DevMapProvider` until the next deploy. To verify
+  after redeploying: the `[DEV ADAPTER] Google Maps not configured` log line
+  stops appearing (`src/modules/maps/index.ts` picks the provider by whether
+  the env var is set).
 - Optional providers all still on dev adapters: Upstash Redis (shared rate
   limit/cache), Resend (email), PostHog, Sentry. See the provider activation
   checklist in `docs/operations/deployment.md`.
 
 ## Single next action
 
-Rotate `SUPABASE_DB_PASSWORD` (see above — the current value was exposed in a
-chat transcript). After that, ask the user which post-launch item to take: fix
-the double deploy, fix the once-a-day job drain, turn on real Google Places
-imports, activate the optional providers, or start new feature work. Phase 2 is
-done and shipped; the deploy pipeline is live and verified.
+Confirm the Google Maps key went live on the deploy that carries this handoff
+commit — check that admin-triggered Places imports return real results instead
+of fixtures, and that the `[DEV ADAPTER] Google Maps not configured` log is
+gone. If the deploy did not happen, redeploy.
+
+Then: rotate `SUPABASE_DB_PASSWORD` (see above — the current value was exposed
+in a chat transcript). After that, ask the user which post-launch item to take:
+fix the double deploy, fix the once-a-day job drain, correct the stale
+IP-restriction row in `docs/operations/deployment.md`, activate the optional
+providers (Upstash/Resend/PostHog/Sentry), or start new feature work. Phase 2
+is done and shipped; the deploy pipeline is live and verified.
 
 ## Traps / non-obvious facts
 
@@ -156,6 +174,13 @@ done and shipped; the deploy pipeline is live and verified.
   env var correctly: SUPABASE_DB_PASSWORD` while local checks passed. Note
   `supabase link` succeeding only validates the access token + project ref; the
   DB password is not exercised until `db push` connects.
+- **Only `GOOGLE_MAPS_SERVER_API_KEY` matters.**
+  `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` still exists in `src/lib/env.ts`
+  but map rendering moved to OpenFreeMap, so it is not needed for tiles. Never
+  add a `NEXT_PUBLIC_` prefix to the server key — that inlines a billable
+  credential into the browser bundle.
+- **Vercel env var changes need a new build** to take effect; editing the
+  dashboard alone changes nothing on the running deployment.
 - **GitHub environment names are case-insensitive**: main.yml says
   `environment: production` and matches the existing `Production` environment
   Vercel created. Not a bug, don't "fix" it.
