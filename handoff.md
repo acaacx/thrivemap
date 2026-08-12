@@ -70,22 +70,9 @@ Also verified this session:
 
 ## Half-done / not started
 
-- **`JOBS_PROCESSOR_SECRET` rotation FAILING on the user's side — 4 attempts,
-  zero effect server-side.** Goal: same fresh value in BOTH
-  `gh secret set JOBS_PROCESSOR_SECRET -R acaacx/thrivemap` AND Vercel env
-  (Production, Sensitive), because the prod value is unreadable and the new
-  jobs-drain workflow needs the pair to match. After Vercel side: redeploy
-  (env vars only apply to new builds). Verify with `gh secret list` +
-  `npx vercel env ls --scope abensontech --project thrivemap` — the Vercel row
-  must show a fresh created-time, not "2d ago". Diagnosis in flight: user was
-  asked to run `gh auth status` and a throwaway
-  `gh secret set JOBS_PROCESSOR_SECRET -R acaacx/thrivemap --body test-echo-check`
-  to see the actual error (suspect wrong gh/vercel account in their terminal).
-  **Until this lands, `jobs-drain.yml` fails every 10 min** — red runs in
-  Actions are expected noise, not a code bug. After it lands, run
-  `gh workflow run jobs-drain.yml` and confirm green, then health `jobs: ok`.
-- **PR checks on `db36a8a` was still in_progress at session end** — expected
-  green (prettier gate fixed). Confirm: `gh run list --workflow "PR checks" -L 1`.
+- ~~`JOBS_PROCESSOR_SECRET` rotation~~ **DONE 2026-08-12.** See the closed-items
+  section below.
+- ~~PR checks on `db36a8a`~~ **green** (confirmed, along with `Main`).
 - **Optional providers still dev adapters**: Upstash Redis, Resend, PostHog,
   Sentry. Activation needs user-created accounts/keys. Their existing Vercel
   rows are probably empty Sensitive rows — rm + re-add each (recovery steps now
@@ -96,13 +83,35 @@ Also verified this session:
 - `DEPLOY_HOOK_URL` GitHub secret is now unused — optional cleanup:
   `gh secret delete DEPLOY_HOOK_URL`.
 
+### Jobs-secret rotation — CLOSED 2026-08-12
+
+Root cause of the four silent failures: **only the GitHub side was ever
+landing.** The Vercel row kept its original create-time (`3d ago`) through every
+attempt, so prod kept the old value and `jobs-drain.yml` 401'd every 10 min.
+
+What actually worked — same value piped into both sides, never echoed:
+
+```bash
+S=$(openssl rand -hex 32)
+printf %s "$S" | gh secret set JOBS_PROCESSOR_SECRET -R acaacx/thrivemap
+npx vercel env rm JOBS_PROCESSOR_SECRET --yes --scope abensontech
+printf %s "$S" | npx vercel env add JOBS_PROCESSOR_SECRET production --sensitive --scope abensontech
+unset S
+```
+
+Then empty commit `969961f` → Vercel git build → `gh workflow run jobs-drain.yml`.
+Verified: Vercel row create-time fresh, `Main` run 31589122073 green
+(validate/migrate/deploy+smoke), jobs-drain run 31589342015 **success**,
+`/api/health` → `{"app":"ok","db":"ok","jobs":"ok"}`.
+
+Note the rotation dropped the Preview scope — the row is Production-only now.
+Re-add Preview if preview deploys ever need to drain jobs.
+
 ## Single next action
 
-Get the `JOBS_PROCESSOR_SECRET` rotation to actually land (see above — verify
-server-side after every attempt; user's local runs have failed silently four
-times). Then dispatch jobs-drain and confirm green. Then confirm PR checks
-green on `db36a8a`. Then ask the user: activate optional providers, or new
-feature work.
+Ask the user: activate optional providers (Upstash/Resend/PostHog/Sentry — each
+needs an account + key, and their existing Vercel rows are probably empty
+Sensitive rows needing rm + re-add), or start new feature work.
 
 ## Traps / non-obvious facts
 
