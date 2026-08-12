@@ -39,6 +39,10 @@ async function render(element: ReactElement, fonts?: unknown[]) {
  * to assert on where text visually landed rather than trusting a byte count.
  * resvg output here is always 8-bit RGBA (colorType 6), so that's all this
  * supports.
+ *
+ * Written by hand rather than pulled from a dependency: this project has no
+ * PNG-decode library (no pngjs, no sharp) and adding one just for a test
+ * felt like more footprint than a ~60-line decoder using only node:zlib.
  */
 interface DecodedPng {
   width: number;
@@ -361,5 +365,55 @@ describe("caption layout", () => {
     // wordBreak, an 80-char run with no spaces has no wrap point and keeps
     // painting to the frame's right edge (x=1199) instead.
     expect(inkMaxX).toBeLessThan(950);
+  });
+
+  // The two tests above use the 33-char LABELS.headline, which wraps to
+  // exactly 2 lines — that's the minimum case for the overlap bug, not the
+  // fix's full stated scope (headlines up to label.ts's 80-char MAX_HEADLINE
+  // clamp, which wrap to 3 lines in practice: at ~5-6 chars/word including
+  // the space, 80 chars is roughly 13-14 words, and this plate's width fits
+  // about 4-5 words per line at the 54px Fraunces size, so ordinary English
+  // text lands on 3 lines, not 4 — every headline tried at or near the
+  // clamp, including the one below, wrapped to 3). A future line-height or
+  // padding change could reintroduce overlap starting at line 3 with
+  // nothing here to catch it, since the two tests above never exercise a
+  // third line. This headline is 79 chars, all real words with spaces (not
+  // the unbroken-run case above, which exercises wordBreak specifically) —
+  // it wraps by ordinary word-boundary breaking.
+  it("SearchCard: count line starts below a 3-line headline near the 80-char clamp", async () => {
+    const headline =
+      "Occupational therapy, speech therapy and early intervention clinics near Manila";
+    expect(headline.length).toBeLessThanOrEqual(80);
+    const png = await render(
+      <SearchCard paths={[]} clusters={[]} labels={{ ...LABELS, headline }} />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const muted = hexToRgb(PALETTE.muted);
+    const inkMaxY = maxYOfColor(decoded, ink);
+    const mutedMinY = minYOfColor(decoded, muted);
+    expect(inkMaxY).toBeGreaterThan(0);
+    expect(mutedMinY).toBeLessThan(decoded.height);
+    expect(mutedMinY).toBeGreaterThan(inkMaxY);
+  });
+
+  it("FallbackCard: count line starts below a 3-line headline near the 80-char clamp", async () => {
+    const headline =
+      "Occupational therapy, speech therapy and early intervention clinics near Manila";
+    const png = await render(
+      <FallbackCard
+        labels={{ ...LABELS, headline, count: "No clinics match yet" }}
+      />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const muted = hexToRgb(PALETTE.muted);
+    const inkMaxY = maxYOfColor(decoded, ink);
+    const mutedMinY = minYOfColor(decoded, muted);
+    expect(inkMaxY).toBeGreaterThan(0);
+    expect(mutedMinY).toBeLessThan(decoded.height);
+    expect(mutedMinY).toBeGreaterThan(inkMaxY);
   });
 });
