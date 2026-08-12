@@ -4,249 +4,156 @@
 
 Build **ThriveMap** (product name everywhere; directory stays `ausomeapp`): a
 Philippines-first, autism-focused clinic directory. Phase 1 (clinic discovery
-MVP) complete. Phase 2 (`docs/phase-2-plan.md`) complete: 1 Places import,
-2 Therapist profiles, 3 Inquiries, 4 Ratings, 6 PWA. Feature 5 (Multilingual)
-**dropped entirely** (decision 2026-08-10; was previously deferred to v2.0 —
-notes kept in phase-2-plan in case it returns). Feature 7 (job runner upgrade)
-conditional-only — skip unless the pg queue outgrows itself.
+MVP) complete. Phase 2 (`docs/phase-2-plan.md`) complete: Places import,
+therapist profiles, inquiries, ratings, PWA. Multilingual **dropped entirely**
+(decision 2026-08-10). Job-runner upgrade conditional-only — skip unless the pg
+queue outgrows itself.
 
-**The app is live in production.** First production deploy 2026-08-09.
+**The app is live in production.** Current session = post-launch ops cleanup.
 
 **Locked decisions (do not relitigate):**
 
 - Local dev uses local Supabase + `[DEV ADAPTER]` fallbacks (maps, rate limit,
   email, analytics, Sentry/PostHog, Places fixture provider). Real providers
-  are env-gated and documented in `.env.example` /
-  `docs/operations/deployment.md`.
+  env-gated, documented in `.env.example` / `docs/operations/deployment.md`.
 - Background jobs = pg queue (`jobs` table + cron + `/api/internal/jobs/process`).
-  Two entrypoints: POST + `x-jobs-secret` header (external schedulers) and
-  Vercel Cron's GET + `Authorization: Bearer $CRON_SECRET`. Vercel Cron cannot
-  send POST or custom headers — that is why both exist.
+  Entrypoints: POST + `x-jobs-secret` (external schedulers) and Vercel Cron GET +
+  `Authorization: Bearer $CRON_SECRET` (Vercel Cron can't POST/custom headers).
 - Single Next.js app, domain modules under `src/modules/`. No monorepo.
-- Design: "Warm Horizon" — Fraunces + Nunito Sans, warm cream, deep teal,
-  coral. Theme in `src/app/globals.css`.
-- Inquiries: inquiry + requested date only; signed-in caregivers; claimed
-  clinics; RPCs only for writes; moderators see threads only via reports.
-- Therapist profiles: per-clinic `clinic_therapists` satellite; direct writes
-  under RLS; search weights B (names) / C (professions/specialties).
-- Ratings (spec `docs/superpowers/specs/2026-08-08-clinic-ratings-design.md`):
-  **structured only, NO free text anywhere** (anti-defamation policy enforced
-  by schema, not moderation — RA 10175 cyberlibel). Four required 1–5
-  dimensions; one rating per clinic per user, author-editable; managers can't
-  rate their own clinic; aggregates shown only at ≥3 non-voided ratings;
-  moderation = admin void/unvoid (audited, reversible, no hard delete).
-- PWA (spec `docs/superpowers/specs/2026-08-08-pwa-design.md`): manifest +
-  offline shell + offline favorites snapshot ONLY. Hand-rolled `public/sw.js`
-  (no Serwist/next-pwa); SW never caches authenticated responses; snapshot in
-  `localStorage`, written when `/account/favorites` loads, cleared on sign-out;
-  `/offline` renders the snapshot via inline `<style>/<script>`; no push, no
-  background sync, no custom install prompt.
-- Map tiles = **OpenFreeMap vector tiles** (keyless). Raw
-  `tile.openstreetmap.org` raster violates the OSM tile usage policy for
-  production apps — do not switch back.
+- Design: "Warm Horizon" — Fraunces + Nunito Sans, warm cream, deep teal, coral.
+- Ratings: structured only, NO free text anywhere (RA 10175 anti-defamation,
+  enforced by schema). Spec `docs/superpowers/specs/2026-08-08-clinic-ratings-design.md`.
+- PWA: manifest + offline shell + offline favorites snapshot ONLY; hand-rolled
+  `public/sw.js`. Spec `docs/superpowers/specs/2026-08-08-pwa-design.md`.
+- Map tiles = OpenFreeMap vector tiles (keyless). Never raw
+  `tile.openstreetmap.org` in production.
+- **Deploys are owned by Vercel git integration** (decision 2026-08-12).
+  `main.yml` deploy job no longer fires `DEPLOY_HOOK_URL`; it waits for the
+  Vercel deployment via the GitHub deployments API, then smoke tests. The
+  double-deploy-per-push problem is fixed and verified.
 
 ## Finished and verified
 
-`main` = `e26e0b7`, pushed to `origin/main`. Full `Main` pipeline green on that
-commit — validate ✅, migrate ✅, deploy ✅ (`PR checks` ✅ too; pr.yml also
-triggers on push to main, so `format:check` does gate main despite main.yml
-omitting it).
+`main` = `db36a8a`, pushed. Full `Main` pipeline green on it: validate ✅
+migrate ✅ deploy ✅ (deploy = wait-for-Vercel + smoke, first live success of
+the new path). Commits this session:
 
-The **GitHub Actions deploy pipeline is live as of 2026-08-10** — see the
-dedicated section below.
+- `89e153b` ci: single deploy path + scheduled jobs drain — removed
+  DEPLOY_HOOK_URL trigger; deploy job polls GitHub deployments API for the
+  `vercel[bot]` deployment of `$GITHUB_SHA`, waits for `success`, then curls
+  `$SMOKE_URL/api/health`. New `.github/workflows/jobs-drain.yml`: every 10 min
+  + `workflow_dispatch`, POSTs `$SMOKE_URL/api/internal/jobs/process` with
+  `x-jobs-secret` — supplements the Hobby once-daily Vercel cron (vercel.json
+  stays `0 0 * * *` as backup).
+- `4e350e2` docs: `.prettierignore` now ignores `handoff.md` (hook-generated,
+  broke `prettier --check` on every PR-checks run of main); deployment.md
+  Google-key row corrected (API-restricted Places New + Geocoding, app
+  restriction deliberately None — Vercel egress IPs dynamic) + warning about
+  empty Sensitive env rows.
+- `db36a8a` ci: deploy job needs `permissions: deployments: read` — default
+  GITHUB_TOKEN has no deployments scope, wait step 403'd without it.
 
-Go-live wave (2026-08-09), after the phase-2 feature work:
+Also verified this session:
 
-- `5c767c8` deployment dry-run record in `docs/operations/deployment.md`.
-- `60e6bc6` maps error boundary around all `ClinicMap` renders (merged as #1).
-- `07b72e9`, `ebc8eee` trigger initial production deploy.
-- `dd10eb2` **cron schedule → daily** (`0 0 * * *` in `vercel.json`). Vercel
-  Hobby rejects per-minute schedules at deploy time.
-- `84267ba` **migrations set `search_path`** — hosted `db push` runs under a
-  CLI login role whose search_path excludes the `extensions` schema, so
-  unqualified `gin_trgm_ops`/`geography` refs failed at DDL time and the push
-  died at migration 3 with migration history looking half-applied. Local roles
-  include `extensions` on the path, which is why every local run was green.
-- `e113e32` CI integration job writes `.env.local` — it started Supabase but
-  never exported the keys, so suites importing server env failed every run.
-- `9942949` cleared the `_drop` lint warning (repo now lint-clean).
-- `813971a` prettier across 42 drifted files.
-- `a5bb172` **maps → OpenFreeMap vector tiles**: liberty style; cluster counts
-  must use Noto Sans Bold (the only stack that style's glyph endpoint hosts —
-  Open Sans Semibold 404s); CSP allows `tiles.openfreemap.org` in
-  img-src/connect-src. MapLibre's default worker URL resolves against
-  `import.meta.url` and 404s inside `/_next/static/chunks` under Turbopack, so
-  `postinstall` copies `maplibre-gl-worker.mjs` (+ shared chunk) into
-  `public/maplibre/` and `ClinicMap` calls `setWorkerUrl` at it. Raster tiles
-  masked this before — they decode on the main thread.
-- `bd34d4d` multilingual dropped from the roadmap.
-
-### Deploy pipeline activation (2026-08-10)
-
-`.github/workflows/main.yml` is no longer inert. Repository variable
-`DEPLOY_ENABLED=true`; all five secrets set: `SUPABASE_ACCESS_TOKEN`,
-`SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `DEPLOY_HOOK_URL`, `SMOKE_URL`.
-Verified end-to-end by empty commit `e26e0b7`: `Remote database is up to date.`
-then deploy hook + smoke test returning
-`{"status":"ok","checks":{"app":"ok","db":"ok","jobs":"ok"}}`.
-
-Values worth not re-deriving:
-
-- `SUPABASE_PROJECT_REF` = `slwguxbeijcpixsegtzm` (also in the gitignored
-  `supabase/.temp/project-ref`).
-- `SMOKE_URL` = `https://thrivemap.vercel.app` — the stable production alias.
-  Do NOT use the per-deployment URLs that show up in the GitHub deployments
-  API (`thrivemap-<hash>-abensontech.vercel.app`); those are immutable and
-  would smoke-test a frozen old build. `thrivemap-abensontech.vercel.app`
-  302s — only the bare `thrivemap.vercel.app` returns 200.
-- Vercel project `thrivemap`, org `abensontech`; Supabase migrations 1–21 all
-  applied on the hosted project.
-
-Also closed since the last handoff: remote branch `claude/goofy-kapitsa-86365d`
-deleted from origin; the superseded handoff-draft stash dropped (the remaining
-`stash@{0}` on `c5bd966` is pre-existing and NOT ours — leave it alone).
+- **`SUPABASE_DB_PASSWORD` rotated** (was exposed in a chat transcript).
+  User reset it; secret updated; migrate job green since. Exposure item CLOSED.
+- **Google Maps key LIVE in production.** Root cause of it never activating:
+  the Vercel env row existed since 2026-08-10 but held an EMPTY value —
+  Sensitive vars can't be read back, so it looked "set" forever. Fixed by
+  `vercel env rm` + re-add (value piped via `pbpaste`, never in transcript) +
+  redeploy. Verified: `/api/locations?q=cebu+city` returns real Google
+  `ChIJ...` placeIds (dev provider returns `dev:` prefixes); placeId geocode
+  works; health green.
+- All 16 Vercel env vars were bulk-created 2026-08-10 as type Sensitive; the
+  optional-provider rows (Upstash/Resend/PostHog/Sentry, NEXT_PUBLIC_POSTHOG_*)
+  are suspected empty too (PostHog absent from the built bundle).
 
 ## Half-done / not started
 
-- Nothing half-done in code. Working tree carries one uncommitted edit:
-  `.gitignore` + `.devswarm-temp/` (DevSwarm workspace scratch dir).
-- **Rotate `SUPABASE_DB_PASSWORD`.** During the 2026-08-10 activation the
-  production DB password was pasted into an assistant chat transcript to
-  unblock the failing job. The pipeline is proven now, so rotating is a
-  two-minute job: reset it in Supabase → Project Settings → Database, then
-  `gh secret set SUPABASE_DB_PASSWORD` and `gh run rerun <id> --failed`.
-- **No approval gate on production migrations.** `docs/operations/deployment.md`
-  step 6 says to protect the `production` environment with a required reviewer.
-  GitHub refuses: required reviewers need a Pro/Team plan on a private repo and
-  `acaacx/thrivemap` is private on Free. So every push to main runs
-  `supabase db push` against production unattended. Either upgrade the plan or
-  accept it knowingly — it is not an oversight.
-- **Every push to main deploys twice.** Vercel's git integration builds on its
-  own AND the `deploy` job fires `DEPLOY_HOOK_URL`. Confirmed on `e26e0b7`
-  (Vercel 19:31:48, hook 19:37:07). To keep migrate without the redundant
-  build, split the `if: vars.DEPLOY_ENABLED` condition so it gates `migrate`
-  only, or drop the `deploy` job and let Vercel own deploys. Note the smoke
-  test lives in the `deploy` job, so dropping it loses the post-deploy
-  `/api/health` check.
-- **Job queue drains once a day** (Hobby-plan cron limit). Tighten `vercel.json`
-  after upgrading to Pro, or point an external scheduler at the POST endpoint.
-  If `JOBS_PROCESSOR_SECRET` is unset in production the route 503s and the
-  queue silently stops draining — `/api/health` reports the jobs check.
-- **Google Places imports — key added 2026-08-11, NOT yet active.**
-  `GOOGLE_MAPS_SERVER_API_KEY` is set in Vercel (Production scope) and the
-  Google key is API-restricted to **Places API (New) + Geocoding API** — both
-  are required: `src/modules/maps/providers/google.ts` calls
-  `places.googleapis.com/v1/places:{searchText,autocomplete,searchNearby}` AND
-  `maps.googleapis.com/maps/api/geocode/json`. Application restriction is left
-  as None deliberately: Vercel serverless egress IPs are dynamic and static
-  egress is a paid feature, so the API restriction + quota caps are the
-  controls. `docs/operations/deployment.md` still says "IP-restricted" for this
-  key — that row is now wrong and should be corrected.
-  **Vercel env vars only apply to NEW builds**, and the live build predates the
-  key, so it is still running `DevMapProvider` until the next deploy. To verify
-  after redeploying: the `[DEV ADAPTER] Google Maps not configured` log line
-  stops appearing (`src/modules/maps/index.ts` picks the provider by whether
-  the env var is set).
-- Optional providers all still on dev adapters: Upstash Redis (shared rate
-  limit/cache), Resend (email), PostHog, Sentry. See the provider activation
-  checklist in `docs/operations/deployment.md`.
+- **`JOBS_PROCESSOR_SECRET` rotation FAILING on the user's side — 4 attempts,
+  zero effect server-side.** Goal: same fresh value in BOTH
+  `gh secret set JOBS_PROCESSOR_SECRET -R acaacx/thrivemap` AND Vercel env
+  (Production, Sensitive), because the prod value is unreadable and the new
+  jobs-drain workflow needs the pair to match. After Vercel side: redeploy
+  (env vars only apply to new builds). Verify with `gh secret list` +
+  `npx vercel env ls --scope abensontech --project thrivemap` — the Vercel row
+  must show a fresh created-time, not "2d ago". Diagnosis in flight: user was
+  asked to run `gh auth status` and a throwaway
+  `gh secret set JOBS_PROCESSOR_SECRET -R acaacx/thrivemap --body test-echo-check`
+  to see the actual error (suspect wrong gh/vercel account in their terminal).
+  **Until this lands, `jobs-drain.yml` fails every 10 min** — red runs in
+  Actions are expected noise, not a code bug. After it lands, run
+  `gh workflow run jobs-drain.yml` and confirm green, then health `jobs: ok`.
+- **PR checks on `db36a8a` was still in_progress at session end** — expected
+  green (prettier gate fixed). Confirm: `gh run list --workflow "PR checks" -L 1`.
+- **Optional providers still dev adapters**: Upstash Redis, Resend, PostHog,
+  Sentry. Activation needs user-created accounts/keys. Their existing Vercel
+  rows are probably empty Sensitive rows — rm + re-add each (recovery steps now
+  documented in `docs/operations/deployment.md`), then redeploy.
+- **No approval gate on production migrations** — GitHub required reviewers need
+  a paid plan on private repos; `acaacx/thrivemap` is Free. Accepted knowingly
+  or upgrade. Not an oversight.
+- `DEPLOY_HOOK_URL` GitHub secret is now unused — optional cleanup:
+  `gh secret delete DEPLOY_HOOK_URL`.
 
 ## Single next action
 
-Confirm the Google Maps key went live on the deploy that carries this handoff
-commit — check that admin-triggered Places imports return real results instead
-of fixtures, and that the `[DEV ADAPTER] Google Maps not configured` log is
-gone. If the deploy did not happen, redeploy.
-
-Then: rotate `SUPABASE_DB_PASSWORD` (see above — the current value was exposed
-in a chat transcript). After that, ask the user which post-launch item to take:
-fix the double deploy, fix the once-a-day job drain, correct the stale
-IP-restriction row in `docs/operations/deployment.md`, activate the optional
-providers (Upstash/Resend/PostHog/Sentry), or start new feature work. Phase 2
-is done and shipped; the deploy pipeline is live and verified.
+Get the `JOBS_PROCESSOR_SECRET` rotation to actually land (see above — verify
+server-side after every attempt; user's local runs have failed silently four
+times). Then dispatch jobs-drain and confirm green. Then confirm PR checks
+green on `db36a8a`. Then ask the user: activate optional providers, or new
+feature work.
 
 ## Traps / non-obvious facts
 
-- **The linked Supabase CLI reads the DB password from the OS keychain, not
-  `SUPABASE_DB_PASSWORD`.** So a green local `supabase migration list --linked`
-  proves NOTHING about whether the CI secret is correct — that is exactly how
-  the first pipeline run failed with `failed to connect to postgres … set the
-  env var correctly: SUPABASE_DB_PASSWORD` while local checks passed. Note
-  `supabase link` succeeding only validates the access token + project ref; the
-  DB password is not exercised until `db push` connects.
-- **Only `GOOGLE_MAPS_SERVER_API_KEY` matters.**
-  `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` still exists in `src/lib/env.ts`
-  but map rendering moved to OpenFreeMap, so it is not needed for tiles. Never
-  add a `NEXT_PUBLIC_` prefix to the server key — that inlines a billable
-  credential into the browser bundle.
-- **Vercel env var changes need a new build** to take effect; editing the
-  dashboard alone changes nothing on the running deployment.
-- **GitHub environment names are case-insensitive**: main.yml says
-  `environment: production` and matches the existing `Production` environment
-  Vercel created. Not a bug, don't "fix" it.
-- **Hosted vs local search_path**: local roles include the `extensions` schema,
-  hosted CLI push roles do not. Any migration touching pg_trgm/postgis
-  operators or types needs an explicit `set search_path` — green locally proves
-  nothing about `db push`.
-- **e2e timing**: `playwright.config.ts` `expect.timeout: 15_000`, local
-  `workers: 2` (override via `PW_WORKERS`) — DO NOT revert; Turbopack lazy
-  first-compile + 4-vCPU Docker Supabase exceeded the old 5s default under
-  parallel workers. Standalone-spec green ≠ full-suite green for specs hitting
-  brand-new routes.
-- **In-memory rate limiter accumulates** on a long-lived dev server — restart
-  between full e2e runs if sign-ins time out. e2e caregiver sessions are
-  established without consuming login rate budget (pattern in
-  `e2e/pwa.spec.ts`).
-- **Port 3000 squatter** ("Verified VA Jobs") appears intermittently. With no
-  `PLAYWRIGHT_BASE_URL`, Playwright self-starts `pnpm dev` on 3000
-  (`reuseExistingServer`); if squatted, run dev on another port and set
-  `PLAYWRIGHT_BASE_URL`.
-- **`/offline` page**: renders via inline `<style>/<script>` +
-  `dangerouslySetInnerHTML` — do NOT convert to React-hydrated components; its
-  chunks aren't precached so hydration never happens offline. SW PRECACHE is
-  just `["/offline"]` deliberately, and the SW re-fetches the shell on every
-  `activate`.
-- **MapErrorBoundary**: wrap ALL `ClinicMap` renders (dynamic import,
-  `ssr:false`) — maplibre-gl throws during init without WebGL2 (headless
-  browsers, some VMs) and crashes the whole page.
-- **MapLibre worker under Turbopack**: see `a5bb172` above — if vector tiles
-  stop parsing with a "non-JavaScript MIME type" console error, the
-  `public/maplibre/` postinstall copy is missing.
-- **zod 4 + @hookform/resolvers 5 + transforms**: a `.transform()` schema needs
-  the 3-generic `useForm<z.input<S>, unknown, z.output<S>>`.
-  `.optional().or(z.literal("").transform(...))` is DEAD CODE — use
-  `.optional().transform(v => v === "" ? undefined : v)`. No `.coerce` /
-  `.default()` with zodResolver. `z.uuid()` not `z.string().uuid()`.
-- **`pnpm test:integration -- <pattern>` does NOT filter** (runs the full suite
-  silently) — use
+- **Vercel Sensitive env rows can hold EMPTY values and are write-only** — an
+  existing row proves nothing. rm + re-add via clipboard pipe. This exact trap
+  kept Google Maps dead through three fresh builds.
+- **Hook/CLI deploys create NO GitHub deployment records** — only
+  git-integration builds appear (creator `vercel[bot]`, env `Production`).
+  Lowercase `production` rows with creator=acaacx are GitHub Actions
+  environment records, not builds. Truth: `npx vercel ls thrivemap --prod
+  --scope abensontech`.
+- **Provider probe**: `GET /api/locations?q=cebu` — `"placeId":"dev:..."` =
+  DevMapProvider, `ChIJ...` = Google live. CDN caches 60s/300s — use fresh
+  query strings when probing.
+- **`gh secret set` needs repo context or `-R acaacx/thrivemap`**; the linked
+  Supabase CLI reads the DB password from the OS keychain, so green local
+  `migration list --linked` proves nothing about the CI secret.
+- Only `GOOGLE_MAPS_SERVER_API_KEY` matters for maps;
+  `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` is vestigial (tiles are
+  OpenFreeMap). Never add `NEXT_PUBLIC_` to the server key.
+- **Vercel env changes need a new build**; `vercel redeploy <ready-url> --scope
+  abensontech` is the fastest way and re-aliases `thrivemap.vercel.app`.
+- `SMOKE_URL` = `https://thrivemap.vercel.app` only — per-deployment URLs are
+  frozen builds; `thrivemap-abensontech.vercel.app` 302s.
+- `SUPABASE_PROJECT_REF` = `slwguxbeijcpixsegtzm`; Vercel project `thrivemap`,
+  org `abensontech`; migrations 1–21 applied hosted.
+- GitHub environment names case-insensitive: `environment: production` matches
+  Vercel's `Production`. Not a bug.
+- Hosted `db push` roles exclude `extensions` from search_path — migrations
+  touching pg_trgm/postgis need explicit `set search_path`; green locally
+  proves nothing.
+- `handoff.md` is in `.prettierignore` (hook-regenerated; one-time `--write`
+  never sticks). Don't remove the ignore entry.
+- e2e: `expect.timeout: 15_000`, `workers: 2` (`PW_WORKERS`) — do not revert.
+  `pnpm test:integration -- <pattern>` does NOT filter — use
   `npx vitest run --config vitest.integration.config.ts <pattern>`.
-- **supabase CLI not on PATH** — use `pnpm db:reset` / `pnpm db:types`.
-- **RLS policy subqueries run as the caller** — wrap cross-table checks in
-  security-definer functions.
-- **`is_active_clinic_manager` pattern**: clinic_managers RLS is own-rows-only,
-  so "does this clinic have managers?" for other users needs the admin client
-  or a security-definer helper.
-- **Supabase hardened defaults**: new tables/functions need explicit grants
-  (migrations 8/17/18/19/21 precedent). `create or replace function` preserves
-  the existing ACL.
-- **shadcn = Base UI, not Radix.** No `asChild`; `render={<Link/>}`; `CardTitle`
-  is a plain div; `DropdownMenuLabel` needs a `DropdownMenuGroup` ancestor.
-- **e2e chromium-skip**: `testInfo.project.name !== "chromium"` NOT
-  `browserName` (the mobile project is also chromium).
-- **Test markers**: `[e2e]%` / `[itest]%` prefixes; clean your own rows up
-  front; for therapists, remove storage objects (`photo_path`) BEFORE deleting
-  rows.
-- **Supabase RPC codegen**: optional RPC params need SQL `default null`.
-- **e2e photo-upload selector contract**: file inputs `id="photo-<therapistId>"`,
-  aria-labels `Move <name> up/down` / `Edit <name>` / `Remove <name>` — don't
-  rename.
-- **Misc**: extensions live in the `extensions` schema; float8 doesn't
-  round-trip PostgREST; claim uploads go to `<user_id>/<claim_id>/...`; seeded
-  auth users need empty-string token columns + an `auth.identities` row;
-  fetch-mock Responses are single-read; `external_place_candidates.raw_payload`
-  is NOT NULL.
-- **Jobs processor (local)**:
-  `curl -X POST -H "x-jobs-secret: $SECRET" http://localhost:<port>/api/internal/jobs/process`
-  (secret in `.env.local`).
-- Demo logins (password `password123`): admin@ / moderator@ / caregiver@ /
+  Restart dev server between full e2e runs (in-memory rate limiter). Port 3000
+  squatter: set `PLAYWRIGHT_BASE_URL`. chromium-skip via
+  `testInfo.project.name`, not `browserName`.
+- supabase CLI not on PATH — `pnpm db:reset` / `pnpm db:types`. RLS subqueries
+  run as caller — security-definer helpers for cross-table checks. New
+  tables/functions need explicit grants. Optional RPC params need SQL
+  `default null`.
+- `/offline` renders via inline `<style>/<script>` — never convert to hydrated
+  React. MapErrorBoundary around ALL `ClinicMap` renders. MapLibre worker
+  copied to `public/maplibre/` by postinstall — "non-JavaScript MIME type"
+  console error means that copy is missing.
+- zod 4 + zodResolver: 3-generic `useForm`, no `.coerce`/`.default()`,
+  `z.uuid()`. shadcn = Base UI, not Radix (no `asChild`; `render={<Link/>}`).
+- Test markers `[e2e]%` / `[itest]%`; therapists: remove storage objects before
+  rows. Demo logins (password `password123`): admin@ / moderator@ / caregiver@ /
   clinicrep@ `thrivemap.test`.
+- Jobs processor local:
+  `curl -X POST -H "x-jobs-secret: $SECRET" http://localhost:<port>/api/internal/jobs/process`.
