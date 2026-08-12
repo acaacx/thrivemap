@@ -1,19 +1,23 @@
+// This file configures the initialization of Sentry for edge features (middleware, edge routes, and so on).
+// The config you add here will be used whenever one of the edge features is loaded.
+// Note that this config is unrelated to the Vercel Edge Runtime and is also required when running locally.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
 import * as Sentry from "@sentry/nextjs";
 
-/**
- * Edge runtime Sentry init (middleware + edge routes), loaded from `register()`
- * in src/instrumentation.ts. No-op when SENTRY_DSN is unset.
- */
-
-// Trimmed so a row holding only whitespace disables the SDK instead of
-// handing Sentry.init a blank DSN.
-const dsn = process.env.SENTRY_DSN?.trim() || undefined;
-
 Sentry.init({
-  dsn,
-  enabled: Boolean(dsn),
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
-  tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1"),
-  sendDefaultPii: false,
-  debug: false,
+  dsn: "https://f19fc8d483e1fda31821255de50ef1b2@o4511897577586688.ingest.us.sentry.io/4511897613172736",
+
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
+
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
+
+  dataCollection: {
+    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
+    // userInfo: false,
+    // httpBodies: [],
+  },
 });

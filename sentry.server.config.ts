@@ -1,26 +1,22 @@
+// This file configures the initialization of Sentry on the server.
+// The config you add here will be used whenever the server handles a request.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
 import * as Sentry from "@sentry/nextjs";
 
-/**
- * Node runtime Sentry init, loaded from `register()` in src/instrumentation.ts.
- *
- * Stays a no-op when SENTRY_DSN is unset — same dev-adapter contract as the
- * other optional providers (docs/architecture/dev-adapters.md).
- */
-
-// Trimmed so a row holding only whitespace disables the SDK instead of
-// handing Sentry.init a blank DSN.
-const dsn = process.env.SENTRY_DSN?.trim() || undefined;
-
 Sentry.init({
-  dsn,
-  enabled: Boolean(dsn),
-  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
-  tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1"),
-  // Ratings carry no free text and inquiries are caregiver PII — never let the
-  // SDK attach request bodies, headers, cookies or user identifiers by default.
-  sendDefaultPii: false,
-  // Server-only: attaches local variables to stack frames, which is most of the
-  // value of a server stack trace. Safe here because sendDefaultPii is off.
-  includeLocalVariables: true,
-  debug: false,
+  dsn: "https://f19fc8d483e1fda31821255de50ef1b2@o4511897577586688.ingest.us.sentry.io/4511897613172736",
+
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
+
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
+
+  dataCollection: {
+    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
+    // userInfo: false,
+    // httpBodies: [],
+  },
 });
