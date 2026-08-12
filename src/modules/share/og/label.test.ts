@@ -151,6 +151,21 @@ describe("buildLabels safety", () => {
     });
     expect(labels.headline).toBe("Therapy clinics in Cebu City");
   });
+
+  it("strips XML-significant characters from an unknown service slug", () => {
+    const labels = buildLabels({
+      params: params({ services: "</text><script>x</script>" }),
+      pinCount: 3,
+      atCap: false,
+      serviceNames: SERVICE_NAMES,
+    });
+    expect(labels.headline).not.toContain("<");
+    expect(labels.headline).not.toContain(">");
+    expect(labels.headline).not.toContain("&");
+    expect(labels.alt).not.toContain("<");
+    expect(labels.alt).not.toContain(">");
+    expect(labels.alt).not.toContain("&");
+  });
 });
 
 describe("buildLabels alt and description", () => {
@@ -192,5 +207,15 @@ describe("buildFallbackLabels", () => {
   it("still produces alt text", () => {
     const labels = buildFallbackLabels(params({}), SERVICE_NAMES);
     expect(labels.alt.length).toBeGreaterThan(10);
+  });
+
+  it("strips XML-significant characters from an unknown service slug", () => {
+    const labels = buildFallbackLabels(
+      params({ services: "</text><script>x</script>" }),
+      SERVICE_NAMES,
+    );
+    expect(labels.headline).not.toContain("<");
+    expect(labels.headline).not.toContain(">");
+    expect(labels.headline).not.toContain("&");
   });
 });

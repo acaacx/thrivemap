@@ -59,11 +59,20 @@ function capitalise(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-/** Human name for a service slug, falling back to a de-slugged form. */
+/**
+ * Human name for a service slug, falling back to a de-slugged form.
+ *
+ * `slug` is URL-controlled (services has no enum restriction — see
+ * SearchParams), so the de-slugged fallback must be cleaned like any other
+ * free-text input. The known-name branch reads from the caller's trusted
+ * serviceNames map rather than the URL, but it is cleaned too so every
+ * fragment that reaches a headline has been cleaned exactly once, no
+ * exceptions to track.
+ */
 function serviceLabel(slug: string, names: Record<string, string>): string {
   const known = names[slug];
-  if (known) return known;
-  return capitalise(slug.replace(/-/g, " "));
+  if (known) return clean(known, 60);
+  return clean(capitalise(slug.replace(/-/g, " ")), 60);
 }
 
 /** "Speech therapy", or "Speech therapy + 2 more". */
