@@ -99,8 +99,9 @@ not "fix" them silently — but they are real:
   then rebuild.
 - **No approval gate on production migrations** — GitHub required reviewers need
   a paid plan on private repos; `acaacx/thrivemap` is Free. Accepted knowingly.
-- `DEPLOY_HOOK_URL` GitHub secret is unused — optional
-  `gh secret delete DEPLOY_HOOK_URL`.
+- ~~`DEPLOY_HOOK_URL` GitHub secret~~ — deleted 2026-08-12. Remaining GitHub
+  secrets are all live: `JOBS_PROCESSOR_SECRET`, `SMOKE_URL`,
+  `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`.
 
 ## Single next action
 
