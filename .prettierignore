@@ -6,3 +6,4 @@ supabase/.temp
 public/maplibre
 test-results
 playwright-report
+handoff.md

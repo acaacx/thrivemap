@@ -72,14 +72,39 @@ never requires them to build.
 
 ## Provider activation checklist
 
-| Provider      | Env                                                                                                                                           | Notes                                                                                                      |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Google Maps   | `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` (referrer-restricted, Maps JS only), `GOOGLE_MAPS_SERVER_API_KEY` (IP-restricted, Places/Geocoding) | Separate keys per environment                                                                              |
-| Places import | `GOOGLE_MAPS_SERVER_API_KEY` with Places API (New) enabled                                                                                    | Imports stay admin-triggered; expect Text Search base-tier billing. Without a key, fixtures serve the flow |
-| Upstash Redis | `UPSTASH_REDIS_REST_URL/TOKEN`                                                                                                                | Enables shared rate limiting + cache across instances                                                      |
-| Resend        | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                | Verify the sending domain first                                                                            |
-| PostHog       | `NEXT_PUBLIC_POSTHOG_KEY/HOST`                                                                                                                | Event names are already instrumented                                                                       |
-| Sentry        | `SENTRY_DSN`                                                                                                                                  | `instrumentation.ts` uses the store API; install `@sentry/nextjs` for tracing/source maps when needed      |
+| Provider      | Env                                                                                                                                            | Notes                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Google Maps   | `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` (referrer-restricted, Maps JS only), `GOOGLE_MAPS_SERVER_API_KEY` (API-restricted, Places/Geocoding) | Separate keys per environment; see note below on the server key's restriction                              |
+| Places import | `GOOGLE_MAPS_SERVER_API_KEY` with Places API (New) enabled                                                                                     | Imports stay admin-triggered; expect Text Search base-tier billing. Without a key, fixtures serve the flow |
+| Upstash Redis | `UPSTASH_REDIS_REST_URL/TOKEN`                                                                                                                 | Enables shared rate limiting + cache across instances                                                      |
+| Resend        | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Verify the sending domain first                                                                            |
+| PostHog       | `NEXT_PUBLIC_POSTHOG_KEY/HOST`                                                                                                                 | Event names are already instrumented                                                                       |
+| Sentry        | `SENTRY_DSN`                                                                                                                                   | `instrumentation.ts` uses the store API; install `@sentry/nextjs` for tracing/source maps when needed      |
+
+`GOOGLE_MAPS_SERVER_API_KEY` is restricted by API, not by IP: it's locked to
+Places API (New) + Geocoding API, the two APIs `src/modules/maps/providers/google.ts`
+actually calls. Application restriction is deliberately set to None — Vercel
+serverless functions egress from a dynamic IP pool, and static egress is a
+paid add-on we haven't provisioned, so an IP allowlist would either block
+legitimate requests or need constant upkeep. The API restriction plus quota
+caps in the Google Cloud console are the controls doing the work here.
+
+**Sensitive env vars read as unreadable, not unset.** All Vercel env vars for
+this project were bulk-created with type "Sensitive," and some of those rows
+hold empty values. Sensitive values can't be read back via the dashboard or
+CLI, so a row existing next to a provider's name proves nothing — it can
+look configured and not be. This is exactly what kept
+`GOOGLE_MAPS_SERVER_API_KEY` inactive: the row existed since 2026-08-10 with
+an empty value. Before relying on one of these, remove and re-add it rather
+than assuming it holds what you think it does:
+
+```bash
+npx vercel env rm <NAME> production --scope abensontech --project thrivemap -y
+pbpaste | npx vercel env add <NAME> production --sensitive --yes --scope abensontech --project thrivemap
+```
+
+(Value piped from the clipboard so it never lands in a transcript.) Then
+redeploy — env vars only apply to new builds, not already-running ones.
 
 ## Releases
 
