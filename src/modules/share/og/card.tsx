@@ -88,6 +88,25 @@ export function SearchCard({
             fontSize: 54,
             lineHeight: 1.1,
             color: PALETTE.ink,
+            // Explicit maxWidth on the node itself, not just the one it
+            // inherits from the plate's maxWidth: satori only reports a
+            // wrapped node's true multi-line height to its flex parent when
+            // the node's own width/maxWidth resolves to a definite number at
+            // measure time. An ancestor's maxWidth resolves too late for
+            // that pass — the headline still paints two lines, but its box
+            // measures as one line tall, so the count line below renders on
+            // top of the wrapped second line. maxWidth (not width) so short
+            // headlines still hug their text instead of stretching the
+            // plate. 880 (plate maxWidth) minus 80 (32px 40px padding, both
+            // sides) = 800.
+            maxWidth: 800,
+            // label.ts clamps loc/q fragments to individual limits but not
+            // the assembled headline's longest unbroken run — a pathological
+            // single "word" (e.g. a spaceless free-text query) would overflow
+            // past the card's right edge with satori's default word-boundary
+            // wrapping. break-word forces a mid-word break only when a run
+            // doesn't fit, leaving normal wrapping untouched otherwise.
+            wordBreak: "break-word",
           }}
         >
           {labels.headline}

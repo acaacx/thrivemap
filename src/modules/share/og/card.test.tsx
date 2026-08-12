@@ -1,6 +1,7 @@
 // @vitest-environment node
 // Reads fonts from disk and runs satori + resvg.
 
+import { inflateSync } from "node:zlib";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { ImageResponse } from "next/og";
@@ -8,6 +9,7 @@ import { SearchCard } from "./card";
 import { FallbackCard } from "./fallback";
 import { loadFonts } from "./fonts";
 import type { CardLabels } from "./label";
+import { PALETTE } from "./palette";
 import { CARD_HEIGHT, CARD_WIDTH } from "./projection";
 
 const LABELS: CardLabels = {
@@ -26,6 +28,187 @@ async function render(element: ReactElement, fonts?: unknown[]) {
     ...(fonts ? { fonts } : {}),
   });
   return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * Minimal PNG decoder for the caption-layout regression tests below. Satori
+ * ignores unsupported CSS silently and only exposes a rasterised PNG (no
+ * intermediate SVG with real text coordinates, and satori itself isn't
+ * separately importable — it's bundled inside next's compiled @vercel/og and
+ * only ImageResponse is exported). Decoding the actual pixels is the only way
+ * to assert on where text visually landed rather than trusting a byte count.
+ * resvg output here is always 8-bit RGBA (colorType 6), so that's all this
+ * supports.
+ */
+interface DecodedPng {
+  width: number;
+  height: number;
+  data: Buffer;
+}
+
+function paeth(a: number, b: number, c: number): number {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+
+function decodePng(buf: Buffer): DecodedPng {
+  let offset = 8; // skip the 8-byte PNG signature
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = 0;
+  const idatChunks: Buffer[] = [];
+  while (offset < buf.length) {
+    const len = buf.readUInt32BE(offset);
+    const type = buf.subarray(offset + 4, offset + 8).toString("ascii");
+    const data = buf.subarray(offset + 8, offset + 8 + len);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data.readUInt8(8);
+      colorType = data.readUInt8(9);
+    } else if (type === "IDAT") {
+      idatChunks.push(data);
+    } else if (type === "IEND") {
+      break;
+    }
+    offset += 8 + len + 4; // length + type + data + CRC
+  }
+  if (bitDepth !== 8 || colorType !== 6) {
+    throw new Error(
+      `unsupported PNG format: bitDepth=${bitDepth} colorType=${colorType}`,
+    );
+  }
+  const raw = inflateSync(Buffer.concat(idatChunks));
+  const bpp = 4; // RGBA, 8-bit
+  const stride = width * bpp;
+  const out = Buffer.alloc(height * stride);
+  let rawOffset = 0;
+  for (let y = 0; y < height; y++) {
+    const filterType = raw[rawOffset]!;
+    rawOffset += 1;
+    const rowStart = y * stride;
+    for (let x = 0; x < stride; x++) {
+      const rawByte = raw[rawOffset + x]!;
+      const a = x >= bpp ? out[rowStart + x - bpp]! : 0;
+      const b = y > 0 ? out[rowStart - stride + x]! : 0;
+      const c = x >= bpp && y > 0 ? out[rowStart - stride + x - bpp]! : 0;
+      let value: number;
+      switch (filterType) {
+        case 0:
+          value = rawByte;
+          break;
+        case 1:
+          value = (rawByte + a) & 0xff;
+          break;
+        case 2:
+          value = (rawByte + b) & 0xff;
+          break;
+        case 3:
+          value = (rawByte + Math.floor((a + b) / 2)) & 0xff;
+          break;
+        case 4:
+          value = (rawByte + paeth(a, b, c)) & 0xff;
+          break;
+        default:
+          throw new Error(`unsupported filter type ${filterType}`);
+      }
+      out[rowStart + x] = value;
+    }
+    rawOffset += stride;
+  }
+  return { width, height, data: out };
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+/**
+ * Exact match only, not a tolerance band: PALETTE.muted sits close to a
+ * ~72% ink-over-cream blend, so any loose tolerance (tried up to 12) picks up
+ * antialiased edge pixels of the headline glyphs as false "count text" —
+ * this happened in practice and produced a flaky false failure against
+ * already-correct output. Solid glyph interior pixels at 54px/28px are
+ * reliably rendered as the exact fill color with no blending, so exact
+ * equality still finds real text pixels while excluding AA edges entirely.
+ */
+function isColor(
+  rgb: [number, number, number],
+  target: [number, number, number],
+): boolean {
+  return rgb[0] === target[0] && rgb[1] === target[1] && rgb[2] === target[2];
+}
+
+/** Bottommost row containing an exact-match pixel, or -1 if none found. */
+function maxYOfColor(
+  png: DecodedPng,
+  target: [number, number, number],
+): number {
+  let maxY = -1;
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const i = (y * png.width + x) * 4;
+      const rgb: [number, number, number] = [
+        png.data[i]!,
+        png.data[i + 1]!,
+        png.data[i + 2]!,
+      ];
+      if (png.data[i + 3]! === 255 && isColor(rgb, target)) {
+        maxY = y;
+        break;
+      }
+    }
+  }
+  return maxY;
+}
+
+/** Topmost row containing an exact-match pixel, or height if none found. */
+function minYOfColor(
+  png: DecodedPng,
+  target: [number, number, number],
+): number {
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const i = (y * png.width + x) * 4;
+      const rgb: [number, number, number] = [
+        png.data[i]!,
+        png.data[i + 1]!,
+        png.data[i + 2]!,
+      ];
+      if (png.data[i + 3]! === 255 && isColor(rgb, target)) return y;
+    }
+  }
+  return png.height;
+}
+
+/** Rightmost column containing an exact-match pixel, or -1 if none found. */
+function maxXOfColor(
+  png: DecodedPng,
+  target: [number, number, number],
+): number {
+  let maxX = -1;
+  for (let y = 0; y < png.height; y++) {
+    for (let x = png.width - 1; x > maxX; x--) {
+      const i = (y * png.width + x) * 4;
+      const rgb: [number, number, number] = [
+        png.data[i]!,
+        png.data[i + 1]!,
+        png.data[i + 2]!,
+      ];
+      if (png.data[i + 3]! === 255 && isColor(rgb, target)) {
+        maxX = x;
+        break;
+      }
+    }
+  }
+  return maxX;
 }
 
 describe("loadFonts", () => {
@@ -113,5 +296,70 @@ describe("FallbackCard", () => {
       <FallbackCard labels={{ ...LABELS, count: "No clinics match yet" }} />,
     );
     expect(png.subarray(0, 4)).toEqual(PNG_MAGIC);
+  });
+});
+
+/**
+ * Regression coverage for a real bug: satori only reports a wrapped node's
+ * true multi-line height to its flex parent when the node's own width or
+ * maxWidth resolves to a definite number at measure time. A width inherited
+ * from an ancestor's maxWidth (the original code) resolves too late for that
+ * pass, so a two-line headline painted correctly but its box measured as one
+ * line tall — the count line below rendered on top of the wrapped second
+ * line. See card.tsx and fallback.tsx for the fix (an explicit maxWidth on
+ * the headline node itself, plus wordBreak for unbroken runs). These tests
+ * fail against the pre-fix code — verified by hand against the commit before
+ * the maxWidth/wordBreak lines were added.
+ */
+describe("caption layout", () => {
+  it("SearchCard: count line starts below a wrapped headline's last line", async () => {
+    const png = await render(
+      <SearchCard paths={[]} clusters={[]} labels={LABELS} />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const muted = hexToRgb(PALETTE.muted);
+    const inkMaxY = maxYOfColor(decoded, ink);
+    const mutedMinY = minYOfColor(decoded, muted);
+    // Sanity: both colors were actually found (a blank/broken render would
+    // otherwise vacuously satisfy the ordering check below).
+    expect(inkMaxY).toBeGreaterThan(0);
+    expect(mutedMinY).toBeLessThan(decoded.height);
+    expect(mutedMinY).toBeGreaterThan(inkMaxY);
+  });
+
+  it("FallbackCard: count line starts below a wrapped headline's last line", async () => {
+    const png = await render(
+      <FallbackCard labels={{ ...LABELS, count: "No clinics match yet" }} />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const muted = hexToRgb(PALETTE.muted);
+    const inkMaxY = maxYOfColor(decoded, ink);
+    const mutedMinY = minYOfColor(decoded, muted);
+    expect(inkMaxY).toBeGreaterThan(0);
+    expect(mutedMinY).toBeLessThan(decoded.height);
+    expect(mutedMinY).toBeGreaterThan(inkMaxY);
+  });
+
+  it("SearchCard: an unbroken 80-char headline stays inside the plate", async () => {
+    const png = await render(
+      <SearchCard
+        paths={[]}
+        clusters={[]}
+        labels={{ ...LABELS, headline: "A".repeat(80) }}
+      />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const inkMaxX = maxXOfColor(decoded, ink);
+    expect(inkMaxX).toBeGreaterThan(0);
+    // The plate's right edge is left(56) + maxWidth(880) = 936. Without
+    // wordBreak, an 80-char run with no spaces has no wrap point and keeps
+    // painting to the frame's right edge (x=1199) instead.
+    expect(inkMaxX).toBeLessThan(950);
   });
 });

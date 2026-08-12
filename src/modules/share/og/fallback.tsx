@@ -68,6 +68,12 @@ export function FallbackCard({ labels }: { labels: CardLabels }): ReactElement {
             fontSize: 54,
             lineHeight: 1.1,
             color: PALETTE.ink,
+            // See SearchCard's headline in card.tsx for why this is explicit
+            // and why maxWidth rather than width, and why wordBreak is here.
+            // This plate has no padding, so the full 880 (the plate's own
+            // maxWidth) is available.
+            maxWidth: 880,
+            wordBreak: "break-word",
           }}
         >
           {labels.headline}
