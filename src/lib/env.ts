@@ -41,7 +41,8 @@ const clientSchema = z.object({
  */
 
 /**
- * Drops empty-string values so they read as "unset".
+ * Trims string values and drops the ones that are empty, so they read as
+ * "unset".
  *
  * `.env.example` ships optional provider keys blank, and hosting dashboards
  * (Vercel included) store a variable you leave blank as `""` rather than
@@ -49,10 +50,20 @@ const clientSchema = z.object({
  * `.default()` do not apply and validation fails on a config that is meant to
  * be valid — which took down every route calling serverEnv(), /api/health
  * among them.
+ *
+ * The trim covers the same mistake with whitespace in it: piping a value into
+ * `vercel env add` without `printf %s` stores the trailing newline, so a row
+ * meant to be blank arrives as `"\n"` and reads as present. Note this is not
+ * what `z.url()` rejects — the WHATWG parser strips surrounding whitespace, so
+ * a padded but otherwise valid URL already passed.
  */
 function withoutEmpty<T extends Record<string, unknown>>(source: T) {
   return Object.fromEntries(
-    Object.entries(source).filter(([, value]) => value !== ""),
+    Object.entries(source)
+      .map(([key, value]) =>
+        typeof value === "string" ? [key, value.trim()] : [key, value],
+      )
+      .filter(([, value]) => value !== ""),
   );
 }
 
@@ -100,28 +111,38 @@ export function serverEnv() {
   return cachedServerEnv;
 }
 
+/**
+ * A variable counts as set only when it holds something after trimming — these
+ * read `process.env` directly, so they do not get the sanitising the schemas
+ * above apply. A blank dashboard row would otherwise flip a provider "on" and
+ * silently disable its dev adapter.
+ */
+function isSet(value: string | undefined) {
+  return typeof value === "string" && value.trim() !== "";
+}
+
 /** True when the given real provider is configured; otherwise dev adapter. */
 export const providerFlags = {
   get googleMaps() {
-    return Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY);
+    return isSet(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY);
   },
   get upstash() {
-    return Boolean(
-      process.env.UPSTASH_REDIS_REST_URL &&
-      process.env.UPSTASH_REDIS_REST_TOKEN,
+    return (
+      isSet(process.env.UPSTASH_REDIS_REST_URL) &&
+      isSet(process.env.UPSTASH_REDIS_REST_TOKEN)
     );
   },
   get resend() {
-    return Boolean(process.env.RESEND_API_KEY);
+    return isSet(process.env.RESEND_API_KEY);
   },
   get posthog() {
-    return Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+    return isSet(process.env.NEXT_PUBLIC_POSTHOG_KEY);
   },
   /** Server-side capture. The browser has its own DSN — see `sentryClient`. */
   get sentry() {
-    return Boolean(process.env.SENTRY_DSN);
+    return isSet(process.env.SENTRY_DSN);
   },
   get sentryClient() {
-    return Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+    return isSet(process.env.NEXT_PUBLIC_SENTRY_DSN);
   },
 };

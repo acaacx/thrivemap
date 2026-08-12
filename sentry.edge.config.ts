@@ -5,7 +5,9 @@ import * as Sentry from "@sentry/nextjs";
  * in src/instrumentation.ts. No-op when SENTRY_DSN is unset.
  */
 
-const dsn = process.env.SENTRY_DSN;
+// Trimmed so a row holding only whitespace disables the SDK instead of
+// handing Sentry.init a blank DSN.
+const dsn = process.env.SENTRY_DSN?.trim() || undefined;
 
 Sentry.init({
   dsn,

@@ -9,7 +9,9 @@ import * as Sentry from "@sentry/nextjs";
  * since that inlines it into the client bundle.
  */
 
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+// Trimmed so a row holding only whitespace disables the SDK instead of
+// handing Sentry.init a blank DSN.
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim() || undefined;
 
 Sentry.init({
   dsn,
