@@ -48,6 +48,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Calm hover easing — decelerating, never bouncy. */
+  --ease-calm: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Soft depth for hover states. Defined per-scheme below so dark mode
+     doesn't get a white glow from a foreground-derived shadow. */
+  --shadow-soft: var(--soft-shadow);
 }
 
 /* ThriveMap "Warm Horizon" theme
@@ -80,6 +85,9 @@
   --chart-4: oklch(0.62 0.08 90);
   --chart-5: oklch(0.45 0.05 250);
   --radius: 0.75rem;
+  --soft-shadow:
+    0 1px 2px color-mix(in oklch, var(--foreground) 5%, transparent),
+    0 10px 30px -14px color-mix(in oklch, var(--foreground) 14%, transparent);
   --sidebar: oklch(0.97 0.01 84);
   --sidebar-foreground: oklch(0.28 0.02 55);
   --sidebar-primary: oklch(0.44 0.065 195);
@@ -109,6 +117,8 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.72 0.08 195);
+  --soft-shadow:
+    0 1px 2px oklch(0 0 0 / 0.3), 0 10px 30px -14px oklch(0 0 0 / 0.45);
   --verified: oklch(0.68 0.11 160);
   --verified-foreground: oklch(0.2 0.02 210);
   --chart-1: oklch(0.72 0.08 195);

@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getFeaturedClinics, getServices } from "@/modules/clinics/queries";
+import { ServiceGlyph } from "@/modules/clinics/service-glyph";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import { LocationSearchBox } from "@/modules/search/components/LocationSearchBox";
 
@@ -86,24 +87,51 @@ export default async function HomePage() {
           >
             Browse by service
           </h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 max-w-xl text-pretty text-muted-foreground">
             Explore the kinds of support available near you.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {services.map((service) => (
               <Link
                 key={service.id}
                 href={`/services/${service.slug}`}
-                className="group rounded-2xl border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring"
+                className="group flex flex-col gap-3 rounded-3xl bg-card p-5 ring-1 ring-foreground/10 transition duration-300 ease-calm hover:-translate-y-0.5 hover:bg-secondary/30 hover:shadow-soft hover:ring-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
-                <p className="font-heading font-semibold group-hover:text-primary">
+                <span
+                  aria-hidden
+                  className="grid size-11 place-items-center rounded-2xl bg-accent text-accent-foreground transition-colors duration-300 ease-calm group-hover:bg-accent/70"
+                >
+                  <ServiceGlyph icon={service.icon} className="size-5" />
+                </span>
+                <p className="font-heading font-semibold transition-colors duration-300 ease-calm group-hover:text-primary">
                   {service.name}
                 </p>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                <p className="line-clamp-2 text-sm text-muted-foreground">
                   {service.short_description}
                 </p>
               </Link>
             ))}
+            {services.length > 0 && (
+              <Link
+                href="/clinics"
+                className="group flex flex-col justify-between gap-3 rounded-3xl border border-dashed bg-secondary/20 p-5 transition duration-300 ease-calm hover:-translate-y-0.5 hover:border-primary/40 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              >
+                <span
+                  aria-hidden
+                  className="grid size-11 place-items-center rounded-2xl bg-background text-primary ring-1 ring-foreground/10"
+                >
+                  <Search className="size-5" />
+                </span>
+                <div>
+                  <p className="font-heading font-semibold group-hover:text-primary">
+                    See every clinic
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Search the full directory by location, age group, and more.
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
         </section>
 
