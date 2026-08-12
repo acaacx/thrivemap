@@ -370,14 +370,16 @@ describe("caption layout", () => {
   // The two tests above use the 33-char LABELS.headline, which wraps to
   // exactly 2 lines — that's the minimum case for the overlap bug, not the
   // fix's full stated scope (headlines up to label.ts's 80-char MAX_HEADLINE
-  // clamp, which wrap to 3 lines in practice: at ~5-6 chars/word including
-  // the space, 80 chars is roughly 13-14 words, and this plate's width fits
-  // about 4-5 words per line at the 54px Fraunces size, so ordinary English
-  // text lands on 3 lines, not 4 — every headline tried at or near the
-  // clamp, including the one below, wrapped to 3). A future line-height or
-  // padding change could reintroduce overlap starting at line 3 with
-  // nothing here to catch it, since the two tests above never exercise a
-  // third line. This headline is 79 chars, all real words with spaces (not
+  // clamp). Ordinary English within that clamp reaches 3 lines on this
+  // plate, and — on SearchCard's narrower 800px content width specifically —
+  // 4 lines: see the 4-line SearchCard test below for a headline confirmed
+  // (by counting the rendered ink row-bands, not by assuming) to wrap to 4.
+  // A future line-height or padding change could reintroduce overlap
+  // starting at any of these line counts with nothing here to catch it, so
+  // this suite covers 2, 3, and 4 lines on SearchCard, and 2 and 3 on
+  // FallbackCard (its wider 880px content width means 80 ordinary-English
+  // characters was not reachable at 4 lines — see that test below for the
+  // evidence). This headline is 79 chars, all real words with spaces (not
   // the unbroken-run case above, which exercises wordBreak specifically) —
   // it wraps by ordinary word-boundary breaking.
   it("SearchCard: count line starts below a 3-line headline near the 80-char clamp", async () => {
@@ -398,6 +400,17 @@ describe("caption layout", () => {
     expect(mutedMinY).toBeGreaterThan(inkMaxY);
   });
 
+  // FallbackCard's plate has no padding, so its content width is the full
+  // 880px maxWidth — 80px more than SearchCard's 800px. That's enough that
+  // the same 79-char headline above, and every other ~76-87-char candidate
+  // tried here, wraps to only 3 lines on FallbackCard where it wraps to 4 on
+  // SearchCard (see the SearchCard 4-line test below). Reaching 4 lines on
+  // FallbackCard within the 80-char clamp was not achieved despite trying
+  // several word-length distributions (short dense words, long compound
+  // medical terms, capitalized wide words); it only happened once content
+  // exceeded 80 characters. So FallbackCard's realistic ceiling within
+  // label.ts's clamp is 3 lines, which the test above already covers — no
+  // FallbackCard 4-line case is added here because none was reachable.
   it("FallbackCard: count line starts below a 3-line headline near the 80-char clamp", async () => {
     const headline =
       "Occupational therapy, speech therapy and early intervention clinics near Manila";
@@ -405,6 +418,30 @@ describe("caption layout", () => {
       <FallbackCard
         labels={{ ...LABELS, headline, count: "No clinics match yet" }}
       />,
+      await loadFonts(),
+    );
+    const decoded = decodePng(png);
+    const ink = hexToRgb(PALETTE.ink);
+    const muted = hexToRgb(PALETTE.muted);
+    const inkMaxY = maxYOfColor(decoded, ink);
+    const mutedMinY = minYOfColor(decoded, muted);
+    expect(inkMaxY).toBeGreaterThan(0);
+    expect(mutedMinY).toBeLessThan(decoded.height);
+    expect(mutedMinY).toBeGreaterThan(inkMaxY);
+  });
+
+  // Confirmed to wrap to exactly 4 lines on SearchCard by counting the
+  // rendered ink row-bands (a contiguous run of rows containing at least one
+  // exact-match PALETTE.ink pixel): [261,312], [320,371], [379,430],
+  // [438,489] — four bands, ~59px apart, matching lineHeight 1.1 × 54px.
+  // 76 chars, ordinary space-separated English (ordinary word-boundary
+  // wrapping, not wordBreak), under the 80-char clamp.
+  it("SearchCard: count line starts below a 4-line headline near the 80-char clamp", async () => {
+    const headline =
+      "Occupational Physiotherapy Movement Wellness Developmental Pediatric Clinics";
+    expect(headline.length).toBeLessThanOrEqual(80);
+    const png = await render(
+      <SearchCard paths={[]} clusters={[]} labels={{ ...LABELS, headline }} />,
       await loadFonts(),
     );
     const decoded = decodePng(png);
