@@ -44,7 +44,7 @@ never requires them to build.
      `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - `JOBS_PROCESSOR_SECRET` (generate: `openssl rand -hex 24`)
    - Optional providers as they come online: Google Maps keys, Upstash,
-     Resend + `EMAIL_FROM`, PostHog, `SENTRY_DSN`.
+     Resend + `EMAIL_FROM`, PostHog, `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN`.
 
    A variable that is present but blank counts as unset, so leaving optional
    providers empty is safe. Half-configuring one is the quiet failure: set
@@ -89,7 +89,32 @@ never requires them to build.
 | Upstash Redis | `UPSTASH_REDIS_REST_URL/TOKEN`                                                                                                                 | Enables shared rate limiting + cache across instances                                                      |
 | Resend        | `RESEND_API_KEY`, `EMAIL_FROM`                                                                                                                 | Verify the sending domain first                                                                            |
 | PostHog       | `NEXT_PUBLIC_POSTHOG_KEY/HOST`                                                                                                                 | Event names are already instrumented                                                                       |
-| Sentry        | `SENTRY_DSN`                                                                                                                                   | `instrumentation.ts` uses the store API; install `@sentry/nextjs` for tracing/source maps when needed      |
+| Sentry        | `SENTRY_DSN` (server/edge), `NEXT_PUBLIC_SENTRY_DSN` (browser); build-time `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` for source maps | `@sentry/nextjs`; both DSN vars take the same value. See the Sentry notes below                            |
+
+### Sentry
+
+`@sentry/nextjs` is wired in three places: `sentry.server.config.ts` and
+`sentry.edge.config.ts` (loaded by `register()` in `src/instrumentation.ts`) and
+`src/instrumentation-client.ts` for the browser. Each `Sentry.init` passes
+`enabled: Boolean(dsn)`, so an unset DSN is a clean no-op and local dev keeps
+the structured-log-only behaviour.
+
+- **Two DSN vars, same value.** `SENTRY_DSN` is server/edge, `NEXT_PUBLIC_SENTRY_DSN`
+  is the browser. A DSN is an ingest endpoint, not a credential, so exposing the
+  public one is expected. Never rename the server var to `NEXT_PUBLIC_*`.
+- **Source maps are opt-in.** `next.config.ts` passes `SENTRY_ORG`,
+  `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` to the build plugin. Without them the
+  build still succeeds — it just ships unmapped stack traces. Uploading needs
+  the `@sentry/cli` binary, allowlisted in `pnpm-workspace.yaml` under
+  `allowBuilds` (pnpm 11 ignores the old `pnpm` field in `package.json`).
+- **Events tunnel through `/monitoring`** (`tunnelRoute` in `next.config.ts`) so
+  ad blockers don't drop browser errors. The Sentry ingest origin is also in the
+  `connect-src` CSP as a fallback, derived from `NEXT_PUBLIC_SENTRY_DSN`.
+- **`sendDefaultPii: false` everywhere, and Session Replay is deliberately off.**
+  The app handles caregiver inquiries; turning either on is a privacy decision,
+  not a config tweak.
+- Tracing defaults to a 10% sample; override server/edge with
+  `SENTRY_TRACES_SAMPLE_RATE`.
 
 `GOOGLE_MAPS_SERVER_API_KEY` is restricted by API, not by IP: it's locked to
 Places API (New) + Geocoding API, the two APIs `src/modules/maps/providers/google.ts`

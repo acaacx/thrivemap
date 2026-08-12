@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -18,6 +19,17 @@ const posthogOrigin = (() => {
   }
 })();
 
+// Sentry ingest host, derived from the browser DSN (https://<key>@<host>/<id>).
+// Events normally go through the same-origin tunnel below, so this is the
+// fallback path for when the tunnel is bypassed.
+const sentryOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SENTRY_DSN ?? "").origin;
+  } catch {
+    return "";
+  }
+})();
+
 /**
  * CSP notes:
  * - script-src keeps 'unsafe-inline' (Next.js inline bootstrap without a nonce
@@ -33,7 +45,7 @@ const csp = [
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data: blob: https://tiles.openfreemap.org ${supabaseOrigin}`,
   `font-src 'self' data:`,
-  `connect-src 'self' ${supabaseOrigin} ${posthogOrigin} https://tiles.openfreemap.org${isDev ? " ws:" : ""}`,
+  `connect-src 'self' ${supabaseOrigin} ${posthogOrigin} ${sentryOrigin} https://tiles.openfreemap.org${isDev ? " ws:" : ""}`,
   `worker-src 'self' blob:`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
@@ -67,4 +79,21 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Sentry build plugin. Source maps upload only when SENTRY_AUTH_TOKEN /
+ * SENTRY_ORG / SENTRY_PROJECT are all set — without them the build still
+ * succeeds, it just ships unmapped stack traces (that is the local/CI default).
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  // Routes browser events through /monitoring on our own origin so ad blockers
+  // (which block ingest.sentry.io outright) don't silently drop client errors.
+  tunnelRoute: "/monitoring",
+  widenClientFileUpload: true,
+  disableLogger: true,
+  telemetry: false,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+});

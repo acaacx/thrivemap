@@ -65,6 +65,7 @@ Three layers, all enforced server-side:
 - Structured logger (`src/lib/logger.ts`): JSON lines in production; never
   logs tokens, passwords, document contents, or precise user location.
 - `src/instrumentation.ts` reports server errors (structured log always;
-  Sentry when `SENTRY_DSN` is set).
+  `@sentry/nextjs` when `SENTRY_DSN` is set). Browser errors go through
+  `src/instrumentation-client.ts` under `NEXT_PUBLIC_SENTRY_DSN`.
 - `/api/health` reports app/db/jobs (+redis when configured) for uptime
   checks.

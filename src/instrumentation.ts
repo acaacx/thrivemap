@@ -1,22 +1,28 @@
+import * as Sentry from "@sentry/nextjs";
 import type { Instrumentation } from "next";
 
 /**
  * Server error reporting. Always logs structured errors; forwards to Sentry
- * when SENTRY_DSN is set, via the store API (no SDK dependency — swap in
- * @sentry/nextjs for tracing/source maps, see docs/operations/deployment.md).
+ * via @sentry/nextjs when SENTRY_DSN is set (see docs/operations/deployment.md).
+ *
+ * The structured log is deliberately kept alongside Sentry — it is the only
+ * error record that survives when the DSN is unset (local dev) or when Sentry
+ * ingestion is failing, and it is what `vercel logs` greps against.
  */
 
-function parseDsn(dsn: string): { endpoint: string; key: string } | null {
-  try {
-    const url = new URL(dsn);
-    const projectId = url.pathname.replace(/^\//, "");
-    if (!url.username || !projectId) return null;
-    return {
-      endpoint: `${url.protocol}//${url.host}/api/${projectId}/store/`,
-      key: url.username,
-    };
-  } catch {
-    return null;
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("../sentry.server.config");
+  }
+
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("../sentry.edge.config");
+  }
+
+  if (!process.env.SENTRY_DSN && process.env.NODE_ENV !== "production") {
+    console.info(
+      "[DEV ADAPTER] Sentry not configured — server errors are logged only.",
+    );
   }
 }
 
@@ -45,38 +51,6 @@ export const onRequestError: Instrumentation.onRequestError = async (
     }),
   );
 
-  const dsn = process.env.SENTRY_DSN && parseDsn(process.env.SENTRY_DSN);
-  if (!dsn) return;
-
-  try {
-    await fetch(dsn.endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Sentry-Auth": `Sentry sentry_version=7, sentry_client=thrivemap/0.1.0, sentry_key=${dsn.key}`,
-      },
-      body: JSON.stringify({
-        message,
-        level: "error",
-        platform: "node",
-        environment: process.env.NODE_ENV,
-        tags: {
-          routePath: context.routePath,
-          routeType: context.routeType,
-          digest,
-        },
-        exception:
-          err instanceof Error
-            ? {
-                values: [
-                  { type: err.name, value: err.message, stacktrace: undefined },
-                ],
-              }
-            : undefined,
-      }),
-      cache: "no-store",
-    });
-  } catch (cause) {
-    console.error("Sentry report failed:", cause);
-  }
+  // No-op while the SDK is disabled (no DSN), so this needs no env guard.
+  Sentry.captureRequestError(err, request, context);
 };

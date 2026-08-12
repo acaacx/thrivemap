@@ -14,7 +14,7 @@ external credentials; each real provider activates when its env key is set
 | Cache                    | `CacheStore` (`shared/cache.ts`)       | in-memory TTL map                | Upstash Redis                                               |
 | Email                    | `EmailSender` (`shared/email/`)        | console log + `.dev-mail/` files | Resend (`RESEND_API_KEY`)                                   |
 | Analytics                | `Analytics` (`shared/analytics.ts`)    | log-only no-op                   | PostHog (`NEXT_PUBLIC_POSTHOG_KEY`)                         |
-| Error monitoring         | `instrumentation.ts`                   | structured log only              | Sentry (`SENTRY_DSN`)                                       |
+| Error monitoring         | `instrumentation.ts`                   | structured log only              | Sentry (`SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN`)            |
 
 Rules:
 

@@ -31,7 +31,14 @@ const clientSchema = z.object({
   NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
+
+/**
+ * SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN are deliberately absent from
+ * both schemas: they are read by the build plugin in next.config.ts and are
+ * never present at runtime, so validating them here would fail every boot.
+ */
 
 /**
  * Drops empty-string values so they read as "unset".
@@ -70,6 +77,7 @@ function parseClientEnv() {
         process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY,
       NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
       NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     }),
   );
   if (!parsed.success) {
@@ -109,7 +117,11 @@ export const providerFlags = {
   get posthog() {
     return Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
   },
+  /** Server-side capture. The browser has its own DSN — see `sentryClient`. */
   get sentry() {
     return Boolean(process.env.SENTRY_DSN);
+  },
+  get sentryClient() {
+    return Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
   },
 };
