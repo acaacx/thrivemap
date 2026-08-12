@@ -57,6 +57,10 @@ jobs:
     needs: migrate
     runs-on: ubuntu-latest
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    # The wait step reads the deployments API; the default GITHUB_TOKEN has no
+    # deployments scope, so grant it explicitly.
+    permissions:
+      deployments: read
     steps:
       - name: Wait for Vercel deployment
         env:
