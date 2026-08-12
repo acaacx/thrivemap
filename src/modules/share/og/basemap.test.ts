@@ -66,7 +66,37 @@ describe("ringsToPaths", () => {
       project,
     );
     expect(paths).toHaveLength(1);
-    expect(paths[0]).toMatch(/^M[\d.]+,[\d.]+(L[\d.]+,[\d.]+)+Z$/);
+    // Leading '-' is legal on any coordinate: a bbox tighter than the ring
+    // being projected puts some points off-canvas at negative pixels (see
+    // "keeps rings that project outside the viewport" below).
+    expect(paths[0]).toMatch(/^M-?[\d.]+,-?[\d.]+(L-?[\d.]+,-?[\d.]+)+Z$/);
+  });
+
+  it("keeps rings that project outside the viewport", () => {
+    // The OG card route zooms bboxes tighter than the full country outline,
+    // so ring points routinely fall outside the box and project to negative
+    // (or otherwise out-of-frame) pixel coordinates. That's expected output,
+    // not a defect — resvg clips to the viewport, and clipping is cheaper
+    // than us re-deriving which points are visible.
+    const tightProject = createProjector(
+      { north: 15, south: 14, east: 121, west: 120 },
+      CARD_WIDTH,
+      CARD_HEIGHT,
+    );
+    const paths = ringsToPaths(
+      [
+        [
+          [119, 17],
+          [122, 17],
+          [122, 13],
+          [119, 13],
+          [119, 17],
+        ],
+      ],
+      tightProject,
+    );
+    expect(paths).toHaveLength(1);
+    expect(paths[0]).toMatch(/^M-?[\d.]+,-?[\d.]+(L-?[\d.]+,-?[\d.]+)+Z$/);
   });
 
   it("drops rings with too few points to form an area", () => {
