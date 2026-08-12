@@ -15,7 +15,9 @@ Sentry.init({
   dsn,
   enabled: Boolean(dsn),
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
-  tracesSampleRate: 0.1,
+  tracesSampleRate: Number(
+    process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? "0.1",
+  ),
   // Session Replay is deliberately not enabled: it records caregiver sessions
   // over clinic inquiry forms. Adding it is a privacy decision, not a config one.
   sendDefaultPii: false,

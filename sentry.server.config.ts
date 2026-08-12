@@ -17,5 +17,8 @@ Sentry.init({
   // Ratings carry no free text and inquiries are caregiver PII — never let the
   // SDK attach request bodies, headers, cookies or user identifiers by default.
   sendDefaultPii: false,
+  // Server-only: attaches local variables to stack frames, which is most of the
+  // value of a server stack trace. Safe here because sendDefaultPii is off.
+  includeLocalVariables: true,
   debug: false,
 });
