@@ -1,7 +1,7 @@
 # Shareable search cards (Open Graph) — design
 
 Date: 2026-08-12
-Status: sections 1–2 approved; section 3 (rendering) provisional pending research
+Status: design complete, awaiting review
 
 ## Why
 
@@ -68,7 +68,7 @@ New module `src/modules/share/`:
 | `og/palette.ts` | Warm Horizon as sRGB hex, each value commented with its oklch source |
 | `og/projection.ts` | Web Mercator; bbox → viewport fit, padding, min/max span clamp |
 | `og/bbox.ts` | The derivation ladder (Section 2) |
-| `og/basemap.ts` | Decode PH geometry → SVG path data |
+| `og/basemap.ts` | Load + decode PH geometry → SVG path `d` strings |
 | `og/label.ts` | `SearchParams` → headline + description strings |
 | `og/card.tsx` | Satori JSX: map layer, pin layer, caption plate |
 | `og/fallback.tsx` | Abstract pin-field card for every failure path |
@@ -160,22 +160,101 @@ here sets a new precedent. Decision: ship without it, rely on
 `s-maxage=86400` at the CDN, and revisit if the endpoint shows abuse. Recorded
 so the omission is a choice, not an oversight.
 
-## Section 3 — Rendering (PROVISIONAL)
+## Section 3 — Rendering
 
-Pending two research reports (satori SVG capability, PH geometry format).
-Known so far:
+Next 16.2.12 vendors satori 0.25.0 and `@resvg/resvg-wasm` 2.4.0 inside
+`@vercel/og` 0.11.1 (`node_modules/next/dist/compiled/@vercel/og/index.node.js`)
+— there is no separate top-level satori package to check.
 
-- Satori supports flexbox only — no grid — and a subset of CSS
-  (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/image-response.md`).
-- Satori cannot parse `oklch()`, and the entire Warm Horizon palette is oklch
-  (`src/app/globals.css:56+`). Hence `og/palette.ts` with hand-converted hex.
-- 500KB bundle cap covers JSX, CSS, fonts, and images; runtime disk reads and
-  fetches are the documented escape hatch.
+### Inline SVG, not a data URI
 
-Open questions this section must answer: whether a `data:image/svg+xml` `<img>`
-is the right vehicle for the basemap, the geometry source and encoding, the
-island-simplification threshold that keeps Palawan and Mindoro without turning
-the archipelago into confetti, and pin de-collision at low zoom.
+Satori has a real tag registry for `svg`, `path`, `circle`, `rect`, `ellipse`,
+`polygon`, `line`, and gradients, and reads `viewBox` for aspect ratio. The
+basemap is therefore emitted as **inline `<svg>` JSX children**, not a
+base64 `data:image/svg+xml` `<img>`. Same support level, no encoding overhead,
+and — the real win — pins share one coordinate space with the land paths
+instead of being positioned against an opaque image.
+
+### Geometry
+
+**Natural Earth 1:50m admin-0, Philippines feature only.** Public domain, no
+attribution required (GADM is non-commercial and disqualified; geoBoundaries
+and OSM carry attribution/share-alike obligations Natural Earth does not).
+Measured raw size for the PH feature at 1:50m: 34.5 KB.
+
+**Province boundaries are cut from v1.** Natural Earth's 1:50m admin-1 layer
+has *zero* Philippines coverage, so provinces would force the 1:10m layer
+(668 KB raw, 118 features) — twenty times the weight of the outline, for
+internal lines nobody can read on a 1200×630 card that already has a text
+plate over it. The outline alone reads as "the Philippines."
+
+Build-time preparation, committed as a static asset at `public/geo/ph-outline.geojson`:
+
+```
+mapshaper ne_50m_admin_0_countries.geojson \
+  -filter 'ADMIN=="Philippines"' \
+  -filter-islands min-area=10km2 \
+  -simplify 15% weighted visvalingam keep-shapes \
+  -clean \
+  -o format=geojson precision=0.0001 ph-outline.geojson
+```
+
+Expected output 8–14 KB, well under any limit and gzip-served on top.
+`-filter-islands` runs **before** `-simplify` so tiny islets are dropped
+cleanly rather than being reduced to degenerate slivers. The 10 km² threshold
+sits safely below Mindoro (~9,735 km²) and Palawan (~14,650 km²) — the
+smallest islands that must survive — while stripping the ~7,600-island tail
+that would otherwise render as confetti.
+
+Format is plain quantized GeoJSON, `JSON.parse`d in the route. TopoJSON's
+shared-arc win applies to adjacent polygons, which a single dissolved outline
+does not have, and it would cost a `topojson-client` dependency plus a decode
+step on every cold start. Revisit only if the asset ever passes ~50 KB gzip.
+
+### Projection
+
+Web Mercator, matching the MapLibre map the card depicts. Land geometry and
+pins pass through the same transform, so the card is self-consistent either
+way; Mercator is a few lines and keeps the country's silhouette identical to
+the one users see in-app. No `d3-geo` dependency.
+
+### Colors
+
+Satori's vendored parser (`parse-css-color` 0.2.1) accepts hex (3/4/6/8-digit),
+`rgb()`/`rgba()`, `hsl()`/`hsla()`, and named colors — and **nothing else**.
+No `oklch()`, `oklab()`, `lab()`, `lch()`, `hwb()`, or `color-mix()`. The
+entire Warm Horizon palette is oklch (`src/app/globals.css:56+`), so
+`og/palette.ts` hand-converts every token used on the card to hex, each
+annotated with the oklch source it came from so drift is visible in review.
+
+### Fonts
+
+`readFile(join(process.cwd(), "assets/fonts/<file>.ttf"))` under the default
+Node runtime, per the current Next docs. The self-fetch-your-own-origin
+pattern is stale Next 13-era advice and is not used. Only ttf/otf/woff are
+supported; ttf is preferred for parse speed. Subset files live in `assets/`,
+not `public/` — they are read from disk, never served.
+
+### Layers
+
+Confirmed present in satori's render code: absolute positioning, `opacity`,
+`transform` (2D only), `borderRadius`, `boxShadow`. Flexbox only — no grid.
+The card is three stacked absolutely-positioned layers: land, pins, caption
+plate.
+
+Pins are circles with a coral fill and a cream halo stroke so overlapping pins
+stay countable. At low zoom, pins closer than a fixed pixel distance collapse
+into a single larger pin — the count in the caption always reflects the pins
+*found*, not the circles *drawn*.
+
+### Performance
+
+`@resvg/resvg-wasm` is the WASM build, slower than native, and render time
+scales with path complexity. The simplified outline (thousands of points, not
+tens of thousands) is the mitigation. No hard point-count limit or truncation
+exists in the bundle, but this is unverified by measurement:
+**the implementation plan must include a timing spike on the real asset before
+this ships**, against the crawler's few-second budget.
 
 ## Section 4 — Metadata contract
 
