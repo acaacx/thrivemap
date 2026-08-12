@@ -421,8 +421,9 @@ describe("caption layout", () => {
 
   // Confirmed to wrap to exactly 4 lines on SearchCard by counting the
   // rendered ink row-bands (a contiguous run of rows containing at least one
-  // exact-match PALETTE.ink pixel): [261,312], [320,371], [379,430],
-  // [438,489] — four bands, ~59px apart, matching lineHeight 1.1 × 54px.
+  // exact-match PALETTE.ink pixel): [261,312], [320,359], [379,430],
+  // [438,477] — four bands, starts 59px apart, matching lineHeight 1.1 ×
+  // 54px (band heights vary with whether a line has descenders).
   // 76 chars, ordinary space-separated English (ordinary word-boundary
   // wrapping, not wordBreak), under the 80-char clamp.
   it("SearchCard: count line starts below a 4-line headline near the 80-char clamp", async () => {
