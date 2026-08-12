@@ -1,0 +1,23 @@
+# Supplements Vercel Hobby's daily cron (vercel.json stays "0 0 * * *" as the
+# backup trigger). GitHub Actions schedules have a minimum granularity of 5
+# minutes and delivery is best-effort, not guaranteed on the dot.
+name: Jobs drain
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Process queued jobs
+        run: |
+          curl --fail-with-body --max-time 30 --retry 2 --retry-all-errors \
+            -X POST "$SMOKE_URL/api/internal/jobs/process" \
+            -H "x-jobs-secret: $JOBS_PROCESSOR_SECRET"
+        env:
+          SMOKE_URL: ${{ secrets.SMOKE_URL }}
+          JOBS_PROCESSOR_SECRET: ${{ secrets.JOBS_PROCESSOR_SECRET }}

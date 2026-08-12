@@ -49,20 +49,62 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
-  # Vercel builds deploy automatically from the connected repo; this hook is
-  # for platforms that need an explicit trigger.
+  # Deploys are owned by Vercel's git integration, which builds and promotes
+  # main on every push on its own — the DEPLOY_HOOK_URL secret is no longer
+  # used. This job waits for that git-integration deployment to finish, then
+  # smoke tests it.
   deploy:
     needs: migrate
     runs-on: ubuntu-latest
     if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     steps:
-      - name: Trigger deploy hook
-        run: curl -fsS -X POST "$DEPLOY_HOOK_URL"
+      - name: Wait for Vercel deployment
         env:
-          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
-      - name: Smoke test
+          GH_TOKEN: ${{ github.token }}
         run: |
-          sleep 60
-          curl -fsS "$SMOKE_URL/api/health"
+          set -euo pipefail
+          TIMEOUT=600
+          INTERVAL=20
+          ELAPSED=0
+
+          echo "Waiting for Vercel git-integration deployment of ${GITHUB_SHA}..."
+          DEPLOYMENT_ID=""
+          while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
+            DEPLOYMENT_ID=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?sha=${GITHUB_SHA}&per_page=100" \
+              --jq '[.[] | select(.creator.login == "vercel[bot]" or .environment == "Production")] | sort_by(.created_at) | last | .id // empty')
+            if [ -n "$DEPLOYMENT_ID" ]; then
+              break
+            fi
+            sleep "$INTERVAL"
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            echo "::error::Timed out after ${TIMEOUT}s waiting for a Vercel deployment record for sha ${GITHUB_SHA}"
+            exit 1
+          fi
+          echo "Found deployment ${DEPLOYMENT_ID}, waiting for it to succeed..."
+
+          while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
+            STATE=$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses?per_page=1" \
+              --jq '.[0].state // empty')
+            case "$STATE" in
+              success)
+                echo "Deployment ${DEPLOYMENT_ID} succeeded."
+                exit 0
+                ;;
+              failure | error)
+                echo "::error::Vercel deployment ${DEPLOYMENT_ID} reported state '${STATE}'"
+                exit 1
+                ;;
+            esac
+            sleep "$INTERVAL"
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          echo "::error::Timed out after ${TIMEOUT}s waiting for deployment ${DEPLOYMENT_ID} to reach a terminal state"
+          exit 1
+      - name: Smoke test
+        run: curl -fsS "$SMOKE_URL/api/health"
         env:
           SMOKE_URL: ${{ secrets.SMOKE_URL }}
