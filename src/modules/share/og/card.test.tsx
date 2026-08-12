@@ -367,7 +367,7 @@ describe("caption layout", () => {
     expect(inkMaxX).toBeLessThan(950);
   });
 
-  // The two tests above use the 33-char LABELS.headline, which wraps to
+  // The two tests above use the 34-char LABELS.headline, which wraps to
   // exactly 2 lines — that's the minimum case for the overlap bug, not the
   // fix's full stated scope (headlines up to label.ts's 80-char MAX_HEADLINE
   // clamp). A future line-height or padding change could reintroduce overlap
