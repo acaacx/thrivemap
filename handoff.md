@@ -88,9 +88,12 @@ not "fix" them silently — but they are real:
 
 ## Half-done / not started
 
-- **Source maps in CI**: add `SENTRY_AUTH_TOKEN` as a Vercel env var (it exists
-  only in the gitignored local `.env.sentry-build-plugin`). Until then the
-  build logs warn "No auth token provided. Will not upload source maps."
+- ~~**Source maps in CI**~~ — DONE 2026-08-12. `SENTRY_AUTH_TOKEN` added as a
+  Production Vercel env row; `00a432f` (empty commit) is the first build to
+  upload. Build log: "Uploaded files to Sentry", release
+  `00a432fd99808410e09fd6c3860c6a7f1ddf18dd`. Both CI workflows green,
+  `/api/health` ok. Note `67450ae` did NOT upload — that deployment was created
+  ~7s before the env row existed (see trap below).
 - **Optional providers still dev adapters**: Upstash Redis, Resend, PostHog.
   Their Vercel rows are suspected empty Sensitive rows — `rm` + re-add each,
   then rebuild.
@@ -101,9 +104,9 @@ not "fix" them silently — but they are real:
 
 ## Single next action
 
-Ask the user: add `SENTRY_AUTH_TOKEN` to Vercel so prod stack traces get source
-maps, or move to the remaining optional providers (Upstash/Resend/PostHog), or
-start new feature work.
+Ask the user: activate the remaining optional providers (Upstash/Resend/PostHog
+— suspect empty Sensitive rows, `rm` + re-add each, then rebuild), or start new
+feature work. Sentry is fully done, source maps included.
 
 ## Traps / non-obvious facts
 
@@ -121,6 +124,10 @@ start new feature work.
   calling `serverEnv()`, `/api/health` included. Fix both DSN rows together.
 - **Vercel Sensitive env rows can hold EMPTY or malformed values and are
   write-only** — an existing row proves nothing. `rm` + re-add.
+- **A build's env is snapshotted when the deployment is created**, not when it
+  compiles. Add the env row FIRST, then push. `vercel env ls` showing the row as
+  older than the build's log lines proves nothing — compare against the
+  deployment's creation time.
 - **The permission classifier blocks `vercel redeploy` and `vercel env rm/add`**
   in this setup. Ask the user to run them; the repo's own reliable rebuild path
   is an empty commit + push (Vercel git integration).
