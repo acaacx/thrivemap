@@ -46,8 +46,9 @@ Notes on the flags:
 - `-simplify 85%` is higher than mapshaper's usual defaults because Natural
   Earth's 1:50m scale is already coarse; lower retention (e.g. 15%) produces
   a visibly faceted outline — Palawan reduces to a spike, Luzon's coastline
-  goes polygonal. 85% keeps the outline recognizable at 1200×630 while
-  staying an order of magnitude under the size budget.
+  goes polygonal. 85% keeps the outline recognizable at 1200×630 while still
+  landing under half the 50 KB size budget (~44%, see below) — there's
+  headroom, but it isn't an order of magnitude of headroom.
 - `-filter-fields` with no field list drops every attribute field, leaving
   geometry only. On its own this also collapses mapshaper's output from
   `FeatureCollection` to a bare `GeometryCollection` (a `Feature` with no
@@ -56,8 +57,14 @@ Notes on the flags:
   route handler depend on — `geojson-type=FeatureCollection no-null-props`
   forces the `Feature` wrapper back with `"properties":{}`.
 
-Current committed asset: 48 rings, 1,181 points, 22 KB. Verify after
-regenerating:
+`assets/geo/*.geojson` is listed in `.prettierignore`. Prettier pretty-prints
+this file to one coordinate per line if it's allowed to touch it, which
+roughly doubles both the committed size and the bytes parsed on every cold
+start for zero readability benefit on a generated coordinate blob — leave
+the ignore entry in place and don't run a formatter on this file by hand.
+
+Current committed asset: 48 rings, 1,181 points, 22,118 bytes (~22 KB, ~44%
+of the 50 KB budget). Verify after regenerating:
 
 ```bash
 node -e "
