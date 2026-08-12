@@ -66,9 +66,19 @@ never requires them to build.
    silently stops draining — `/api/health` reports the jobs check.
 6. **GitHub Actions** (`.github/workflows/main.yml`): set repository
    variable `DEPLOY_ENABLED=true` plus secrets `SUPABASE_ACCESS_TOKEN`,
-   `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `DEPLOY_HOOK_URL`,
-   `SMOKE_URL`; protect the `production` environment with a required
-   reviewer so migration pushes need manual approval.
+   `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`, `SMOKE_URL`.
+   Deploys are owned by Vercel's git integration — the `deploy` job waits for
+   Vercel's deployment of the pushed SHA via the GitHub deployments API and then
+   smoke tests it. There is no deploy hook; a `DEPLOY_HOOK_URL` secret is not
+   needed and firing one alongside git integration builds every push twice.
+   `.github/workflows/jobs-drain.yml` additionally needs `JOBS_PROCESSOR_SECRET`
+   matching the Vercel env value exactly.
+
+   Protecting the `production` environment with a required reviewer (so
+   migration pushes need manual approval) is the documented ideal, but GitHub
+   requires a paid plan for required reviewers on private repos. On Free, every
+   push to main runs `supabase db push` against production unattended — accept
+   that knowingly or upgrade.
 
 ## Provider activation checklist
 
