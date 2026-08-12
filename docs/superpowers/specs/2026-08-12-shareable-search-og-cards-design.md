@@ -1,7 +1,7 @@
 # Shareable search cards (Open Graph) — design
 
 Date: 2026-08-12
-Status: design complete, awaiting review
+Status: reviewed and approved (all sections), ready for an implementation plan
 
 ## Why
 
@@ -63,16 +63,16 @@ The canonical and `og:url` diverge on purpose — see Section 4.
 
 New module `src/modules/share/`:
 
-| File | Purpose |
-| --- | --- |
-| `og/palette.ts` | Warm Horizon as sRGB hex, each value commented with its oklch source |
-| `og/projection.ts` | Web Mercator; bbox → viewport fit, padding, min/max span clamp |
-| `og/bbox.ts` | The derivation ladder (Section 2) |
-| `og/basemap.ts` | Load + decode PH geometry → SVG path `d` strings |
-| `og/label.ts` | `SearchParams` → headline + description strings |
-| `og/card.tsx` | Satori JSX: map layer, pin layer, caption plate |
-| `og/fallback.tsx` | Abstract pin-field card for every failure path |
-| `components/ShareButton.tsx` | Web Share API with clipboard fallback |
+| File                         | Purpose                                                              |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `og/palette.ts`              | Warm Horizon as sRGB hex, each value commented with its oklch source |
+| `og/projection.ts`           | Web Mercator; bbox → viewport fit, padding, min/max span clamp       |
+| `og/bbox.ts`                 | The derivation ladder (Section 2)                                    |
+| `og/basemap.ts`              | Load + decode PH geometry → SVG path `d` strings                     |
+| `og/label.ts`                | `SearchParams` → headline + description strings                      |
+| `og/card.tsx`                | Satori JSX: map layer, pin layer, caption plate                      |
+| `og/fallback.tsx`            | Abstract pin-field card for every failure path                       |
+| `components/ShareButton.tsx` | Web Share API with clipboard fallback                                |
 
 ### Verified integration constraints
 
@@ -91,16 +91,55 @@ New module `src/modules/share/`:
   `runtime` export at all; this one is explicit and the reason is commented.
 - **No server-side PNG caching.** `cachedClinicData`
   (`src/modules/shared/cache.ts`) stores JSON, not binary. The image relies on
-  its HTTP `Cache-Control` header, matching existing routes. The *data* behind
+  its HTTP `Cache-Control` header, matching existing routes. The _data_ behind
   it still goes through `cachedClinicData`.
 - **Absolute URLs are manual.** No `absoluteUrl()` helper exists; canonicals
   are relative strings resolved against `metadataBase` (`src/app/layout.tsx:20`
   ← `NEXT_PUBLIC_SITE_URL` via `src/lib/site-config.ts`). Social crawlers need
   a fully-qualified `og:image`, so build it from `siteConfig.url` explicitly.
+- **Runtime assets must be traced explicitly.** `readFile(join(process.cwd(),
+…))` is a dynamic path the output tracer cannot follow, so the fonts and the
+  geometry would be omitted from the serverless bundle — the route works in dev
+  and throws `ENOENT` in production.
+  `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/output.md:80`
+  names `outputFileTracingIncludes` as the fix. `next.config.ts` has no tracing
+  config today, so this is new:
 
-Response headers: `Cache-Control: public, s-maxage=86400,
-stale-while-revalidate=604800`, `Content-Type: image/png`. The route must not
-error on an HTTP Range request.
+  ```ts
+  outputFileTracingIncludes: {
+    "/api/og/search": ["assets/fonts/**/*", "assets/geo/**/*"],
+  }
+  ```
+
+  Nothing proves this worked until it runs on Vercel — see the deploy smoke
+  check in Section 6.
+
+- **All runtime assets live in `assets/`, never `public/`.** Fonts and geometry
+  are read from disk by the route and are not resources the site serves. One
+  location means one tracing rule and no public URL implying they are a
+  supported asset.
+
+### Response headers
+
+`Content-Type: image/png`, and a cache lifetime that depends on which card was
+rendered:
+
+| Card     | `Cache-Control`                                         |
+| -------- | ------------------------------------------------------- |
+| Full     | `public, s-maxage=86400, stale-while-revalidate=604800` |
+| Fallback | `public, s-maxage=60, stale-while-revalidate=300`       |
+
+**The split is load-bearing.** A fallback is a transient failure, but the day
+long TTL would pin it at the CDN — and Facebook caches on top of that, so a
+thirty-second database blip would otherwise become a broken-looking card that
+outlives the incident by days. Both cards return **200**; a non-200 teaches the
+crawler to treat the URL as broken.
+
+The route also sets `x-og-card: full | fallback`, which is what makes the
+deploy smoke check in Section 6 able to tell a working card from a
+silently-degraded one.
+
+The route must not error on an HTTP Range request.
 
 ## Section 2 — Data flow
 
@@ -122,8 +161,7 @@ globe.
 ### The count
 
 There is no total anywhere. `ClinicSearchResult` is `{clinics, nextCursor}`
-(`src/modules/clinics/queries.ts:13`), `search_clinics` caps at 50, pages at
-20. Rather than add a count RPC, **the card counts the pins it drew**: "12
+(`src/modules/clinics/queries.ts:13`), `search_clinics` caps at 50, pages at 20. Rather than add a count RPC, **the card counts the pins it drew**: "12
 clinics on this map." That statement describes the image and cannot be wrong.
 `get_map_clinics` caps at `least(coalesce(p_limit, 400), 1000)`
 (`supabase/migrations/20260801000005_search.sql:301`), so at the cap the card
@@ -133,13 +171,13 @@ reads "400+ clinics."
 
 `og/label.ts` degrades gracefully:
 
-| Params | Headline |
-| --- | --- |
-| `services=occupational-therapy&loc=Davao City` | Occupational therapy in Davao City |
-| `services=speech,ot&loc=Cebu City` | Speech therapy + 1 more in Cebu City |
-| `q=sensory gym` | "sensory gym" — therapy clinics |
-| `verified=1` only | Verified clinics in the Philippines |
-| none | Therapy clinics across the Philippines |
+| Params                                         | Headline                               |
+| ---------------------------------------------- | -------------------------------------- |
+| `services=occupational-therapy&loc=Davao City` | Occupational therapy in Davao City     |
+| `services=speech,ot&loc=Cebu City`             | Speech therapy + 1 more in Cebu City   |
+| `q=sensory gym`                                | "sensory gym" — therapy clinics        |
+| `verified=1` only                              | Verified clinics in the Philippines    |
+| none                                           | Therapy clinics across the Philippines |
 
 Service slugs resolve through the existing `getServices()`. `loc` is already a
 human label (`src/modules/search/schemas.ts:62`, max 120 chars) so it needs
@@ -183,20 +221,24 @@ and OSM carry attribution/share-alike obligations Natural Earth does not).
 Measured raw size for the PH feature at 1:50m: 34.5 KB.
 
 **Province boundaries are cut from v1.** Natural Earth's 1:50m admin-1 layer
-has *zero* Philippines coverage, so provinces would force the 1:10m layer
+has _zero_ Philippines coverage, so provinces would force the 1:10m layer
 (668 KB raw, 118 features) — twenty times the weight of the outline, for
 internal lines nobody can read on a 1200×630 card that already has a text
 plate over it. The outline alone reads as "the Philippines."
 
-Build-time preparation, committed as a static asset at `public/geo/ph-outline.geojson`:
+Prepared once, offline, and committed as a static asset at
+`assets/geo/ph-outline.geojson`. Source:
+`https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip`
+(Natural Earth 1:50m admin-0, public domain). `mapshaper` is not installed —
+run it through `npx`:
 
 ```
-mapshaper ne_50m_admin_0_countries.geojson \
+npx -y mapshaper@0.6 ne_50m_admin_0_countries.shp \
   -filter 'ADMIN=="Philippines"' \
   -filter-islands min-area=10km2 \
   -simplify 15% weighted visvalingam keep-shapes \
   -clean \
-  -o format=geojson precision=0.0001 ph-outline.geojson
+  -o format=geojson precision=0.0001 assets/geo/ph-outline.geojson
 ```
 
 Expected output 8–14 KB, well under any limit and gzip-served on top.
@@ -235,6 +277,35 @@ pattern is stale Next 13-era advice and is not used. Only ttf/otf/woff are
 supported; ttf is preferred for parse speed. Subset files live in `assets/`,
 not `public/` — they are read from disk, never served.
 
+**Fraunces is a variable font and satori wants a static instance.**
+`src/app/layout.tsx:8-12` loads it through `next/font/google` with the `SOFT`,
+`WONK`, and `opsz` axes live. Handing satori a variable TTF is not the
+supported path, so the axes must be frozen at the values the card uses and the
+result subset. Prepared once, offline, from the upstream Google Fonts sources,
+and committed:
+
+```
+# Fraunces — freeze the axes, then subset
+pyftsubset Fraunces[SOFT,WONK,opsz,wght].ttf \
+  --instance-features --variations='opsz=32:SOFT=0:WONK=1:wght=600' \
+  --unicodes=U+0020-007E,U+00A0-00FF,U+2010-2027 \
+  --output-file=assets/fonts/fraunces-display.ttf
+
+# Nunito Sans — two static weights, same unicode range
+pyftsubset NunitoSans[YTLC,opsz,wdth,wght].ttf \
+  --instance-features --variations='opsz=12:wdth=100:wght=400' \
+  --unicodes=U+0020-007E,U+00A0-00FF,U+2010-2027 \
+  --output-file=assets/fonts/nunito-sans-regular.ttf
+# …and again with wght=600 → nunito-sans-semibold.ttf
+```
+
+The unicode range is Latin plus the punctuation the labels actually use;
+Filipino place names stay inside it. Both families are OFL, so `OFL.txt` ships
+alongside them in `assets/fonts/`.
+
+Exact upstream URLs and the tool version go in the commit that adds the
+binaries, so the assets stay reproducible.
+
 ### Layers
 
 Confirmed present in satori's render code: absolute positioning, `opacity`,
@@ -245,7 +316,7 @@ plate.
 Pins are circles with a coral fill and a cream halo stroke so overlapping pins
 stay countable. At low zoom, pins closer than a fixed pixel distance collapse
 into a single larger pin — the count in the caption always reflects the pins
-*found*, not the circles *drawn*.
+_found_, not the circles _drawn_.
 
 ### Performance
 
@@ -256,21 +327,45 @@ exists in the bundle, but this is unverified by measurement:
 **the implementation plan must include a timing spike on the real asset before
 this ships**, against the crawler's few-second budget.
 
+### Wall-clock budget
+
+Section 5 covers `getMapClinics` _throwing_. It hanging is the worse case: the
+crawler gives up with nothing, and because Facebook caches the miss there is no
+second chance for a while. So the whole data-fetch-and-render path races a
+**2-second timer**, and losing the race renders the fallback card — which, per
+the split TTL above, expires in 60 seconds rather than a day.
+
+2s leaves headroom inside the crawler's few-second window for TLS, cold start,
+and transfer. The timing spike may argue for a different number; it may not
+argue for removing the race.
+
 ## Section 4 — Metadata contract
 
-Emitted on every filtered `/clinics` URL:
+`src/app/layout.tsx:19-35` already emits `og:type`, `og:site_name`,
+`og:locale: en_PH`, and `twitter:card: summary_large_image` for every route.
+**The page does not re-declare them.** What `generateMetadata` adds:
 
 ```
 og:url          <full filtered URL, query string included>
-og:type         website
-og:title        <headline> | ThriveMap
+og:title        <headline>
 og:description  <dynamic summary of the filtered set>
 og:image        <absolute /api/og/search?… URL>
 og:image:width  1200
 og:image:height 630
-og:locale       en_PH
-twitter:card    summary_large_image
+og:image:alt    <sentence describing the card>
 ```
+
+**`og:title` is the bare headline — no site-name suffix.** The root template is
+`%s — ThriveMap` (`src/app/layout.tsx:23`), and per
+`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/generate-metadata.md:343`
+a page's `title` string augments that template, so `<title>` renders as
+"Occupational therapy in Davao City — ThriveMap". Nothing in the docs says
+`openGraph.title` inherits from `title`, so it is set explicitly — and set
+without the suffix, because `og:site_name` already carries the brand and card
+width is scarce.
+
+`og:image:alt` is not decoration: Facebook surfaces it and screen readers
+depend on it, and the card is otherwise a wall of unreadable pixels.
 
 **The `og:url` rule is load-bearing.** Facebook's cache key is the shared URL
 unless `og:url` says otherwise; setting `og:url` to a stripped base URL
@@ -292,14 +387,24 @@ search previews are a common pattern elsewhere.
 Every path below renders a valid 1200×630 PNG. The route never returns a
 non-image response for a request it can parse.
 
-| Failure | Behaviour |
-| --- | --- |
-| Geometry asset missing or malformed | Fallback card (abstract pin field) |
-| Font read fails | Fallback card with satori's default font |
-| `getMapClinics` throws | Fallback card, brand + headline only |
-| Zero pins | Fallback card, "No clinics match yet" framing |
-| Bbox outside the Philippines | Clamp to PH bounds; if still empty, fallback |
-| Unparseable params | `parseSearchParams` drops them; renders PH-wide |
+| Failure                             | Behaviour                                       |
+| ----------------------------------- | ----------------------------------------------- |
+| Geometry asset missing or malformed | Fallback card (abstract pin field)              |
+| Font read fails                     | Fallback card with satori's default font        |
+| `getMapClinics` throws              | Fallback card, brand + headline only            |
+| `getMapClinics` hangs               | 2s race expires → fallback card                 |
+| Zero pins                           | Fallback card, "No clinics match yet" framing   |
+| Bbox outside the Philippines        | Clamp to PH bounds; if still empty, fallback    |
+| Unparseable params                  | `parseSearchParams` drops them; renders PH-wide |
+
+Every fallback answers 200 with the 60-second TTL and `x-og-card: fallback`.
+
+**One failure the route cannot catch:** `siteConfig.url` falls back to
+`http://localhost:3000` when `NEXT_PUBLIC_SITE_URL` is unset
+(`src/lib/site-config.ts:3`). That breaks every `og:image` on the site at once,
+from the metadata side, with nothing in the logs and a perfectly healthy route.
+Vercel environment rows have gone empty here before, so the deploy smoke check
+asserts the emitted `og:image` is absolute and on the production origin.
 
 ## Section 6 — Testing
 
@@ -314,9 +419,21 @@ sets a small precedent. Following the co-located `*.test.ts` convention
 - `og/label.test.ts` — the table in Section 2, plus escaping of hostile `loc`
   and `q` values.
 - `og/basemap.test.ts` — decoder output shape; path data is well-formed.
+- `og/card.test.tsx` — runs satori for real and asserts a PNG magic-number
+  prefix. Satori ignores unsupported CSS **silently**, so without this a
+  property that renders nothing looks identical to a property that works. It is
+  also the same harness as the timing spike, so it costs nothing extra.
 - e2e: one spec asserting `/api/og/search?...` returns `image/png` with a PNG
-  magic-number prefix and non-trivial length, and one asserting a filtered
-  `/clinics` URL emits `og:url` carrying the query string.
+  magic-number prefix and non-trivial length, one asserting the route answers
+  200 with `x-og-card` set for hostile and nonsense params, and one asserting a
+  filtered `/clinics` URL emits `og:url` carrying the query string.
+
+**Deploy smoke check**, because `outputFileTracingIncludes` is only ever proven
+in production: hit the deployed `/api/og/search`, assert `image/png` **and
+`x-og-card: full`**. Without the header this check passes on a fallback card,
+which is exactly what a tracing miss produces — the header is what turns an
+unfalsifiable assertion into a real one. It also asserts the `og:image` on a
+filtered `/clinics` URL is absolute and on the production origin.
 
 Manual QA gate before calling it done: representative filter combinations run
 through the Facebook Sharing Debugger, confirming distinct previews per filter.
