@@ -30,6 +30,13 @@ interface LocationSearchBoxProps {
   size?: "default" | "large";
   /** Label for the submit button. */
   submitLabel?: string;
+  /**
+   * Render without a `<form>` so the box can live inside another form
+   * (nested forms are invalid HTML). Enter and the button call the search
+   * directly, and free text with no matching suggestion never navigates
+   * away from the host page.
+   */
+  embedded?: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export function LocationSearchBox({
   onTextSearch,
   size = "default",
   submitLabel = "Find clinics",
+  embedded = false,
 }: LocationSearchBoxProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -150,6 +158,14 @@ export function LocationSearchBox({
       onTextSearch(text);
       return;
     }
+    if (embedded) {
+      toast.info(
+        text
+          ? "No matching place found. Try a city, province, or barangay."
+          : "Type a city, province, or barangay to search.",
+      );
+      return;
+    }
     // Free-text search (clinic name / place); empty query = every clinic.
     const params = new URLSearchParams();
     if (text) params.set("q", text);
@@ -189,6 +205,12 @@ export function LocationSearchBox({
       setOpen(false);
       return;
     }
+    if (embedded && e.key === "Enter") {
+      // No <form> of our own to submit — and the host form must not submit.
+      e.preventDefault();
+      submit();
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -201,20 +223,25 @@ export function LocationSearchBox({
   }
 
   const large = size === "large";
+  const Root = embedded ? "div" : "form";
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <form
+      <Root
         role="search"
         aria-label="Find clinics by location"
         className={cn(
           "flex w-full flex-col gap-3",
           large ? "sm:flex-row sm:items-start" : "sm:flex-row sm:items-center",
         )}
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
+        onSubmit={
+          embedded
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                submit();
+              }
+        }
       >
         <div className="relative flex-1">
           <Search
@@ -278,7 +305,8 @@ export function LocationSearchBox({
           )}
         </div>
         <Button
-          type="submit"
+          type={embedded ? "button" : "submit"}
+          onClick={embedded ? submit : undefined}
           size="lg"
           disabled={busy}
           className={cn("shrink-0", large ? "h-13 px-6" : "")}
@@ -290,7 +318,7 @@ export function LocationSearchBox({
           )}
           {submitLabel}
         </Button>
-      </form>
+      </Root>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         <Button
           type="button"

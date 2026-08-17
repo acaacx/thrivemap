@@ -246,7 +246,11 @@ export function SuggestClinicForm({
           Search a nearby area, then click the map to place the pin on the
           clinic.
         </p>
-        <LocationSearchBox onLocation={(loc) => setMapCenter(loc)} />
+        <LocationSearchBox
+          embedded
+          submitLabel="Search area"
+          onLocation={(loc) => setMapCenter(loc)}
+        />
         <div className="h-64 overflow-hidden rounded-xl border">
           <MapErrorBoundary
             fallback={
