@@ -109,6 +109,36 @@ jobs:
           echo "::error::Timed out after ${TIMEOUT}s waiting for deployment ${DEPLOYMENT_ID} to reach a terminal state"
           exit 1
       - name: Smoke test
-        run: curl -fsS "$SMOKE_URL/api/health"
         env:
           SMOKE_URL: ${{ secrets.SMOKE_URL }}
+        run: |
+          set -euo pipefail
+          curl -fsS "$SMOKE_URL/api/health"
+
+          # The OG card route reads fonts and geometry from disk. Those paths
+          # are dynamic, so they only reach the serverless bundle via
+          # outputFileTracingIncludes — and a tracing miss degrades to the
+          # fallback card, which still returns 200 with image/png. Only the
+          # x-og-card header tells the two apart, so assert on it.
+          echo "Checking /api/og/search..."
+          CARD_HEADERS=$(curl -fsS -o /tmp/og.png -D - "$SMOKE_URL/api/og/search?loc=Cebu+City")
+          echo "$CARD_HEADERS" | grep -qi "content-type: image/png" \
+            || { echo "::error::OG card did not return image/png"; echo "$CARD_HEADERS"; exit 1; }
+          echo "$CARD_HEADERS" | grep -qi "x-og-card: full" \
+            || { echo "::error::OG card fell back — fonts or geometry are missing from the bundle (check outputFileTracingIncludes)"; echo "$CARD_HEADERS"; exit 1; }
+          test "$(stat -c%s /tmp/og.png)" -gt 5000 \
+            || { echo "::error::OG card PNG is implausibly small"; exit 1; }
+
+          # NEXT_PUBLIC_SITE_URL unset makes siteConfig.url fall back to
+          # localhost, which breaks every og:image on the site while the route
+          # itself stays perfectly healthy. Vercel env rows have gone empty
+          # here before.
+          echo "Checking og:image on /clinics..."
+          OG_IMAGE=$(curl -fsS "$SMOKE_URL/clinics?loc=Cebu+City" \
+            | grep -oE '<meta property="og:image" content="[^"]*"' \
+            | head -1 | sed -E 's/.*content="([^"]*)".*/\1/' || true)
+          echo "og:image = $OG_IMAGE"
+          case "$OG_IMAGE" in
+            "$SMOKE_URL"/api/og/search*) ;;
+            *) echo "::error::og:image is not an absolute production URL — check NEXT_PUBLIC_SITE_URL"; exit 1 ;;
+          esac
