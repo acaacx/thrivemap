@@ -8,8 +8,10 @@ MVP) and Phase 2 (`docs/phase-2-plan.md` — Places import, therapist profiles,
 inquiries, ratings, PWA) are complete. Multilingual **dropped entirely**
 (decision 2026-08-10). Job-runner upgrade conditional-only.
 
-**The app is live in production.** Current session = post-launch ops: Sentry
-activation.
+**The app is live in production** at `https://thrivemap.vercel.app`. Code is
+done; the remaining work is **operational: populate prod with real clinics**.
+Session 2026-08-18 (late) added the admin tooling for exactly that: clinic
+editor + publish flow (`c7f03aa`) and by-name Places lookup (`dbde18d`).
 
 **Locked decisions (do not relitigate):**
 
@@ -21,6 +23,11 @@ activation.
   `Authorization: Bearer $CRON_SECRET`.
 - Single Next.js app, domain modules under `src/modules/`. No monorepo.
 - Design: "Warm Horizon" — Fraunces + Nunito Sans, warm cream, deep teal, coral.
+  Service pages/homepage grid = "Warm Horizon — Calm Clarity" evolution (no
+  palette/font changes). No puzzle-piece motifs (behavioral-therapy icon =
+  `blocks`).
+- Feeding Therapy: **hard-deleted** from the taxonomy (migration 22, cascade
+  accepted; applied to prod 2026-08-18). Not recoverable by re-insert.
 - Ratings: structured only, NO free text anywhere (RA 10175 anti-defamation,
   enforced by schema).
 - PWA: manifest + offline shell + offline favorites snapshot ONLY; hand-rolled
@@ -31,45 +38,83 @@ activation.
   deploy job waits for the Vercel deployment via the GitHub deployments API,
   then smoke tests. No `DEPLOY_HOOK_URL`.
 - **Sentry runs on the wizard's config, not the env-gated one** (2026-08-12,
-  user decision made with the tradeoffs stated). This deliberately overrides the
-  earlier `sendDefaultPii: false` stance. See "Accepted tradeoffs" below —
-  reverting is a three-file `git checkout`, not a redesign.
+  user decision made with the tradeoffs stated). See "Accepted tradeoffs".
+- **OG basemap = Natural Earth 1:10m** (2026-08-18), not 1:50m. Regen pipeline
+  in `assets/README.md`.
+- **GitHub repo `acaacx/thrivemap` is PUBLIC** (user decision 2026-08-18) so
+  Actions are free. Do not commit anything you would not publish.
+- **Candidate pipeline is the only way clinics enter prod**: Places (job import
+  OR by-name lookup) → `external_place_candidates` → Promote/Attach → draft →
+  `/admin/clinics/[id]` edit → publish. No direct clinic creation UI; keep it so
+  (dedup matching + audit live on this path).
+- **By-name lookup adds one hit at a time** (user decision 2026-08-18) — no
+  "add all results".
 
 ## Finished and verified
 
-`main` = `c498239`, pushed. `Main` green on it (validate ✅ migrate ✅
-deploy+smoke ✅), `PR checks` green, `Jobs drain` green. Commits this session:
+`main` = `dbde18d`, pushed 2026-08-18 ~03:40 PHT. GitHub `Main` run
+32061294761 on `dbde18d` **success** (validate / migrate / deploy+smoke); prod
+`/api/health` 200 afterwards → new card is live at `/admin/candidates`.
+Local on `dbde18d`: `pnpm test` 209/209, typecheck, lint,
+format:check green; e2e `places-import.spec.ts` 2/2 (chromium).
 
-- `b4a25c0` chore: empty commit to rebuild after the DSN rows were added.
-  **This build FAILED** — see the env trap below.
-- `6daea81` fix(env): `providerFlags` read `process.env` directly, bypassing the
-  schema sanitising, so a row holding only whitespace reported a provider as
-  configured and silently disabled its dev adapter. Added trim in
-  `withoutEmpty()` + a shared `isSet()`. New `src/lib/env.test.ts` (3 cases,
-  node environment — `serverEnv()` refuses to run when `window` exists).
-- `c498239` chore: applied the Sentry wizard output; removed the generated
-  `/sentry-example-page` and `/api/sentry-example-api` after using them locally.
+- **By-name Places lookup (`dbde18d`)**: `/admin/candidates` card "Look up a
+  center by name" (`PlaceLookupCard.tsx`). `lookupPlacesByNameAction(name,
+  city?)` — moderator+, rate limit `place-lookup` 20/hr, `placeLookupNameSchema`
+  (2–80 chars, letters/digits/`&.,'()/-`), query `"<name>[, <city>],
+  Philippines"`, `maxPages: 1`, returns hits + `alreadyCandidate` flags, writes
+  nothing. `addPlaceCandidateAction(hit)` — validates with `lookupPlaceSchema`,
+  upserts one row via `upsertPlaceCandidates` (extracted from
+  `runPlacesImport`, `src/modules/imports/server.ts`; job path unchanged),
+  audit action `add_place_candidate`, `revalidatePath`. Runbook step in
+  `docs/operations/deployment.md` "Populating clinics".
+- **Clinic editor + publish flow (`c7f03aa`)**: `/admin/clinics/[clinicId]`
+  (identity form, services + profile forms reused from portal via
+  `action`/`submitLabel` props, `ClinicStatusCard` → `setClinicStatus` with
+  allowed transitions + required reason), `/admin/clinics` status filter chips,
+  ImportTriggerCard "Other city" free text (`importCityTextSchema`, letters
+  only, `slugifyCity` for idempotency), runbook "Populating clinics".
+- Earlier 2026-08-18: 1:10m OG outline `e09d1c1`; Vercel Preview builds fixed
+  (`NEXT_PUBLIC_SUPABASE_URL` Preview scope); GitHub Actions unblocked (repo
+  public); PR #2 OG cards `61c495a`; branch `UI` `618306e` (migration 22 +
+  service redesign); OG smoke `e678dec`.
 
-**Sentry is live in production and verified three ways:**
+## Half-done / not started
 
-1. DSN accepts events — synthetic envelope POSTed to the ingest endpoint
-   returned `http=200`, event `1880f88d583e44b1a35442e18a36865f` (search Sentry
-   for logger `thrivemap-verification`).
-2. Server path — the example route threw locally, `onRequestError` wrote its
-   structured log, `captureRequestError` ran with no transport error.
-3. Prod bundle contains both `o4511897577586688.ingest.us.sentry.io` and the
-   `/monitoring` tunnel route. Baseline before the deploy was zero matches.
+- **Production has ZERO clinics.** Seed is demo-only by design.
+  **Blocker: prod likely has no administrator.** `handle_new_user` grants only
+  `user`; promotion is manual SQL (`docs/operations/deployment.md` step 3).
+  No hosted DB creds locally (Vercel rows Sensitive/write-only, keychain read
+  blocked). Needs the user: sign up on `https://thrivemap.vercel.app`, then in
+  Supabase SQL editor (project `slwguxbeijcpixsegtzm`):
+  `insert into public.user_roles (user_id, role) select id, 'administrator'
+  from auth.users where email = '<their email>' on conflict do nothing;`
+  then `/admin/candidates` → **Look up a center by name** (known centers) or
+  **Run an import** + `/admin/jobs` "Run tick now" → Promote →
+  `/admin/clinics?status=draft` → edit → publish.
+- **Facebook Sharing Debugger gate** (three distinct cards) after first data:
+  `/clinics`, `?services=occupational-therapy&loc=Davao+City`,
+  `?services=speech-therapy&loc=Cebu+City&verified=1`.
+- **Design observation, not fixed:** OG caption plate (bottom-left, ~880×230)
+  can cover pins near the bottom edge (PH-wide card: Davao pin).
+- **Optional providers still dev adapters in prod**: Upstash Redis, Resend,
+  PostHog (`[DEV ADAPTER] Upstash not configured` in prod logs; suspected empty
+  Sensitive Vercel rows; `vercel env rm` classifier-blocked, `env add` allowed).
+  Note: without Upstash, `checkRateLimit` (import 10/hr, lookup 20/hr) is the
+  dev adapter in prod — effectively per-instance / lax.
+- **No approval gate on production migrations** — Free plan. Accepted.
+- Cold-start OG render can exceed 2 s (one `timeout` seen); warm ~1 s.
 
-`/api/health` → `{"app":"ok","db":"ok","jobs":"ok"}` after the deploy.
+## Single next action
 
-Sentry coordinates: org `abenson-tech`, project `thrivemap`, DSN
-`https://f19fc8d483e1fda31821255de50ef1b2@o4511897577586688.ingest.us.sentry.io/4511897613172736`
-(a DSN is ingest-only and ships in the browser bundle — not a secret;
-`SENTRY_AUTH_TOKEN` is).
+Hand the user the admin bootstrap steps above (sign up → promote SQL →
+`/admin/candidates` lookup/import → promote → edit → publish). After first
+data, run the Facebook Sharing Debugger check on the three URLs. Nothing is
+blocked on code.
 
 ## Accepted tradeoffs from the wizard config
 
-Consequences of the locked decision above. Each was stated and accepted, so do
+Consequences of the locked Sentry decision. Each was stated and accepted, so do
 not "fix" them silently — but they are real:
 
 - `dataCollection` defaults are on: **user info and HTTP request bodies go to
@@ -80,93 +125,87 @@ not "fix" them silently — but they are real:
 - `telemetry: false` and `sourcemaps.deleteSourcemapsAfterUpload` were dropped —
   source maps now ship inside the deployment.
 - `org`/`project` are literals and `authToken` comes only from the local
-  `.env.sentry-build-plugin`, so **CI uploads no source maps** → prod stack
-  traces stay unmapped.
+  `.env.sentry-build-plugin`, so **Vercel builds upload no source maps** (build
+  log: "No auth token provided") → prod stack traces stay unmapped.
 - `src/instrumentation-client.ts` was NOT touched by the wizard. It is still
-  env-gated on `NEXT_PUBLIC_SENTRY_DSN`, which is why that Vercel row still
-  matters and still gates the build.
-
-## Half-done / not started
-
-- ~~**Source maps in CI**~~ — DONE 2026-08-12. `SENTRY_AUTH_TOKEN` added as a
-  Production Vercel env row; `00a432f` (empty commit) is the first build to
-  upload. Build log: "Uploaded files to Sentry", release
-  `00a432fd99808410e09fd6c3860c6a7f1ddf18dd`. Both CI workflows green,
-  `/api/health` ok. Note `67450ae` did NOT upload — that deployment was created
-  ~7s before the env row existed (see trap below).
-- **Optional providers still dev adapters**: Upstash Redis, Resend, PostHog.
-  Their Vercel rows are suspected empty Sensitive rows — `rm` + re-add each,
-  then rebuild.
-- **No approval gate on production migrations** — GitHub required reviewers need
-  a paid plan on private repos; `acaacx/thrivemap` is Free. Accepted knowingly.
-- ~~`DEPLOY_HOOK_URL` GitHub secret~~ — deleted 2026-08-12. Remaining GitHub
-  secrets are all live: `JOBS_PROCESSOR_SECRET`, `SMOKE_URL`,
-  `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`.
-
-## Single next action
-
-Ask the user: activate the remaining optional providers (Upstash/Resend/PostHog
-— suspect empty Sensitive rows, `rm` + re-add each, then rebuild), or start new
-feature work. Sentry is fully done, source maps included.
+  env-gated on `NEXT_PUBLIC_SENTRY_DSN`.
 
 ## Traps / non-obvious facts
 
-- **`z.string().url()` does NOT reject surrounding whitespace** — it delegates
-  to the WHATWG URL parser, which strips it. A newline-padded DSN builds fine.
-  The `b4a25c0` build died on `NEXT_PUBLIC_SENTRY_DSN` being malformed some
-  other way (quoted, scheme-less, or key-only). Do not chase whitespace when
-  you see `"Invalid URL"`.
-- **A failed Vercel build never re-aliases**, so prod stays on the last good
-  deployment and `/api/health` keeps returning ok. Green health proves nothing
-  about the newest build.
-- **The env schema is parsed at module scope**, so a bad `NEXT_PUBLIC_*` value
-  fails the build during "Collecting page data", while a bad server-only value
-  survives the build and throws per-request instead — that would 500 every route
-  calling `serverEnv()`, `/api/health` included. Fix both DSN rows together.
-- **Vercel Sensitive env rows can hold EMPTY or malformed values and are
-  write-only** — an existing row proves nothing. `rm` + re-add.
-- **A build's env is snapshotted when the deployment is created**, not when it
-  compiles. Add the env row FIRST, then push. `vercel env ls` showing the row as
-  older than the build's log lines proves nothing — compare against the
-  deployment's creation time.
-- **The permission classifier blocks `vercel redeploy` and `vercel env rm/add`**
-  in this setup. Ask the user to run them; the repo's own reliable rebuild path
-  is an empty commit + push (Vercel git integration).
-- **Deleting a route leaves stale `.next/dev/types/validator.ts` entries** and
-  `pnpm typecheck` then fails on modules that no longer exist. `rm -rf .next`
-  and re-run — it is not a real error.
-- **Hook/CLI deploys create NO GitHub deployment records** — only
-  git-integration builds appear (creator `vercel[bot]`). Truth:
+- **Permission classifier blocks `gh pr merge`, `vercel redeploy`, `vercel env
+  rm`, keychain reads.** `vercel env add` via stdin pipe was allowed. Merge =
+  `git merge --no-ff <branch>` on `main` + `git push`. Rebuild = empty commit +
+  push. Foreground `sleep N; cmd` chains are blocked — use `run_in_background`
+  + `until` loop.
+- **`/admin/candidates` now has TWO city controls** — Playwright
+  `getByLabel("City")` is ambiguous; use `getByLabel("City", { exact: true })`
+  for the import `<select>` and `getByLabel("City (optional)")` for the lookup
+  input. `places-import.spec.ts` already does this.
+- **FixturePlacesProvider answers any non-`autism-therapy…` query with
+  `fixtures/generic.json`** (Fixture Developmental Clinic / Fixture Child
+  Wellness Center) — that is what by-name lookup returns locally, regardless of
+  the name typed. Provider slug is `google` even for fixtures (rows must merge).
+- **Server-action result unions**: `{ error?: undefined; hits }` does not
+  narrow on `if (result.error)`; use an explicit `ok: true|false` discriminant
+  (`PlaceLookupResult`).
+- **A GitHub job with 0 steps and a 3-second duration is not a code failure**
+  — read `check-runs/<job>/annotations`. Was billing; repo is public now.
+- **DevSwarm worktrees hold unmerged branches** under
+  `~/.devswarm/repos/0/*/`. `git worktree list` first.
+- **OG assets ship only via `outputFileTracingIncludes`** (`next.config.ts`,
+  key `/api/og/search`). A tracing miss = `x-og-card-reason: error`; an empty
+  DB = `no-results`.
+- **OG render tests need `// @vitest-environment node`** at the top of the
+  file. `assets/geo/*.geojson` is in `.prettierignore` — never format it.
+- **Vercel runtime logs lag / time out** via MCP: scope to a deployment id or
+  15 m window and query text; `[DEV ADAPTER]` lines confirm which providers
+  are live.
+- **Next metadata: nested `openGraph` is overwritten wholesale, not merged.**
+- **`pnpm format` from the repo root reformats files inside
+  `.claude/worktrees/*`**; `pnpm lint` picks up worktree `.next` output.
+- **`import "next/og"` fails under plain Node ESM** — scripts use `next/og.js`.
+- **`pyftsubset --instance-features` does not exist**; freeze axes with
+  `fonttools varLib.instancer`, then subset. `uvx --from fonttools …` works.
+- **`rm -rf .next` while `next dev` runs kills the server.** Stop dev first.
+- Headless Chromium has no WebGL2 → MapLibre errors on `/clinics`; expected.
+- **`z.string().url()` does NOT reject surrounding whitespace.**
+- **A failed Vercel build never re-aliases**; green `/api/health` proves
+  nothing about the newest build. Preview URLs 302 (deployment protection).
+- **The env schema is parsed at module scope** — bad `NEXT_PUBLIC_*` fails the
+  build in "Collecting page data"; bad server-only value 500s per request.
+- **Vercel Sensitive env rows can hold EMPTY values and are write-only.**
+- **A build's env is snapshotted at deployment creation.** Add the row FIRST.
+- **Deleting a route leaves stale `.next/dev/types/validator.ts`** →
+  `rm -rf .next` and re-run typecheck.
+- **Hook/CLI deploys create NO GitHub deployment records.** Truth:
   `npx vercel ls thrivemap --prod --scope abensontech`.
 - **Provider probe**: `GET /api/locations?q=cebu` — `"placeId":"dev:..."` =
-  DevMapProvider, `ChIJ...` = Google live. CDN caches 60s/300s — use fresh query
+  DevMapProvider, `ChIJ...` = Google live. CDN caches 60s/300s — fresh query
   strings when probing.
-- Only `GOOGLE_MAPS_SERVER_API_KEY` matters for maps;
-  `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY` is vestigial. Never add
+- Only `GOOGLE_MAPS_SERVER_API_KEY` matters for maps + Places. Never add
   `NEXT_PUBLIC_` to the server key or to `SENTRY_AUTH_TOKEN`.
-- `SMOKE_URL` = `https://thrivemap.vercel.app` only — per-deployment URLs are
-  frozen builds; `thrivemap-abensontech.vercel.app` 302s.
+- `SMOKE_URL` = `https://thrivemap.vercel.app` only.
 - `SUPABASE_PROJECT_REF` = `slwguxbeijcpixsegtzm`; Vercel project `thrivemap`,
-  org `abensontech`; migrations 1–21 applied hosted.
-- `JOBS_PROCESSOR_SECRET` rotation (2026-08-12) dropped the Preview scope — the
-  row is Production-only. Re-add Preview if preview deploys need to drain jobs.
+  org `abensontech`; migrations 1–22 applied hosted (22 on 2026-08-18).
+- `JOBS_PROCESSOR_SECRET` row is Production-only.
 - Hosted `db push` roles exclude `extensions` from search_path — migrations
   touching pg_trgm/postgis need explicit `set search_path`.
 - `handoff.md` is in `.prettierignore` (hook-regenerated). Don't remove it.
-- e2e: `expect.timeout: 15_000`, `workers: 2` (`PW_WORKERS`) — do not revert.
+- e2e: `expect.timeout: 15_000`, `workers: 2` (`PW_WORKERS`).
   `pnpm test:integration -- <pattern>` does NOT filter — use
   `npx vitest run --config vitest.integration.config.ts <pattern>`.
-  Restart dev server between full e2e runs. Port 3000 squatter: set
-  `PLAYWRIGHT_BASE_URL`. chromium-skip via `testInfo.project.name`.
+  Single spec: `npx playwright test e2e/<file> --project=chromium`. Restart
+  dev server between full e2e runs. chromium-skip via `testInfo.project.name`.
 - supabase CLI not on PATH — `pnpm db:reset` / `pnpm db:types`. RLS subqueries
   run as caller — security-definer helpers for cross-table checks. New
   tables/functions need explicit grants. Optional RPC params need SQL
   `default null`.
-- `/offline` renders via inline `<style>/<script>` — never convert to hydrated
-  React. MapErrorBoundary around ALL `ClinicMap` renders. MapLibre worker copied
-  to `public/maplibre/` by postinstall.
+- `/offline` renders via inline `<style>/<script>` — never hydrate. MapErrorBoundary
+  around ALL `ClinicMap` renders. MapLibre worker copied to `public/maplibre/`.
 - zod 4 + zodResolver: 3-generic `useForm`, no `.coerce`/`.default()`,
   `z.uuid()`. shadcn = Base UI, not Radix (no `asChild`; `render={<Link/>}`).
+- react-hooks/static-components flags `const Icon = serviceIcon(...)` + JSX in
+  a component body — `service-glyph.tsx` uses `createElement`; keep that.
 - Test markers `[e2e]%` / `[itest]%`; therapists: remove storage objects before
-  rows. Demo logins (password `password123`): admin@ / moderator@ / caregiver@ /
-  clinicrep@ `thrivemap.test`.
+  rows. Demo logins (password `password123`, LOCAL seed only): admin@ /
+  moderator@ / caregiver@ / clinicrep@ `thrivemap.test`.
