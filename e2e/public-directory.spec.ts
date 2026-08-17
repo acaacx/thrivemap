@@ -5,7 +5,7 @@ test.describe("landing page", () => {
     await page.goto("/");
     await expect(
       page.getByRole("heading", {
-        name: /find therapy and developmental-care centers near you/i,
+        name: /find the right support near you/i,
       }),
     ).toBeVisible();
     await expect(
@@ -62,7 +62,7 @@ test.describe("clinic search", () => {
 
   test("filters narrow results and update the URL", async ({ page }) => {
     await page.goto("/clinics?lat=14.5995&lng=120.9842&radius=25");
-    await page.getByRole("button", { name: /filters/i }).click();
+    await page.getByRole("button", { name: /more filters/i }).click();
     await page
       .getByRole("checkbox", { name: /speech & language therapy/i })
       .click();

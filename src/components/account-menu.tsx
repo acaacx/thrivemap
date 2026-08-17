@@ -44,36 +44,23 @@ export function AccountMenu() {
 
   if (email === undefined) {
     // Placeholder keeps the header height stable while the cookie is read.
-    return <div className="h-9" aria-hidden />;
+    return <div className="h-10 w-16" aria-hidden />;
   }
 
   if (email === null) {
+    // "Find clinics" already lives in the main nav; a second primary
+    // button here would compete with it.
     return (
-      <>
-        <Button
-          variant="ghost"
-          className="rounded-full"
-          render={<Link href="/login" />}
-        >
-          Sign in
-        </Button>
-        <Button className="rounded-full" render={<Link href="/clinics" />}>
-          Search
-        </Button>
-      </>
+      <Button variant="ghost" render={<Link href="/login" />}>
+        Sign in
+      </Button>
     );
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button
-            variant="outline"
-            className="rounded-full"
-            aria-label="Account menu"
-          />
-        }
+        render={<Button variant="outline" aria-label="Account menu" />}
       >
         <CircleUserRound className="size-4" aria-hidden />
         <span className="hidden sm:inline">Account</span>

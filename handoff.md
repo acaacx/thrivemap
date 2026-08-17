@@ -22,10 +22,15 @@ editor + publish flow (`c7f03aa`) and by-name Places lookup (`dbde18d`).
   Entrypoints: POST + `x-jobs-secret` (external schedulers) and Vercel Cron GET +
   `Authorization: Bearer $CRON_SECRET`.
 - Single Next.js app, domain modules under `src/modules/`. No monorepo.
-- Design: "Warm Horizon" — Fraunces + Nunito Sans, warm cream, deep teal, coral.
-  Service pages/homepage grid = "Warm Horizon — Calm Clarity" evolution (no
-  palette/font changes). No puzzle-piece motifs (behavioral-therapy icon =
-  `blocks`).
+- Design (2026-08-18, user decision, branch `redesign/calm-ui`): **"Quiet
+  Ledger"** — Inter only, sage-white `#F7FAF8`, one teal accent `#2F6F68`,
+  1px `#D5E1DE` borders instead of shadows, tints blue/sage/lavender for
+  categories, 44px public touch targets, `Display preferences` popover
+  (reduce motion / larger text / more spacing / higher contrast →
+  `<html data-*>` + `localStorage tm-display`, boot script in layout.tsx).
+  Supersedes "Warm Horizon" for the app UI. **OG cards + email templates stay
+  Warm Horizon** (deferred; needs font subsetting + card pixel tests). No
+  puzzle-piece motifs (behavioral-therapy icon = `blocks`).
 - Feeding Therapy: **hard-deleted** from the taxonomy (migration 22, cascade
   accepted; applied to prod 2026-08-18). Not recoverable by re-insert.
 - Ratings: structured only, NO free text anywhere (RA 10175 anti-defamation,

@@ -19,9 +19,9 @@ export default async function SuggestClinicPage() {
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <div className="bg-secondary/50">
+        <div className="border-b bg-secondary">
           <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-            <h1 className="font-heading text-3xl font-semibold sm:text-4xl">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Suggest a clinic
             </h1>
             <p className="mt-3 text-lg text-muted-foreground">

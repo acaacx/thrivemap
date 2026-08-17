@@ -112,21 +112,29 @@ export function ClinicMap({
         source: "clinics",
         filter: ["!", ["has", "point_count"]],
         paint: {
+          // Muted palette (globals.css): selected = --primary-hover, verified
+          // = --primary, unverified = --subtle. Selection is also signalled by
+          // size and stroke so it never relies on hue alone.
           "circle-color": [
             "case",
             ["boolean", ["get", "selected"], false],
-            "#c2542e",
+            "#255b56",
             ["boolean", ["get", "verified"], false],
-            "#2e7d5b",
-            "#2f6f75",
+            "#2f6f68",
+            "#5f6e6b",
           ],
           "circle-radius": [
             "case",
             ["boolean", ["get", "selected"], false],
-            10,
+            11,
             7,
           ],
-          "circle-stroke-width": 2,
+          "circle-stroke-width": [
+            "case",
+            ["boolean", ["get", "selected"], false],
+            3,
+            2,
+          ],
           "circle-stroke-color": "#ffffff",
         },
       });
@@ -137,7 +145,7 @@ export function ClinicMap({
         source: "clinics",
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#2f6f75",
+          "circle-color": "#2f6f68",
           "circle-opacity": 0.9,
           "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 25, 26],
         },

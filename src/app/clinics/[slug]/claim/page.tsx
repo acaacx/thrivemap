@@ -42,7 +42,7 @@ export default async function ClaimPage({
           </p>
 
           {claimedByOther && !claim && (
-            <div className="mt-6 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
+            <div className="mt-6 rounded-xl border border-border bg-secondary p-4 text-sm">
               <p className="font-medium">
                 This listing already has a representative.
               </p>
@@ -73,7 +73,6 @@ export default async function ClaimPage({
                 </p>
                 <div className="mt-4 flex gap-3">
                   <Button
-                    className="rounded-full"
                     render={
                       <Link
                         href={`/login?next=${encodeURIComponent(`/clinics/${clinic.slug}/claim`)}`}
@@ -84,7 +83,6 @@ export default async function ClaimPage({
                   </Button>
                   <Button
                     variant="outline"
-                    className="rounded-full"
                     render={
                       <Link
                         href={`/signup?next=${encodeURIComponent(`/clinics/${clinic.slug}/claim`)}`}

@@ -126,9 +126,7 @@ export function InquiryCta({
         )}
         {signedIn && accepts && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button className="rounded-full" />}>
-              Send an inquiry
-            </DialogTrigger>
+            <DialogTrigger render={<Button />}>Send an inquiry</DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Send an inquiry to {clinicName}</DialogTitle>

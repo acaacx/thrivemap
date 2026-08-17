@@ -85,8 +85,8 @@ export function FavoriteButton({
     <Button
       type="button"
       variant="outline"
-      size="icon-sm"
-      className={cn("rounded-full", className)}
+      size="icon"
+      className={cn("rounded-lg", className)}
       aria-pressed={favorited}
       aria-label={
         favorited
@@ -99,8 +99,7 @@ export function FavoriteButton({
         aria-hidden
         className={cn(
           "size-4 transition-colors",
-          favorited &&
-            "fill-[var(--accent-foreground)] text-[var(--accent-foreground)]",
+          favorited && "fill-primary text-primary",
         )}
       />
     </Button>

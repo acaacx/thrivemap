@@ -8,10 +8,24 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-display);
+  --font-mono: var(--font-mono);
+  /* One family everywhere: headings share the body face and differ only by
+     size and weight. Keeps `font-heading` call sites working unchanged. */
+  --font-heading: var(--font-body);
   --color-verified: var(--verified);
   --color-verified-foreground: var(--verified-foreground);
+  --color-verified-subtle: var(--verified-bg);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-subtle: var(--subtle);
+  --color-tint-blue: var(--tint-blue);
+  --color-tint-lavender: var(--tint-lavender);
+  --color-tint-sage: var(--tint-sage);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-bg);
+  --color-destructive-subtle: var(--destructive-bg);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,92 +62,148 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  /* Calm hover easing — decelerating, never bouncy. */
+  /* Calm easing — decelerating, never bouncy. */
   --ease-calm: cubic-bezier(0.22, 0.61, 0.36, 1);
-  /* Soft depth for hover states. Defined per-scheme below so dark mode
-     doesn't get a white glow from a foreground-derived shadow. */
+  /* Depth is carried by 1px borders; this shadow is a whisper for popovers. */
   --shadow-soft: var(--soft-shadow);
 }
 
-/* ThriveMap "Warm Horizon" theme
-   Warm cream neutrals, deep teal primary, soft coral accent.
-   Calm, spacious, trustworthy — no clinical blues, no puzzle-piece motifs. */
+/* ThriveMap "Quiet Ledger" theme
+   Low-arousal, sensory-conscious palette: sage-white ground, one calm teal
+   accent, soft tints for categories, thin borders instead of shadows.
+   Never communicate state with color alone — pair with icon + label. */
 :root {
-  --background: oklch(0.985 0.008 84);
-  --foreground: oklch(0.28 0.02 55);
-  --card: oklch(1 0.004 84);
-  --card-foreground: oklch(0.28 0.02 55);
-  --popover: oklch(1 0.004 84);
-  --popover-foreground: oklch(0.28 0.02 55);
-  --primary: oklch(0.44 0.065 195);
-  --primary-foreground: oklch(0.985 0.008 84);
-  --secondary: oklch(0.94 0.02 90);
-  --secondary-foreground: oklch(0.35 0.04 195);
-  --muted: oklch(0.955 0.012 84);
-  --muted-foreground: oklch(0.5 0.02 60);
-  --accent: oklch(0.93 0.035 45);
-  --accent-foreground: oklch(0.42 0.09 40);
-  --destructive: oklch(0.55 0.19 27);
-  --border: oklch(0.905 0.015 82);
-  --input: oklch(0.905 0.015 82);
-  --ring: oklch(0.55 0.07 195);
-  --verified: oklch(0.5 0.1 160);
-  --verified-foreground: oklch(0.985 0.008 84);
-  --chart-1: oklch(0.55 0.07 195);
-  --chart-2: oklch(0.7 0.12 45);
-  --chart-3: oklch(0.55 0.1 160);
-  --chart-4: oklch(0.62 0.08 90);
-  --chart-5: oklch(0.45 0.05 250);
+  --background: #f7faf8;
+  --foreground: #1f2d2b;
+  --card: #ffffff;
+  --card-foreground: #1f2d2b;
+  --popover: #ffffff;
+  --popover-foreground: #1f2d2b;
+  --primary: #2f6f68;
+  --primary-foreground: #ffffff;
+  --primary-hover: #255b56;
+  --primary-subtle: #e5f0ee;
+  --secondary: #f1f6f4;
+  --secondary-foreground: #1f2d2b;
+  --muted: #f1f6f4;
+  --muted-foreground: #596966;
+  /* Tertiary text. #71807D from the brief is 4.1:1 on white — below AA. */
+  --subtle: #5f6e6b;
+  --accent: #e5f0ee;
+  --accent-foreground: #255b56;
+  --tint-blue: #dcecf0;
+  --tint-lavender: #eae7f4;
+  --tint-sage: #e5efe8;
+  --destructive: #a33a32;
+  --destructive-bg: #f7e6e4;
+  --success: #2e6b4f;
+  --success-bg: #e3f0e8;
+  --warning: #8a5a12;
+  --warning-bg: #f6eedc;
+  --border: #d5e1de;
+  /* Form-control outlines need 3:1 against white (WCAG 1.4.11); the soft
+     card border does not, so inputs get a darker sage. */
+  --input: #7a8f8a;
+  --ring: #2f6f68;
+  /* Verified = teal text on a teal tint, never a filled badge. */
+  --verified: #2f6f68;
+  --verified-foreground: #ffffff;
+  --verified-bg: #e5f0ee;
+  --chart-1: #2f6f68;
+  --chart-2: #8a5a12;
+  --chart-3: #2e6b4f;
+  --chart-4: #596966;
+  --chart-5: #5b6b9a;
   --radius: 0.75rem;
-  --soft-shadow:
-    0 1px 2px color-mix(in oklch, var(--foreground) 5%, transparent),
-    0 10px 30px -14px color-mix(in oklch, var(--foreground) 14%, transparent);
-  --sidebar: oklch(0.97 0.01 84);
-  --sidebar-foreground: oklch(0.28 0.02 55);
-  --sidebar-primary: oklch(0.44 0.065 195);
-  --sidebar-primary-foreground: oklch(0.985 0.008 84);
-  --sidebar-accent: oklch(0.93 0.035 45);
-  --sidebar-accent-foreground: oklch(0.42 0.09 40);
-  --sidebar-border: oklch(0.905 0.015 82);
-  --sidebar-ring: oklch(0.55 0.07 195);
+  --soft-shadow: 0 1px 2px rgb(31 45 43 / 0.04);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Layout rhythm tokens (Display preferences → "More spacing" raises them). */
+  --section-y: 4rem;
+  --section-y-lg: 6rem;
+  /* Gap between stacked result cards / list items. */
+  --stack-gap: 1rem;
+  --sidebar: #f1f6f4;
+  --sidebar-foreground: #1f2d2b;
+  --sidebar-primary: #2f6f68;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5f0ee;
+  --sidebar-accent-foreground: #255b56;
+  --sidebar-border: #d5e1de;
+  --sidebar-ring: #2f6f68;
 }
 
 .dark {
-  --background: oklch(0.21 0.015 210);
-  --foreground: oklch(0.94 0.01 84);
-  --card: oklch(0.26 0.018 210);
-  --card-foreground: oklch(0.94 0.01 84);
-  --popover: oklch(0.26 0.018 210);
-  --popover-foreground: oklch(0.94 0.01 84);
-  --primary: oklch(0.72 0.08 195);
-  --primary-foreground: oklch(0.2 0.02 210);
-  --secondary: oklch(0.31 0.02 210);
-  --secondary-foreground: oklch(0.94 0.01 84);
-  --muted: oklch(0.3 0.018 210);
-  --muted-foreground: oklch(0.72 0.015 84);
-  --accent: oklch(0.35 0.04 45);
-  --accent-foreground: oklch(0.9 0.05 45);
-  --destructive: oklch(0.68 0.18 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.72 0.08 195);
-  --soft-shadow:
-    0 1px 2px oklch(0 0 0 / 0.3), 0 10px 30px -14px oklch(0 0 0 / 0.45);
-  --verified: oklch(0.68 0.11 160);
-  --verified-foreground: oklch(0.2 0.02 210);
-  --chart-1: oklch(0.72 0.08 195);
-  --chart-2: oklch(0.75 0.12 45);
-  --chart-3: oklch(0.68 0.11 160);
-  --chart-4: oklch(0.72 0.08 90);
-  --chart-5: oklch(0.6 0.06 250);
-  --sidebar: oklch(0.24 0.017 210);
-  --sidebar-foreground: oklch(0.94 0.01 84);
-  --sidebar-primary: oklch(0.72 0.08 195);
-  --sidebar-primary-foreground: oklch(0.2 0.02 210);
-  --sidebar-accent: oklch(0.35 0.04 45);
-  --sidebar-accent-foreground: oklch(0.9 0.05 45);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.72 0.08 195);
+  --background: #182220;
+  --foreground: #e6eeec;
+  --card: #1f2b29;
+  --card-foreground: #e6eeec;
+  --popover: #1f2b29;
+  --popover-foreground: #e6eeec;
+  --primary: #7fb8b0;
+  --primary-foreground: #14201e;
+  --primary-hover: #97c8c1;
+  --primary-subtle: #24403c;
+  --secondary: #24312f;
+  --secondary-foreground: #e6eeec;
+  --muted: #24312f;
+  --muted-foreground: #a9b8b4;
+  --subtle: #9fb0ab;
+  --accent: #24403c;
+  --accent-foreground: #b9dcd6;
+  --tint-blue: #22363b;
+  --tint-lavender: #2b2a3a;
+  --tint-sage: #223a2f;
+  --destructive: #e08a82;
+  --destructive-bg: #3a2523;
+  --success: #86c4a4;
+  --success-bg: #21362c;
+  --warning: #d9b06a;
+  --warning-bg: #3a3122;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.16);
+  --ring: #7fb8b0;
+  --verified: #9fd0c8;
+  --verified-foreground: #14201e;
+  --verified-bg: #24403c;
+  --soft-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --chart-1: #7fb8b0;
+  --chart-2: #d9b06a;
+  --chart-3: #86c4a4;
+  --chart-4: #a9b8b4;
+  --chart-5: #9aa6d0;
+  --sidebar: #1c2725;
+  --sidebar-foreground: #e6eeec;
+  --sidebar-primary: #7fb8b0;
+  --sidebar-primary-foreground: #14201e;
+  --sidebar-accent: #24403c;
+  --sidebar-accent-foreground: #b9dcd6;
+  --sidebar-border: rgb(255 255 255 / 0.12);
+  --sidebar-ring: #7fb8b0;
+}
+
+/* Display preferences (src/components/display-preferences.tsx). Attributes
+   are set on <html> before paint by the inline script in layout.tsx. */
+html[data-text-lg] {
+  font-size: 112.5%;
+}
+html[data-spacing-lg] {
+  --section-y: 6rem;
+  --section-y-lg: 8rem;
+  --stack-gap: 1.5rem;
+}
+html[data-contrast-hi] {
+  --muted-foreground: var(--foreground);
+  --subtle: var(--foreground);
+  --border: #6f8480;
+  --input: #4f6561;
+}
+html[data-reduce-motion] *,
+html[data-reduce-motion] *::before,
+html[data-reduce-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 @layer base {
@@ -142,6 +212,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    line-height: 1.6;
   }
   html {
     @apply font-sans;
@@ -151,9 +222,8 @@
   h3,
   h4 {
     @apply font-heading;
-    font-variation-settings:
-      "SOFT" 60,
-      "WONK" 0;
+    text-wrap: balance;
+    line-height: 1.2;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -164,5 +234,12 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@utility section-y {
+  padding-block: var(--section-y);
+  @media (width >= 40rem) {
+    padding-block: var(--section-y-lg);
   }
 }

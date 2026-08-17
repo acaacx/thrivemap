@@ -125,12 +125,9 @@ export function ClaimWizard({
     return (
       <div
         role="status"
-        className="rounded-2xl border border-[var(--verified)]/40 bg-[var(--verified)]/10 p-8 text-center"
+        className="rounded-xl border border-success/40 bg-success-subtle p-8 text-center"
       >
-        <ShieldCheck
-          aria-hidden
-          className="mx-auto h-10 w-10 text-[var(--verified)]"
-        />
+        <ShieldCheck aria-hidden className="mx-auto h-10 w-10 text-success" />
         <p className="mt-3 font-heading text-xl font-semibold">
           Claim submitted
         </p>
@@ -139,15 +136,11 @@ export function ClaimWizard({
           its status from your account.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Button
-            className="rounded-full"
-            render={<Link href="/account/claims" />}
-          >
+          <Button render={<Link href="/account/claims" />}>
             View my claims
           </Button>
           <Button
             variant="outline"
-            className="rounded-full"
             render={<Link href={`/clinics/${clinic.slug}`} />}
           >
             Back to listing
@@ -175,17 +168,11 @@ export function ClaimWizard({
         </p>
         <div className="mt-6 flex gap-3">
           {initialClaim.status === "approved" ? (
-            <Button
-              className="rounded-full"
-              render={<Link href="/clinic-portal" />}
-            >
+            <Button render={<Link href="/clinic-portal" />}>
               Open clinic portal
             </Button>
           ) : (
-            <Button
-              className="rounded-full"
-              render={<Link href="/account/claims" />}
-            >
+            <Button render={<Link href="/account/claims" />}>
               View my claims
             </Button>
           )}
@@ -287,7 +274,7 @@ export function ClaimWizard({
   return (
     <div className="space-y-6">
       {initialClaim?.status === "additional_information_required" && (
-        <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
+        <div className="rounded-xl border border-border bg-secondary p-4 text-sm">
           <p className="font-medium">More information requested</p>
           <p className="mt-1 text-muted-foreground">
             {initialClaim.additional_info_request ??
@@ -308,14 +295,14 @@ export function ClaimWizard({
                 isCurrent
                   ? "border-primary bg-primary text-primary-foreground"
                   : isDone
-                    ? "border-[var(--verified)]/50 text-foreground"
+                    ? "border-success/50 text-foreground"
                     : "text-muted-foreground"
               }`}
             >
               {isDone && (
                 <CheckCircle2
                   aria-hidden
-                  className="h-3.5 w-3.5 text-[var(--verified)]"
+                  className="h-3.5 w-3.5 text-success"
                 />
               )}
               {index + 1}. {s.label}
@@ -424,7 +411,7 @@ export function ClaimWizard({
             />
           </div>
           <div className="flex justify-end">
-            <Button type="submit" className="rounded-full" disabled={busy}>
+            <Button type="submit" disabled={busy}>
               {busy && (
                 <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
               )}
@@ -508,14 +495,12 @@ export function ClaimWizard({
             <Button
               type="button"
               variant="outline"
-              className="rounded-full"
               onClick={() => setStep("details")}
             >
               Back
             </Button>
             <Button
               type="button"
-              className="rounded-full"
               disabled={docs.length === 0}
               onClick={() => setStep("review")}
             >
@@ -554,14 +539,12 @@ export function ClaimWizard({
             <Button
               type="button"
               variant="outline"
-              className="rounded-full"
               onClick={() => setStep("documents")}
             >
               Back
             </Button>
             <Button
               type="button"
-              className="rounded-full"
               disabled={!consent || busy}
               onClick={onSubmitClaim}
             >

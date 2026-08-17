@@ -30,7 +30,7 @@ export default function GlobalError({
           alignItems: "center",
           justifyContent: "center",
           padding: "2rem",
-          backgroundColor: "#fdf8f3",
+          backgroundColor: "#f7faf8",
           color: "#1f2d2b",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
@@ -47,7 +47,7 @@ export default function GlobalError({
           >
             Something went wrong
           </h1>
-          <p style={{ margin: "0 0 1.5rem", color: "#4a5c58" }}>
+          <p style={{ margin: "0 0 1.5rem", color: "#596966" }}>
             The page failed to load. The error has been reported and we are
             looking into it.
           </p>
@@ -63,7 +63,7 @@ export default function GlobalError({
               display: "inline-block",
               padding: "0.625rem 1.25rem",
               borderRadius: "0.5rem",
-              backgroundColor: "#12706b",
+              backgroundColor: "#2f6f68",
               color: "#ffffff",
               textDecoration: "none",
               fontWeight: 600,
@@ -76,7 +76,7 @@ export default function GlobalError({
               style={{
                 marginTop: "1.5rem",
                 fontSize: "0.8125rem",
-                color: "#6b7c78",
+                color: "#5f6e6b",
               }}
             >
               Reference: {error.digest}

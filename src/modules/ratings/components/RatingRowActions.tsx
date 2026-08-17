@@ -43,7 +43,7 @@ export function RatingRowActions({
       <Button
         size="sm"
         variant={voided ? "outline" : "destructive"}
-        className="rounded-full text-xs"
+        className="text-xs"
         disabled={busy}
         onClick={onClick}
       >

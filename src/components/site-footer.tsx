@@ -30,12 +30,10 @@ const footerColumns = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t bg-secondary/40">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+    <footer className="mt-auto border-t bg-secondary">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
         <div className="space-y-3">
-          <p className="font-heading text-lg font-semibold">
-            {siteConfig.name}
-          </p>
+          <p className="text-lg font-semibold">{siteConfig.name}</p>
           <p className="max-w-xs text-sm text-muted-foreground">
             A community directory of therapy and developmental-care centers
             across the Philippines. Built with neurodiversity-affirming care.
@@ -51,7 +49,7 @@ export function SiteFooter() {
         </div>
         {footerColumns.map((col) => (
           <nav key={col.heading} aria-label={col.heading} className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-sm font-semibold text-foreground">
               {col.heading}
             </p>
             <ul className="space-y-2">
@@ -59,7 +57,7 @@ export function SiteFooter() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-foreground/80 underline-offset-4 hover:underline"
+                    className="inline-flex min-h-8 items-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                   >
                     {link.label}
                   </Link>
@@ -70,7 +68,7 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="border-t py-6">
-        <p className="mx-auto max-w-6xl px-4 text-xs text-muted-foreground sm:px-6">
+        <p className="mx-auto max-w-6xl px-4 text-sm text-muted-foreground sm:px-6">
           ThriveMap lists clinic information for discovery only and does not
           provide medical advice or recommend specific providers. Listing
           details may change — please confirm directly with each clinic.

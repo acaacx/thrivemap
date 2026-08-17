@@ -5,7 +5,7 @@ import {
   MapPin,
   Search,
   ShieldCheck,
-  Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Accordion,
@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SectionHeader } from "@/components/section-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getFeaturedClinics, getServices } from "@/modules/clinics/queries";
-import { ServiceGlyph } from "@/modules/clinics/service-glyph";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
+import { ServiceCard } from "@/modules/clinics/components/ServiceCard";
 import { LocationSearchBox } from "@/modules/search/components/LocationSearchBox";
 
 export const revalidate = 300;
@@ -47,6 +48,24 @@ const faqs = [
   },
 ];
 
+const steps = [
+  {
+    icon: Search,
+    title: "Search your area",
+    body: "Share your location or search any city, province, or barangay to see nearby centers on the map and list.",
+  },
+  {
+    icon: SlidersHorizontal,
+    title: "Compare services",
+    body: "Filter by therapy type, age groups, online availability, accessibility, and opening hours.",
+  },
+  {
+    icon: MapPin,
+    title: "Reach out directly",
+    body: "Call, visit the website, or open directions. ThriveMap connects you — the conversation is yours.",
+  },
+];
+
 export default async function HomePage() {
   // The build must succeed without a reachable database (CI builds against
   // placeholder env). ISR re-renders with live data once the app is serving.
@@ -59,77 +78,60 @@ export default async function HomePage() {
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-secondary/70 to-background">
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24">
-            <div className="max-w-2xl space-y-6">
-              <h1 className="font-heading text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-                Find therapy and developmental-care centers near you.
+        {/* Hero — one task, one dominant control. */}
+        <section aria-labelledby="hero-heading" className="border-b">
+          <div className="mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pb-20 sm:pt-20">
+            <div className="max-w-2xl">
+              <h1
+                id="hero-heading"
+                className="text-4xl font-semibold tracking-tight sm:text-5xl"
+              >
+                Find the right support near you.
               </h1>
-              <p className="text-lg text-muted-foreground">
-                Search occupational therapy, speech therapy, early intervention,
-                behavioral support, and developmental clinics across the
+              <p className="mt-4 max-w-prose text-lg leading-relaxed text-muted-foreground">
+                Find therapy and developmental-care centers across the
                 Philippines.
               </p>
+            </div>
+            <div className="mt-8 max-w-3xl">
               <LocationSearchBox size="large" />
             </div>
           </div>
         </section>
 
-        {/* Service categories */}
+        {/* Browse by service */}
         <section
           aria-labelledby="services-heading"
-          className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+          className="mx-auto max-w-6xl px-4 section-y sm:px-6"
         >
-          <h2
+          <SectionHeader
             id="services-heading"
-            className="font-heading text-2xl font-semibold sm:text-3xl"
-          >
-            Browse by service
-          </h2>
-          <p className="mt-2 max-w-xl text-pretty text-muted-foreground">
-            Explore the kinds of support available near you.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {services.map((service) => (
-              <Link
-                key={service.id}
-                href={`/services/${service.slug}`}
-                className="group flex flex-col gap-3 rounded-3xl bg-card p-5 ring-1 ring-foreground/10 transition duration-300 ease-calm hover:-translate-y-0.5 hover:bg-secondary/30 hover:shadow-soft hover:ring-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-              >
-                <span
-                  aria-hidden
-                  className="grid size-11 place-items-center rounded-2xl bg-accent text-accent-foreground transition-colors duration-300 ease-calm group-hover:bg-accent/70"
-                >
-                  <ServiceGlyph icon={service.icon} className="size-5" />
-                </span>
-                <p className="font-heading font-semibold transition-colors duration-300 ease-calm group-hover:text-primary">
-                  {service.name}
-                </p>
-                <p className="line-clamp-2 text-sm text-muted-foreground">
-                  {service.short_description}
-                </p>
-              </Link>
+            title="Browse by service"
+            lede="Explore the kinds of support available near you."
+          />
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {services.map((service, index) => (
+              <ServiceCard key={service.id} service={service} index={index} />
             ))}
             {services.length > 0 && (
               <Link
                 href="/clinics"
-                className="group flex flex-col justify-between gap-3 rounded-3xl border border-dashed bg-secondary/20 p-5 transition duration-300 ease-calm hover:-translate-y-0.5 hover:border-primary/40 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                className="group flex min-h-44 flex-col justify-between gap-4 rounded-xl border border-dashed border-border bg-secondary/60 p-5 transition-colors duration-150 ease-calm hover:border-primary/60 hover:bg-primary-subtle/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <span
                   aria-hidden
-                  className="grid size-11 place-items-center rounded-2xl bg-background text-primary ring-1 ring-foreground/10"
+                  className="grid size-11 place-items-center rounded-lg border border-border bg-card text-primary"
                 >
                   <Search className="size-5" />
                 </span>
-                <div>
-                  <p className="font-heading font-semibold group-hover:text-primary">
+                <span className="flex flex-col gap-1.5">
+                  <span className="text-base font-semibold">
                     See every clinic
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  </span>
+                  <span className="text-sm leading-relaxed text-muted-foreground">
                     Search the full directory by location, age group, and more.
-                  </p>
-                </div>
+                  </span>
+                </span>
               </Link>
             )}
           </div>
@@ -139,16 +141,15 @@ export default async function HomePage() {
         {featured.length > 0 && (
           <section
             aria-labelledby="featured-heading"
-            className="bg-secondary/30 py-14"
+            className="border-y bg-secondary"
           >
-            <div className="mx-auto max-w-6xl px-4 sm:px-6">
-              <h2
+            <div className="mx-auto max-w-6xl px-4 section-y sm:px-6">
+              <SectionHeader
                 id="featured-heading"
-                className="font-heading text-2xl font-semibold sm:text-3xl"
-              >
-                Featured verified clinics
-              </h2>
-              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                title="Featured verified clinics"
+                lede="Listings that have confirmed their details with ThriveMap."
+              />
+              <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {featured.map((clinic) => (
                   <ClinicCard
                     key={clinic.id}
@@ -175,62 +176,47 @@ export default async function HomePage() {
         {/* How it works */}
         <section
           aria-labelledby="how-heading"
-          className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+          className="mx-auto max-w-6xl px-4 section-y sm:px-6"
         >
-          <h2
-            id="how-heading"
-            className="font-heading text-2xl font-semibold sm:text-3xl"
-          >
-            How ThriveMap works
-          </h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-3">
-            {[
-              {
-                icon: Search,
-                title: "Search your area",
-                body: "Share your location or search any city, province, or barangay to see nearby centers on the map and list.",
-              },
-              {
-                icon: Sparkles,
-                title: "Compare services",
-                body: "Filter by therapy type, age groups, online availability, accessibility, and opening hours.",
-              },
-              {
-                icon: MapPin,
-                title: "Reach out directly",
-                body: "Call, visit the website, or open directions. ThriveMap connects you — the conversation is yours.",
-              },
-            ].map(({ icon: Icon, title, body }) => (
-              <Card key={title} className="rounded-2xl">
-                <CardContent className="space-y-3 p-6">
-                  <span className="grid size-11 place-items-center rounded-full bg-accent text-accent-foreground">
-                    <Icon className="size-5" aria-hidden />
-                  </span>
-                  <h3 className="font-heading text-lg font-semibold">
-                    {title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{body}</p>
-                </CardContent>
-              </Card>
+          <SectionHeader id="how-heading" title="How ThriveMap works" />
+          <ol className="mt-10 grid gap-4 sm:grid-cols-3">
+            {steps.map(({ icon: Icon, title, body }, index) => (
+              <li key={title}>
+                <Card className="h-full">
+                  <CardContent className="flex h-full flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-10 place-items-center rounded-lg bg-primary-subtle text-accent-foreground">
+                        <Icon className="size-5" aria-hidden />
+                      </span>
+                      <span className="text-sm font-medium text-subtle">
+                        Step {index + 1}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-semibold">{title}</h3>
+                    <p className="text-base leading-relaxed text-muted-foreground">
+                      {body}
+                    </p>
+                  </CardContent>
+                </Card>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         {/* Trust */}
         <section
           aria-labelledby="trust-heading"
-          className="bg-primary text-primary-foreground"
+          className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24"
         >
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-[auto_1fr] sm:px-6">
-            <ShieldCheck className="size-12 shrink-0" aria-hidden />
-            <div className="space-y-3">
-              <h2
-                id="trust-heading"
-                className="font-heading text-2xl font-semibold sm:text-3xl"
-              >
+          <div className="grid gap-6 rounded-xl border border-border bg-card p-6 sm:grid-cols-[auto_1fr] sm:gap-8 sm:p-10">
+            <span className="grid size-12 place-items-center rounded-lg bg-primary-subtle text-accent-foreground">
+              <ShieldCheck className="size-6" aria-hidden />
+            </span>
+            <div className="flex flex-col gap-3">
+              <h2 id="trust-heading" className="text-3xl font-semibold">
                 Community-checked, clinic-confirmed
               </h2>
-              <p className="max-w-2xl text-primary-foreground/85">
+              <p className="max-w-prose text-base leading-relaxed text-muted-foreground">
                 Every listing shows its verification status. Clinic
                 representatives can claim their profile and keep details
                 current, and our moderators review every suggestion, correction,
@@ -242,38 +228,41 @@ export default async function HomePage() {
         </section>
 
         {/* CTAs */}
-        <section className="mx-auto grid max-w-6xl gap-4 px-4 py-14 sm:grid-cols-2 sm:px-6">
-          <Card className="rounded-2xl">
-            <CardContent className="flex h-full flex-col gap-3 p-6">
-              <HeartHandshake className="size-8 text-primary" aria-hidden />
-              <h2 className="font-heading text-xl font-semibold">
+        <section
+          aria-label="Contribute"
+          className="mx-auto grid max-w-6xl gap-4 px-4 pb-16 sm:grid-cols-2 sm:px-6 sm:pb-24"
+        >
+          <Card>
+            <CardContent className="flex h-full flex-col gap-4">
+              <HeartHandshake className="size-7 text-primary" aria-hidden />
+              <h2 className="text-xl font-semibold">
                 Know a clinic we&apos;re missing?
               </h2>
-              <p className="flex-1 text-sm text-muted-foreground">
+              <p className="flex-1 text-base leading-relaxed text-muted-foreground">
                 Help other families by suggesting a therapy center or
                 developmental clinic. Our moderators will review and publish it.
               </p>
               <Button
-                className="w-fit rounded-full"
+                size="lg"
+                className="w-fit"
                 render={<Link href="/suggest-clinic" />}
               >
                 Suggest a clinic
               </Button>
             </CardContent>
           </Card>
-          <Card className="rounded-2xl">
-            <CardContent className="flex h-full flex-col gap-3 p-6">
-              <Building2 className="size-8 text-primary" aria-hidden />
-              <h2 className="font-heading text-xl font-semibold">
-                Run a clinic?
-              </h2>
-              <p className="flex-1 text-sm text-muted-foreground">
+          <Card>
+            <CardContent className="flex h-full flex-col gap-4">
+              <Building2 className="size-7 text-primary" aria-hidden />
+              <h2 className="text-xl font-semibold">Run a clinic?</h2>
+              <p className="flex-1 text-base leading-relaxed text-muted-foreground">
                 Claim your listing to keep your services, hours, and contact
                 details accurate — and earn a Verified badge families trust.
               </p>
               <Button
                 variant="outline"
-                className="w-fit rounded-full"
+                size="lg"
+                className="w-fit"
                 render={<Link href="/how-it-works" />}
               >
                 Learn about claiming
@@ -285,21 +274,16 @@ export default async function HomePage() {
         {/* FAQ */}
         <section
           aria-labelledby="faq-heading"
-          className="mx-auto max-w-3xl px-4 pb-20 sm:px-6"
+          className="mx-auto max-w-3xl px-4 pb-20 sm:px-6 sm:pb-28"
         >
-          <h2
-            id="faq-heading"
-            className="font-heading text-2xl font-semibold sm:text-3xl"
-          >
-            Frequently asked questions
-          </h2>
-          <Accordion multiple={false} className="mt-6">
+          <SectionHeader id="faq-heading" title="Frequently asked questions" />
+          <Accordion multiple={false} className="mt-8">
             {faqs.map((faq) => (
               <AccordionItem key={faq.q} value={faq.q}>
-                <AccordionTrigger className="text-left">
+                <AccordionTrigger className="text-left text-base">
                   {faq.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
+                <AccordionContent className="text-base leading-relaxed text-muted-foreground">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>

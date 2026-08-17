@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { LocateFixed, Loader2, MapPin, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Suggestion {
@@ -20,18 +21,29 @@ interface LocationSearchBoxProps {
     longitude: number;
     label: string;
   }) => void;
+  /**
+   * Called when the user submits free text that matched no suggestion.
+   * Default navigates to /clinics?q=<text>.
+   */
+  onTextSearch?: (query: string) => void;
   autoFocus?: boolean;
   size?: "default" | "large";
+  /** Label for the submit button. */
+  submitLabel?: string;
 }
 
 /**
- * Accessible location autocomplete (combobox pattern) with a
- * "Use my location" affordance. Browser geolocation is requested only after
- * an explicit click, with a plain-language explanation shown beforehand.
+ * Accessible location search: combobox autocomplete + an explicit
+ * "Find clinics" submit + "Use my location". Browser geolocation is
+ * requested only after an explicit click. Enter with no highlighted
+ * suggestion submits the form (first suggestion, else free-text search)
+ * so the control never silently does nothing.
  */
 export function LocationSearchBox({
   onLocation,
+  onTextSearch,
   size = "default",
+  submitLabel = "Find clinics",
 }: LocationSearchBoxProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -40,6 +52,7 @@ export function LocationSearchBox({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [busy, setBusy] = useState(false);
   const listboxId = useId();
+  const privacyId = useId();
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -122,6 +135,28 @@ export function LocationSearchBox({
     }
   }
 
+  function submit() {
+    if (busy) return;
+    if (open && activeIndex >= 0 && suggestions[activeIndex]) {
+      void choose(suggestions[activeIndex]);
+      return;
+    }
+    if (suggestions.length > 0 && query.trim().length >= 2) {
+      void choose(suggestions[0]);
+      return;
+    }
+    const text = query.trim();
+    if (onTextSearch) {
+      onTextSearch(text);
+      return;
+    }
+    // Free-text search (clinic name / place); empty query = every clinic.
+    const params = new URLSearchParams();
+    if (text) params.set("q", text);
+    const qs = params.toString();
+    router.push(qs ? `/clinics?${qs}` : "/clinics");
+  }
+
   function useMyLocation() {
     if (!("geolocation" in navigator)) {
       toast.error(
@@ -150,6 +185,10 @@ export function LocationSearchBox({
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      setOpen(false);
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -157,26 +196,30 @@ export function LocationSearchBox({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && activeIndex >= 0) {
-      e.preventDefault();
-      void choose(suggestions[activeIndex]);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
+    // Enter falls through to the form's onSubmit → submit().
   }
 
-  const inputClasses =
-    size === "large"
-      ? "h-13 rounded-full pl-11 text-base"
-      : "h-10 rounded-full pl-10";
+  const large = size === "large";
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex w-full items-center gap-2">
+      <form
+        role="search"
+        aria-label="Find clinics by location"
+        className={cn(
+          "flex w-full flex-col gap-3",
+          large ? "sm:flex-row sm:items-start" : "sm:flex-row sm:items-center",
+        )}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
         <div className="relative flex-1">
           <Search
             aria-hidden
-            className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-subtle"
           />
           <Input
             role="combobox"
@@ -189,69 +232,81 @@ export function LocationSearchBox({
                 : undefined
             }
             aria-label="Search by city, province, or barangay"
-            placeholder="City, province, or barangay…"
+            aria-describedby={privacyId}
+            placeholder="City, province, or barangay"
+            autoComplete="off"
+            enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            className={inputClasses}
+            className={cn("pl-11", large ? "h-13 text-base" : "h-11")}
           />
+          {open && (
+            <ul
+              id={listboxId}
+              role="listbox"
+              aria-label="Location suggestions"
+              className="absolute z-30 mt-2 w-full overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-soft"
+            >
+              {suggestions.map((s, index) => (
+                <li
+                  key={s.placeId}
+                  id={`${listboxId}-option-${index}`}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  className={cn(
+                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-base",
+                    index === activeIndex &&
+                      "bg-primary-subtle text-accent-foreground",
+                  )}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    void choose(s);
+                  }}
+                >
+                  <MapPin className="size-4 shrink-0 text-subtle" aria-hidden />
+                  <span className="truncate">{s.label}</span>
+                  {s.kind && (
+                    <span className="ml-auto shrink-0 text-sm capitalize text-subtle">
+                      {s.kind}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <Button
-          type="button"
-          variant="outline"
-          className="shrink-0 rounded-full"
-          onClick={useMyLocation}
+          type="submit"
+          size="lg"
           disabled={busy}
-          title="Uses your browser location once to center the search. Your precise location is not stored."
+          className={cn("shrink-0", large ? "h-13 px-6" : "")}
         >
           {busy ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
           ) : (
-            <LocateFixed className="size-4" aria-hidden />
+            <Search className="size-4" aria-hidden />
           )}
-          <span className="hidden sm:inline">Use my location</span>
+          {submitLabel}
         </Button>
-      </div>
-      <p className="mt-1.5 pl-4 text-xs text-muted-foreground">
-        “Use my location” asks your browser once, only to center the map — we
-        don’t store your precise location.
-      </p>
-      {open && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-label="Location suggestions"
-          className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg"
+      </form>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-3 text-primary hover:text-primary-hover"
+          onClick={useMyLocation}
+          disabled={busy}
         >
-          {suggestions.map((s, index) => (
-            <li
-              key={s.placeId}
-              id={`${listboxId}-option-${index}`}
-              role="option"
-              aria-selected={index === activeIndex}
-              className={`flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm ${
-                index === activeIndex ? "bg-accent text-accent-foreground" : ""
-              }`}
-              onMouseEnter={() => setActiveIndex(index)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                void choose(s);
-              }}
-            >
-              <MapPin
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden
-              />
-              <span>{s.label}</span>
-              {s.kind && (
-                <span className="ml-auto text-xs capitalize text-muted-foreground">
-                  {s.kind}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+          <LocateFixed aria-hidden />
+          Use my location
+        </Button>
+        <p id={privacyId} className="text-sm text-subtle">
+          Your precise location is not stored.
+        </p>
+      </div>
     </div>
   );
 }
