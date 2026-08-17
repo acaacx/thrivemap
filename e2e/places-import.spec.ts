@@ -67,7 +67,7 @@ test.describe("places import", () => {
       .locator("#import-city option", { hasText: "Quezon City" })
       .first()
       .getAttribute("value");
-    await page.getByLabel("City").selectOption(cityValue!);
+    await page.getByLabel("City", { exact: true }).selectOption(cityValue!);
     await page.getByRole("button", { name: "Queue import" }).click();
     await expect(page.getByText(/import queued/i)).toBeVisible();
 
@@ -106,6 +106,53 @@ test.describe("places import", () => {
     expect(clinic).toMatchObject({
       status: "draft",
       source_type: "external_import",
+    });
+  });
+
+  test("admin looks up a center by name and adds it as a candidate", async ({
+    page,
+  }) => {
+    await cleanupFixtureData();
+    await signIn(page, "admin@thrivemap.test");
+
+    await page.goto("/admin/candidates");
+    await page.getByLabel("Center name").fill("Fixture Child Wellness");
+    await page.getByLabel("City (optional)").fill("Cebu City");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    // Fixture provider answers any non-templated query with generic.json.
+    const results = page.locator("section", {
+      hasText: "Look up a center by name",
+    });
+    await expect(
+      results.getByText(
+        /results? for “Fixture Child Wellness, Cebu City, Philippines”/,
+      ),
+    ).toBeVisible();
+    const hit = results.locator("li", {
+      hasText: "Fixture Child Wellness Center",
+    });
+    await hit.getByRole("button", { name: "Add as candidate" }).click();
+    await expect(
+      page.getByText(/added "Fixture Child Wellness Center"/i),
+    ).toBeVisible();
+    await expect(hit.getByText("Already a candidate")).toBeVisible();
+
+    // Row landed in the review list below with the usual actions.
+    const card = page
+      .locator("li", { hasText: "Fixture Child Wellness Center" })
+      .filter({ has: page.getByRole("button", { name: "Promote" }) });
+    await expect(card).toBeVisible();
+
+    const { data: row } = await adminDb()
+      .from("external_place_candidates")
+      .select("status, provider, normalized_name")
+      .eq("external_id", "fixture-generic-002")
+      .single();
+    expect(row).toMatchObject({
+      status: "new",
+      provider: "google",
+      normalized_name: "Fixture Child Wellness Center",
     });
   });
 });

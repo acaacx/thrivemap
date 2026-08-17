@@ -8,10 +8,15 @@ import { runDuplicateScan } from "@/modules/jobs/handlers";
 import { processDueJobs } from "@/modules/jobs/processor";
 import { enqueueUserEmail, enqueueAddressEmail } from "@/modules/jobs/notify";
 import { enqueueJob } from "@/modules/jobs/queue";
+import { getPlacesProvider } from "@/modules/imports";
 import {
   buildImportQuery,
   IMPORT_SERVICE_TERMS,
 } from "@/modules/imports/query";
+import {
+  findExistingCandidateIds,
+  upsertPlaceCandidates,
+} from "@/modules/imports/server";
 import {
   portalProfileSchema,
   portalServicesSchema,
@@ -21,7 +26,9 @@ import { checkRateLimit } from "@/modules/shared/rate-limit";
 import {
   adminClinicIdentitySchema,
   importCityTextSchema,
+  lookupPlaceSchema,
   OTHER_IMPORT_CITY,
+  placeLookupNameSchema,
   slugifyCity,
 } from "./schemas";
 import { requireAdministrator, requireModerator } from "./server";
@@ -848,6 +855,116 @@ export async function triggerCandidateImportAction(
   });
   revalidatePath("/admin/candidates");
   return { message: `Import queued: ${query}` };
+}
+
+export interface PlaceLookupHit {
+  externalId: string;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  rawPayload: Record<string, unknown>;
+  alreadyCandidate: boolean;
+}
+
+export type PlaceLookupResult =
+  | { ok: false; error: string }
+  | { ok: true; hits: PlaceLookupHit[]; query: string };
+
+/**
+ * Synchronous by-name Places lookup for centers the admin already knows.
+ * One page only, nothing written — the admin picks hits to add as candidates.
+ */
+export async function lookupPlacesByNameAction(
+  name: string,
+  cityText?: string,
+): Promise<PlaceLookupResult> {
+  const { user } = await requireModerator();
+  const { allowed } = await checkRateLimit("place-lookup", user.id, 20, 3600);
+  if (!allowed) {
+    return {
+      ok: false,
+      error: "Lookup rate limit reached — try again in an hour.",
+    };
+  }
+  const parsedName = placeLookupNameSchema.safeParse(name);
+  if (!parsedName.success) {
+    return {
+      ok: false,
+      error: parsedName.error.issues[0]?.message ?? "Type the center's name.",
+    };
+  }
+  let city: string | null = null;
+  if (cityText && cityText.trim()) {
+    const parsedCity = importCityTextSchema.safeParse(cityText);
+    if (!parsedCity.success) {
+      return {
+        ok: false,
+        error: parsedCity.error.issues[0]?.message ?? "Bad city.",
+      };
+    }
+    city = parsedCity.data;
+  }
+  const query = city
+    ? `${parsedName.data}, ${city}, Philippines`
+    : `${parsedName.data}, Philippines`;
+
+  const provider = getPlacesProvider();
+  let places;
+  try {
+    ({ places } = await provider.searchText(query, { maxPages: 1 }));
+  } catch (error) {
+    console.error("lookupPlacesByNameAction failed:", error);
+    return { ok: false, error: "Places lookup failed. Try again in a moment." };
+  }
+  const existing = await findExistingCandidateIds(
+    provider.name,
+    places.map((p) => p.externalId),
+  );
+  await logAdminAction(user.id, "lookup_place_by_name", "job", null, null, {
+    query,
+    hits: places.length,
+  });
+  return {
+    ok: true,
+    query,
+    hits: places.map((p) => ({
+      ...p,
+      alreadyCandidate: existing.has(p.externalId),
+    })),
+  };
+}
+
+/** Add one lookup hit to external_place_candidates for normal review. */
+export async function addPlaceCandidateAction(
+  hit: unknown,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const parsed = lookupPlaceSchema.safeParse(hit);
+  if (!parsed.success) return { error: "That result is malformed." };
+  const provider = getPlacesProvider();
+  try {
+    const { created } = await upsertPlaceCandidates(provider.name, [
+      parsed.data,
+    ]);
+    await logAdminAction(
+      user.id,
+      "add_place_candidate",
+      "external_place_candidate",
+      null,
+      null,
+      { external_id: parsed.data.externalId, name: parsed.data.name, created },
+    );
+    revalidatePath("/admin/candidates");
+    return {
+      message: created
+        ? `Added "${parsed.data.name}" as a candidate.`
+        : `"${parsed.data.name}" was already a candidate — refreshed.`,
+    };
+  } catch (error) {
+    console.error("addPlaceCandidateAction failed:", error);
+    return { error: "Could not add the candidate." };
+  }
 }
 
 export async function promoteCandidateAction(

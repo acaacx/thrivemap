@@ -52,3 +52,32 @@ export function slugifyCity(city: string): string {
     .replaceAll(/[^a-z0-9]+/g, "-")
     .replaceAll(/^-+|-+$/g, "");
 }
+
+/**
+ * Free-text center name for the by-name Places lookup. Letters, digits and
+ * the punctuation real business names use (& . , ' - ( ) /). Interpolated
+ * into a Places text query, so anything else is rejected.
+ */
+export const placeLookupNameSchema = z
+  .string()
+  .transform((v) => v.trim().replaceAll(/\s+/g, " "))
+  .pipe(
+    z
+      .string()
+      .min(2, "Type the center's name.")
+      .max(80, "Center name is too long.")
+      .regex(
+        /^[\p{L}\p{M}\p{N}&.,'()/ -]+$/u,
+        "Use letters, digits and basic punctuation only.",
+      ),
+  );
+
+/** A Places lookup hit sent back from the client to be added as a candidate. */
+export const lookupPlaceSchema = z.object({
+  externalId: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(200),
+  address: z.string().trim().max(300).nullable(),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  rawPayload: z.record(z.string(), z.unknown()),
+});

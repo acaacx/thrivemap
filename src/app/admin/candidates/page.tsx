@@ -5,6 +5,7 @@ import {
   promoteCandidateAction,
 } from "@/modules/admin/actions";
 import { ImportTriggerCard } from "@/modules/admin/components/ImportTriggerCard";
+import { PlaceLookupCard } from "@/modules/admin/components/PlaceLookupCard";
 import { ReviewActions } from "@/modules/admin/components/ReviewCard";
 import {
   listCandidateMatches,
@@ -36,6 +37,8 @@ export default async function AdminCandidatesPage() {
         public until a draft is reviewed and published.
       </p>
 
+      <PlaceLookupCard />
+
       <ImportTriggerCard terms={IMPORT_SERVICE_TERMS} cities={cities} />
 
       {recentJobs.length > 0 && (
@@ -65,7 +68,8 @@ export default async function AdminCandidatesPage() {
 
       {open.length === 0 ? (
         <p className="mt-8 rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-          No candidates waiting. Queue an import above to fill this list.
+          No candidates waiting. Look up a center by name or queue an import
+          above to fill this list.
         </p>
       ) : (
         <ul className="mt-6 space-y-4">

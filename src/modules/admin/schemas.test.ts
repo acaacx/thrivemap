@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adminClinicIdentitySchema,
   importCityTextSchema,
+  placeLookupNameSchema,
   slugifyCity,
 } from "./schemas";
 
@@ -79,5 +80,39 @@ describe("adminClinicIdentitySchema", () => {
       address_line1: "",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("placeLookupNameSchema", () => {
+  it("accepts real center names", () => {
+    for (const name of [
+      "Bright Steps Therapy Center",
+      "St. Luke's Developmental Clinic",
+      "ABC & Me Learning Hub",
+      "TheraKids (Cebu)",
+      "Kids' Corner - Makati",
+    ]) {
+      expect(placeLookupNameSchema.safeParse(name).success).toBe(true);
+    }
+  });
+
+  it("trims and collapses whitespace", () => {
+    expect(placeLookupNameSchema.parse("  Bright   Steps ")).toBe(
+      "Bright Steps",
+    );
+  });
+
+  it("rejects empty, too-short, too-long and shady input", () => {
+    for (const bad of [
+      "",
+      " ",
+      "A",
+      "x".repeat(81),
+      "name; drop table",
+      "<script>",
+      'a"quote',
+    ]) {
+      expect(placeLookupNameSchema.safeParse(bad).success).toBe(false);
+    }
   });
 });
