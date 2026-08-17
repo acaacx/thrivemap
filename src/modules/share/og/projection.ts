@@ -44,12 +44,17 @@ export const PH_BOUNDS: BBox = {
  */
 export const MIN_SPAN_DEG = 0.6;
 
-/** Mercator latitude, normalised so the maths stays in degree-ish units. */
-function mercatorY(latDeg: number): number {
+/** Mercator y (radian-scale) for a latitude in degrees. */
+export function mercatorY(latDeg: number): number {
   // Clamp before tan() — the poles are infinite and a hostile param can ask.
   const lat = Math.max(-85.05, Math.min(85.05, latDeg));
   const rad = (lat * Math.PI) / 180;
   return Math.log(Math.tan(Math.PI / 4 + rad / 2));
+}
+
+/** Inverse of mercatorY: latitude in degrees for a Mercator y. */
+export function latFromMercatorY(y: number): number {
+  return ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
 }
 
 /** Grows a box by `ratio` of its span on each axis, keeping the centre. */
@@ -128,12 +133,10 @@ export function fitBBox(box: BBox, width: number, height: number): BBox {
   // Too wide: heighten, in Mercator space so the growth is symmetric on screen.
   const targetY = lngSpan / viewAspect;
   const centreY = (mercatorY(box.north) + mercatorY(box.south)) / 2;
-  const toLat = (y: number) =>
-    ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
   return {
     ...box,
-    north: toLat(centreY + targetY / 2),
-    south: toLat(centreY - targetY / 2),
+    north: latFromMercatorY(centreY + targetY / 2),
+    south: latFromMercatorY(centreY - targetY / 2),
   };
 }
 

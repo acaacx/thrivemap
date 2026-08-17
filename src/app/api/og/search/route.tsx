@@ -8,12 +8,12 @@ import { SearchCard } from "@/modules/share/og/card";
 import { FallbackCard } from "@/modules/share/og/fallback";
 import { loadFonts } from "@/modules/share/og/fonts";
 import { buildFallbackLabels, buildLabels } from "@/modules/share/og/label";
+import { layoutBBox } from "@/modules/share/og/layout";
 import {
   CARD_HEIGHT,
   CARD_WIDTH,
   clusterPins,
   createProjector,
-  fitBBox,
 } from "@/modules/share/og/projection";
 
 /**
@@ -106,7 +106,13 @@ async function renderFull(params: SearchParams, names: Record<string, string>) {
   ]);
   if (!data) return null;
 
-  const bbox = fitBBox(data.bbox, CARD_WIDTH, CARD_HEIGHT);
+  // Aspect fit, then shift/zoom so no pin hides under the caption plate.
+  const bbox = layoutBBox(
+    data.bbox,
+    data.pins.map((pin) => ({ lng: pin.longitude, lat: pin.latitude })),
+    CARD_WIDTH,
+    CARD_HEIGHT,
+  );
   const project = createProjector(bbox, CARD_WIDTH, CARD_HEIGHT);
   const paths = ringsToPaths(rings, project);
   const clusters = clusterPins(

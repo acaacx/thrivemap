@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import type { CardLabels } from "./label";
+import { PLATE, WORDMARK } from "./layout";
 import { PALETTE, WATER } from "./palette";
 import { CARD_HEIGHT, CARD_WIDTH, type Cluster } from "./projection";
 
@@ -66,15 +67,17 @@ export function SearchCard({
         ))}
       </svg>
 
-      {/* Caption plate. Sits over the map, so it needs its own ground. */}
+      {/* Caption plate. Sits over the map, so it needs its own ground. Its
+          footprint is declared in layout.ts so the map can keep pins out
+          from under it; change the geometry there, not here. */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           position: "absolute",
-          left: 56,
-          bottom: 56,
-          maxWidth: 880,
+          left: PLATE.left,
+          bottom: PLATE.bottom,
+          maxWidth: PLATE.maxWidth,
           padding: "32px 40px",
           borderRadius: 24,
           backgroundColor: PALETTE.cream,
@@ -129,9 +132,11 @@ export function SearchCard({
         style={{
           display: "flex",
           position: "absolute",
-          top: 48,
-          left: 56,
-          padding: "10px 22px",
+          top: WORDMARK.top,
+          left: WORDMARK.left,
+          height: WORDMARK.height,
+          alignItems: "center",
+          padding: "0 22px",
           borderRadius: 999,
           backgroundColor: PALETTE.teal,
           color: PALETTE.cream,
