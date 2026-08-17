@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Point } from "./projection";
 
 /**
- * Philippines outline for the OG card. Natural Earth 1:50m admin-0, public
+ * Philippines outline for the OG card. Natural Earth 1:10m admin-0, public
  * domain, simplified at build time — see assets/README.md.
  *
  * Plain GeoJSON rather than TopoJSON: the shared-arc win applies to adjacent

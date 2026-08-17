@@ -68,6 +68,11 @@ Everything else builds on the assumption that WASM rasterisation of the real out
 
 - [ ] **Step 1: Generate the Philippines outline**
 
+> **Superseded 2026-08-18:** the committed asset is now built from Natural Earth
+> **1:10m** at 15% retention (78 islands vs 18 — 1:50m looked faceted on zoomed
+> cards). The current pipeline lives in `assets/README.md`; the 1:50m commands
+> below are kept for history only.
+
 Natural Earth 1:50m admin-0 is public domain — no attribution required. `mapshaper` is not installed; use `npx`. Run from the repo root:
 
 ```bash

@@ -15,21 +15,30 @@ committed files and are kept up to date when the assets change.
 
 ## geo/ph-outline.geojson
 
-Natural Earth 1:50m admin-0, Philippines feature only, geometry with all
-attribute fields stripped (`ADMIN`, `POP_EST`, etc. — ~150 unused fields that
+Natural Earth 1:10m admin-0, Philippines feature only, geometry with all
+attribute fields stripped (`ADMIN`, `POP_EST`, etc. — ~168 unused fields that
 would otherwise be parsed on every cold start and never read). Public
 domain, no attribution required.
 
+1:10m rather than 1:50m (switched 2026-08-18): the 1:50m feature carries only
+18 islands and ~1,500 vertices before simplification, so even at 85%
+retention it renders as a handful of faceted blobs once a card zooms to a
+region (Cebu, Davao). 1:10m through the pipeline below is 78 islands,
+~1,300 vertices, ~24 KB — same byte cost, far more coastline.
+
 `mapshaper` is not installed as a project dependency; run it via `npx`. From
-the repo root, after downloading and unzipping the Natural Earth 1:50m
-admin-0 countries shapefile to `/tmp/ne` (see the plan doc for the download
-URL):
+the repo root:
 
 ```bash
-npx -y mapshaper@0.6 /tmp/ne/ne_50m_admin_0_countries.shp \
+mkdir -p /tmp/ne
+curl -fsSL -o /tmp/ne/ne_10m_admin_0_countries.zip \
+  https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip
+unzip -o /tmp/ne/ne_10m_admin_0_countries.zip -d /tmp/ne
+
+npx -y mapshaper@0.6 /tmp/ne/ne_10m_admin_0_countries.shp \
   -filter 'ADMIN=="Philippines"' \
   -filter-islands min-area=10km2 \
-  -simplify 85% weighted visvalingam keep-shapes \
+  -simplify 15% weighted visvalingam keep-shapes \
   -filter-fields \
   -clean \
   -o format=geojson precision=0.0001 geojson-type=FeatureCollection no-null-props \
@@ -43,12 +52,9 @@ Notes on the flags:
   cleanly. The 10 km² threshold sits below Mindoro (~9,735 km²) and Palawan
   (~14,650 km²) — the smallest islands that must survive — while stripping
   the ~7,600-island tail that would render as confetti.
-- `-simplify 85%` is higher than mapshaper's usual defaults because Natural
-  Earth's 1:50m scale is already coarse; lower retention (e.g. 15%) produces
-  a visibly faceted outline — Palawan reduces to a spike, Luzon's coastline
-  goes polygonal. 85% keeps the outline recognizable at 1200×630 while still
-  landing under half the 50 KB size budget (~44%, see below) — there's
-  headroom, but it isn't an order of magnitude of headroom.
+- `-simplify 15%` is enough at 1:10m because the source is dense; the same
+  15% on 1:50m left 228 points and blobs. If the outline ever looks faceted
+  again, raise retention before changing scale.
 - `-filter-fields` with no field list drops every attribute field, leaving
   geometry only. On its own this also collapses mapshaper's output from
   `FeatureCollection` to a bare `GeometryCollection` (a `Feature` with no
@@ -63,7 +69,7 @@ roughly doubles both the committed size and the bytes parsed on every cold
 start for zero readability benefit on a generated coordinate blob — leave
 the ignore entry in place and don't run a formatter on this file by hand.
 
-Current committed asset: 48 rings, 1,181 points, 22,118 bytes (~22 KB, ~44%
+Current committed asset: 78 rings, 1,315 points, 24,711 bytes (~24 KB, ~49%
 of the 50 KB budget). Verify after regenerating:
 
 ```bash
