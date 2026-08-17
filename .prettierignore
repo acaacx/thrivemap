@@ -7,3 +7,4 @@ public/maplibre
 test-results
 playwright-report
 handoff.md
+assets/geo/*.geojson

@@ -77,6 +77,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  /**
+   * The OG card route reads fonts and geometry with
+   * readFile(join(process.cwd(), …)). Those paths are computed at runtime, so
+   * the output tracer cannot see them and would omit the files from the
+   * serverless bundle — the route works in dev and 500s in production. Only a
+   * real deploy proves this works; the smoke check in main.yml is the guard.
+   */
+  outputFileTracingIncludes: {
+    "/api/og/search": ["assets/fonts/**/*", "assets/geo/**/*"],
+  },
 };
 
 /**
