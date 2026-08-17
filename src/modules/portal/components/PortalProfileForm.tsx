@@ -9,19 +9,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { updateClinicProfile } from "../actions";
+import { updateClinicProfile, type PortalActionResult } from "../actions";
 import { portalProfileSchema, type PortalProfileInput } from "../schemas";
 
 interface PortalProfileFormProps {
   clinicId: string;
   directEdit: boolean;
   initial: PortalProfileInput;
+  /** Server action to save with; defaults to the portal's manager action. */
+  action?: (clinicId: string, raw: unknown) => Promise<PortalActionResult>;
+  /** Submit button label when edits apply directly. */
+  submitLabel?: string;
 }
 
 export function PortalProfileForm({
   clinicId,
   directEdit,
   initial,
+  action = updateClinicProfile,
+  submitLabel = "Publish changes",
 }: PortalProfileFormProps) {
   const form = useForm<PortalProfileInput>({
     resolver: zodResolver(portalProfileSchema),
@@ -37,7 +43,7 @@ export function PortalProfileForm({
     setFeedback(null);
     setBusy(true);
     try {
-      const result = await updateClinicProfile(clinicId, values);
+      const result = await action(clinicId, values);
       setFeedback(
         result.error
           ? { kind: "error", text: result.error }
@@ -141,7 +147,7 @@ export function PortalProfileForm({
           {busy && (
             <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
           )}
-          {directEdit ? "Publish changes" : "Submit for review"}
+          {directEdit ? submitLabel : "Submit for review"}
         </Button>
       </div>
     </form>

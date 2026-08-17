@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { triggerCandidateImportAction } from "../actions";
+import { OTHER_IMPORT_CITY } from "../schemas";
 
 // Native selects on purpose: the municipality list is long and Playwright's
 // selectOption is far less flaky than driving a Base UI listbox.
@@ -22,11 +24,17 @@ export function ImportTriggerCard({
   const router = useRouter();
   const [termSlug, setTermSlug] = useState(terms[0]?.slug ?? "");
   const [locationId, setLocationId] = useState(cities[0]?.id ?? "");
+  const [cityText, setCityText] = useState("");
   const [pending, startTransition] = useTransition();
+  const isOther = locationId === OTHER_IMPORT_CITY;
 
   function onQueue() {
     startTransition(async () => {
-      const result = await triggerCandidateImportAction(termSlug, locationId);
+      const result = await triggerCandidateImportAction(
+        termSlug,
+        locationId,
+        isOther ? cityText : undefined,
+      );
       if (result.error) toast.error(result.error);
       else {
         toast.success(result.message ?? "Import queued.");
@@ -71,12 +79,33 @@ export function ImportTriggerCard({
                 {city.city} — {city.province}
               </option>
             ))}
+            <option value={OTHER_IMPORT_CITY}>Other city (type it in)…</option>
           </select>
         </div>
-        <Button onClick={onQueue} disabled={pending || !locationId}>
+        <Button
+          onClick={onQueue}
+          disabled={pending || !locationId || (isOther && !cityText.trim())}
+        >
           {pending ? "Queueing…" : "Queue import"}
         </Button>
       </div>
+      {isOther && (
+        <div className="mt-4 grid gap-1.5 sm:max-w-sm">
+          <Label htmlFor="import-city-text">City name</Label>
+          <Input
+            id="import-city-text"
+            value={cityText}
+            onChange={(e) => setCityText(e.target.value)}
+            placeholder="e.g. Iloilo City"
+            maxLength={60}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Letters only. Sent as “&lt;service&gt; in &lt;city&gt;,
+            Philippines”.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

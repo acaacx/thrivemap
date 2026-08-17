@@ -80,6 +80,27 @@ never requires them to build.
    push to main runs `supabase db push` against production unattended — accept
    that knowingly or upgrade.
 
+## Populating clinics (first content)
+
+Production starts empty; the seed is demo-only. Real listings come from the
+admin Places import and go live only after a human publishes them:
+
+1. `/admin/candidates` → **Run an import**: one service × one city per job.
+   Pick a seeded city or choose **Other city** and type one (letters only; it
+   is templated into `"<service> in <city>, Philippines"`). 10 queues/hour per
+   user; the same service+city dedupes per day.
+2. `/admin/jobs` → **Run tick now** drains the queue immediately (the Vercel
+   cron is daily on Hobby). Failed jobs show their error and can be retried.
+3. Back on `/admin/candidates`: **Promote** creates a draft clinic (name,
+   phone, website, pinned address, source record — no services yet);
+   **Attach** links the place to an existing clinic instead. Run the duplicate
+   scan after a few imports.
+4. `/admin/clinics?status=draft` → open the draft. Fix the name/address, tick
+   its services (required for service-filtered search), fill the profile, then
+   in **Listing status** move `draft → pending review → published unverified`
+   (administrator only; a reason is required and audited). The public URL 404s
+   until published.
+
 ## Provider activation checklist
 
 | Provider      | Env                                                                                                                                            | Notes                                                                                                      |

@@ -307,6 +307,55 @@ export async function searchClinicsBasic(
   return data ?? [];
 }
 
+/**
+ * Full clinic row plus the relations the admin editor touches. RLS lets
+ * moderators/admins read every status (drafts included), so the session
+ * client is enough here.
+ */
+export async function getClinicForEditing(clinicId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("clinics")
+    .select(
+      `*,
+       clinic_locations(id, is_primary, address_line1, barangay, city, province, latitude, longitude),
+       clinic_services(service_id, services(id, slug, name)),
+       clinic_source_records(provider, external_id, created_at)`,
+    )
+    .eq("id", clinicId)
+    .maybeSingle();
+  return data;
+}
+
+export type ClinicForEditing = NonNullable<
+  Awaited<ReturnType<typeof getClinicForEditing>>
+>;
+
+export const CLINIC_STATUS_FILTERS = [
+  "draft",
+  "pending_review",
+  "published_unverified",
+  "published_verified",
+  "rejected",
+  "archived",
+] as const;
+export type ClinicStatusFilter = (typeof CLINIC_STATUS_FILTERS)[number];
+
+/** Newest-first list of clinics in one status, for the admin clinics index. */
+export async function listClinicsByStatus(
+  status: ClinicStatusFilter,
+): Promise<ClinicSummary[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("clinics")
+    .select("id, slug, name, status")
+    .eq("status", status)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(100);
+  return data ?? [];
+}
+
 export async function countStaleClinics() {
   const supabase = createSupabaseAdminClient();
   const { count } = await supabase

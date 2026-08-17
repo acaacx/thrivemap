@@ -12,8 +12,18 @@ import {
   buildImportQuery,
   IMPORT_SERVICE_TERMS,
 } from "@/modules/imports/query";
+import {
+  portalProfileSchema,
+  portalServicesSchema,
+} from "@/modules/portal/schemas";
 import { invalidateClinicCaches } from "@/modules/shared/cache";
 import { checkRateLimit } from "@/modules/shared/rate-limit";
+import {
+  adminClinicIdentitySchema,
+  importCityTextSchema,
+  OTHER_IMPORT_CITY,
+  slugifyCity,
+} from "./schemas";
 import { requireAdministrator, requireModerator } from "./server";
 import type { Database } from "@/lib/database.types";
 
@@ -779,6 +789,7 @@ export async function discardCandidate(
 export async function triggerCandidateImportAction(
   termSlug: string,
   locationId: string,
+  cityText?: string,
 ): Promise<AdminActionResult> {
   const { user } = await requireModerator();
   const { allowed } = await checkRateLimit(
@@ -793,35 +804,47 @@ export async function triggerCandidateImportAction(
   const term = IMPORT_SERVICE_TERMS.find((t) => t.slug === termSlug);
   if (!term) return { error: "Unknown service term." };
 
-  const supabase = await createSupabaseServerClient();
-  const { data: location } = await supabase
-    .from("ph_locations")
-    .select("id, city, city_slug, province")
-    .eq("id", locationId)
-    .maybeSingle();
-  if (!location?.city || !location.city_slug) {
-    return { error: "Unknown city." };
+  let city: { name: string; slug: string };
+  if (locationId === OTHER_IMPORT_CITY) {
+    const parsed = importCityTextSchema.safeParse(cityText ?? "");
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Type a city name." };
+    }
+    city = { name: parsed.data, slug: slugifyCity(parsed.data) };
+    if (!city.slug) return { error: "Type a city name." };
+  } else {
+    const supabase = await createSupabaseServerClient();
+    const { data: location } = await supabase
+      .from("ph_locations")
+      .select("id, city, city_slug, province")
+      .eq("id", locationId)
+      .maybeSingle();
+    if (!location?.city || !location.city_slug) {
+      return { error: "Unknown city." };
+    }
+    city = { name: location.city, slug: location.city_slug };
   }
 
-  const query = buildImportQuery(term.slug, location.city);
+  const query = buildImportQuery(term.slug, city.name);
   const day = new Date().toISOString().slice(0, 10);
   await enqueueJob(
     "candidate_import",
     {
       query,
       termSlug: term.slug,
-      citySlug: location.city_slug,
+      citySlug: city.slug,
       requestedBy: user.id,
     },
     // One import per term+city per day; repeat clicks are no-ops.
     {
-      idempotencyKey: `candidate-import:${term.slug}:${location.city_slug}:${day}`,
+      idempotencyKey: `candidate-import:${term.slug}:${city.slug}:${day}`,
     },
   );
   await logAdminAction(user.id, "trigger_candidate_import", "job", null, null, {
     query,
     term: term.slug,
-    city_slug: location.city_slug,
+    city_slug: city.slug,
+    free_text_city: locationId === OTHER_IMPORT_CITY,
   });
   revalidatePath("/admin/candidates");
   return { message: `Import queued: ${query}` };
@@ -852,7 +875,11 @@ export async function promoteCandidateAction(
     { clinic_id: clinicId },
   );
   revalidatePath("/admin/candidates");
-  return { message: "Draft clinic created." };
+  revalidatePath("/admin/clinics");
+  return {
+    message:
+      "Draft clinic created — open it under Clinics → Drafts to enrich and publish.",
+  };
 }
 
 export async function attachCandidateAction(
@@ -1073,7 +1100,202 @@ export async function setClinicStatus(
   );
   await invalidateClinicCaches();
   revalidatePath(`/clinics/${clinic.slug}`);
+  revalidatePath(`/admin/clinics/${clinicId}`);
+  revalidatePath("/admin/clinics");
   return { message: `Status changed to ${status.replaceAll("_", " ")}.` };
+}
+
+// ---------------------------------------------------------------------------
+// Admin clinic editor (enrich imported drafts before publishing)
+//
+// Moderators and admins edit any clinic directly — no change-request detour —
+// via the service-role client, and every save writes an admin_actions row.
+
+async function loadClinicForAdminEdit(clinicId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin
+    .from("clinics")
+    .select("id, slug, status")
+    .eq("id", clinicId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return data;
+}
+
+async function revalidateAdminClinic(slug: string, clinicId: string) {
+  await invalidateClinicCaches();
+  revalidatePath(`/clinics/${slug}`);
+  revalidatePath(`/admin/clinics/${clinicId}`);
+  revalidatePath("/admin/clinics");
+}
+
+export async function adminUpdateClinicIdentity(
+  clinicId: string,
+  raw: unknown,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const parsed = adminClinicIdentitySchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Please review the form.",
+    };
+  }
+  const clinic = await loadClinicForAdminEdit(clinicId);
+  if (!clinic) return { error: "Clinic not found." };
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
+    .from("clinics")
+    .update({ name: parsed.data.name, updated_by: user.id })
+    .eq("id", clinicId);
+  if (error) {
+    console.error("adminUpdateClinicIdentity failed:", error.message);
+    return { error: "Could not save the clinic name." };
+  }
+
+  if (parsed.data.address_line1) {
+    const { data: primary } = await admin
+      .from("clinic_locations")
+      .select("id")
+      .eq("clinic_id", clinicId)
+      .eq("is_primary", true)
+      .maybeSingle();
+    if (primary) {
+      const { error: locError } = await admin
+        .from("clinic_locations")
+        .update({ address_line1: parsed.data.address_line1 })
+        .eq("id", primary.id);
+      if (locError) {
+        console.error(
+          "adminUpdateClinicIdentity address failed:",
+          locError.message,
+        );
+        return { error: "Saved the name, but could not save the address." };
+      }
+    }
+  }
+
+  await logAdminAction(
+    user.id,
+    "edit_clinic_identity",
+    "clinic",
+    clinicId,
+    null,
+    {
+      name: parsed.data.name,
+      address_line1: parsed.data.address_line1 || null,
+    },
+  );
+  await revalidateAdminClinic(clinic.slug, clinicId);
+  return { message: "Name and address saved." };
+}
+
+export async function adminUpdateClinicProfile(
+  clinicId: string,
+  raw: unknown,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const parsed = portalProfileSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Please review the form.",
+    };
+  }
+  const clinic = await loadClinicForAdminEdit(clinicId);
+  if (!clinic) return { error: "Clinic not found." };
+
+  const next = {
+    description: parsed.data.description || null,
+    phone: parsed.data.phone || null,
+    email: parsed.data.email || null,
+    website: parsed.data.website || null,
+    offers_online_services: parsed.data.offers_online_services,
+    offers_in_person_services: parsed.data.offers_in_person_services,
+    wheelchair_accessible: parsed.data.wheelchair_accessible,
+    accessibility_notes: parsed.data.accessibility_notes || null,
+  };
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
+    .from("clinics")
+    .update({ ...next, updated_by: user.id })
+    .eq("id", clinicId);
+  if (error) {
+    console.error("adminUpdateClinicProfile failed:", error.message);
+    return { error: "Could not save the profile." };
+  }
+
+  await logAdminAction(
+    user.id,
+    "edit_clinic_profile",
+    "clinic",
+    clinicId,
+    null,
+    {
+      fields: Object.keys(next),
+    },
+  );
+  await revalidateAdminClinic(clinic.slug, clinicId);
+  return { message: "Profile saved." };
+}
+
+export async function adminUpdateClinicServices(
+  clinicId: string,
+  raw: unknown,
+): Promise<AdminActionResult> {
+  const { user } = await requireModerator();
+  const parsed = portalServicesSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Choose at least one service.",
+    };
+  }
+  const clinic = await loadClinicForAdminEdit(clinicId);
+  if (!clinic) return { error: "Clinic not found." };
+
+  const admin = createSupabaseAdminClient();
+  const { data: existing } = await admin
+    .from("clinic_services")
+    .select("service_id")
+    .eq("clinic_id", clinicId);
+  const existingIds = new Set((existing ?? []).map((row) => row.service_id));
+  const nextIds = new Set(parsed.data.service_ids);
+  const toAdd = [...nextIds].filter((id) => !existingIds.has(id));
+  const toRemove = [...existingIds].filter((id) => !nextIds.has(id));
+
+  if (toAdd.length > 0) {
+    const { error } = await admin
+      .from("clinic_services")
+      .insert(toAdd.map((service_id) => ({ clinic_id: clinicId, service_id })));
+    if (error) {
+      console.error("adminUpdateClinicServices insert failed:", error.message);
+      return { error: "Could not save services." };
+    }
+  }
+  if (toRemove.length > 0) {
+    const { error } = await admin
+      .from("clinic_services")
+      .delete()
+      .eq("clinic_id", clinicId)
+      .in("service_id", toRemove);
+    if (error) {
+      console.error("adminUpdateClinicServices delete failed:", error.message);
+      return { error: "Could not save services." };
+    }
+  }
+
+  await logAdminAction(
+    user.id,
+    "edit_clinic_services",
+    "clinic",
+    clinicId,
+    null,
+    {
+      added: toAdd,
+      removed: toRemove,
+    },
+  );
+  await revalidateAdminClinic(clinic.slug, clinicId);
+  return { message: "Services saved." };
 }
 
 // ---------------------------------------------------------------------------

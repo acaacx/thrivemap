@@ -4,13 +4,17 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { updateClinicServices } from "../actions";
+import { updateClinicServices, type PortalActionResult } from "../actions";
 
 interface PortalServicesFormProps {
   clinicId: string;
   directEdit: boolean;
   services: { id: string; name: string; short_description: string | null }[];
   selectedIds: string[];
+  /** Server action to save with; defaults to the portal's manager action. */
+  action?: (clinicId: string, raw: unknown) => Promise<PortalActionResult>;
+  /** Submit button label when edits apply directly. */
+  submitLabel?: string;
 }
 
 export function PortalServicesForm({
@@ -18,6 +22,8 @@ export function PortalServicesForm({
   directEdit,
   services,
   selectedIds,
+  action = updateClinicServices,
+  submitLabel = "Publish changes",
 }: PortalServicesFormProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set(selectedIds));
   const [busy, setBusy] = useState(false);
@@ -39,7 +45,7 @@ export function PortalServicesForm({
     setFeedback(null);
     setBusy(true);
     try {
-      const result = await updateClinicServices(clinicId, {
+      const result = await action(clinicId, {
         service_ids: [...selected],
       });
       setFeedback(
@@ -102,7 +108,7 @@ export function PortalServicesForm({
           {busy && (
             <Loader2 aria-hidden className="mr-2 h-4 w-4 animate-spin" />
           )}
-          {directEdit ? "Publish changes" : "Submit for review"}
+          {directEdit ? submitLabel : "Submit for review"}
         </Button>
       </div>
     </div>
