@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { Loader2, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,17 @@ const ClinicMap = dynamic(
   () => import("@/modules/maps/components/ClinicMap").then((m) => m.ClinicMap),
   { ssr: false },
 );
+
+// Tailwind `md` breakpoint — the width at which the map pane is shown next to
+// the list instead of behind the mobile List/Map toggle.
+const MD_UP_QUERY = "(min-width: 768px)";
+function subscribeMdUp(onChange: () => void) {
+  const mq = window.matchMedia(MD_UP_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+const getMdUpSnapshot = () => window.matchMedia(MD_UP_QUERY).matches;
+const getMdUpServerSnapshot = () => false;
 
 interface SearchClinicRow {
   clinic_id: string;
@@ -148,6 +159,19 @@ export function SearchPageClient({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const [desktopView, setDesktopView] = useState<"split" | "list">("split");
+  // On phones the map pane starts hidden behind the List/Map toggle. Don't
+  // mount MapLibre (WebGL context, style, glyphs, tiles) until the pane is
+  // actually shown; once shown, keep it mounted so toggling back and forth
+  // preserves the map position instead of re-downloading everything.
+  const isMdUp = useSyncExternalStore(
+    subscribeMdUp,
+    getMdUpSnapshot,
+    getMdUpServerSnapshot,
+  );
+  const [mapRevealed, setMapRevealed] = useState(false);
+  if (!mapRevealed && (isMdUp || mobileView === "map")) {
+    setMapRevealed(true);
+  }
   const [moreOpen, setMoreOpen] = useState(false);
   const [pendingBounds, setPendingBounds] = useState<{
     bounds: MapBounds;
@@ -632,7 +656,7 @@ export function SearchPageClient({
             showingMapDesktop ? "md:block" : "md:hidden",
           )}
         >
-          {mapElement}
+          {mapRevealed ? mapElement : null}
         </section>
       </div>
     </div>
