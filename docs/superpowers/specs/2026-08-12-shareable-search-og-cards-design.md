@@ -63,16 +63,17 @@ The canonical and `og:url` diverge on purpose — see Section 4.
 
 New module `src/modules/share/`:
 
-| File                         | Purpose                                                              |
-| ---------------------------- | -------------------------------------------------------------------- |
-| `og/palette.ts`              | Warm Horizon as sRGB hex, each value commented with its oklch source |
-| `og/projection.ts`           | Web Mercator; bbox → viewport fit, padding, min/max span clamp       |
-| `og/bbox.ts`                 | The derivation ladder (Section 2)                                    |
-| `og/basemap.ts`              | Load + decode PH geometry → SVG path `d` strings                     |
-| `og/label.ts`                | `SearchParams` → headline + description strings                      |
-| `og/card.tsx`                | Satori JSX: map layer, pin layer, caption plate                      |
-| `og/fallback.tsx`            | Abstract pin-field card for every failure path                       |
-| `components/ShareButton.tsx` | Web Share API with clipboard fallback                                |
+| File                         | Purpose                                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `og/palette.ts`              | Warm Horizon as sRGB hex, each value commented with its oklch source                                                                                  |
+| `og/projection.ts`           | Web Mercator; bbox → viewport fit, padding, min/max span clamp                                                                                        |
+| `og/layout.ts`               | Safe-area layout: aspect fit, then pan/zoom so pins clear the caption plate and wordmark. Source of truth for their rects (added 2026-08-18, de806a2) |
+| `og/bbox.ts`                 | The derivation ladder (Section 2)                                                                                                                     |
+| `og/basemap.ts`              | Load + decode PH geometry → SVG path `d` strings                                                                                                      |
+| `og/label.ts`                | `SearchParams` → headline + description strings                                                                                                       |
+| `og/card.tsx`                | Satori JSX: map layer, pin layer, caption plate                                                                                                       |
+| `og/fallback.tsx`            | Abstract pin-field card for every failure path                                                                                                        |
+| `components/ShareButton.tsx` | Web Share API with clipboard fallback                                                                                                                 |
 
 ### Verified integration constraints
 
@@ -317,6 +318,24 @@ Pins are circles with a coral fill and a cream halo stroke so overlapping pins
 stay countable. At low zoom, pins closer than a fixed pixel distance collapse
 into a single larger pin — the count in the caption always reflects the pins
 _found_, not the circles _drawn_.
+
+**Overlay clearance (added 2026-08-18, de806a2).** A plain aspect fit can
+place a pin under the caption plate or the wordmark — on the PH-wide card,
+every Mindanao pin. `og/layout.ts` owns the plate/wordmark rects (`PLATE`,
+`WORDMARK`) as the single source of truth for both the route's math and
+`card.tsx`'s render, and its `layoutBBox()` runs after the aspect fit:
+
+1. if no pin lands under an overlay after the fit, done;
+2. otherwise pan the map right or up — whichever moves less — so every pin
+   clears both overlays without any pin running off the card edge, keeping
+   the original scale;
+3. if no such pan exists, zoom out: fit the pins into the free band between
+   the wordmark and the plate, then widen that box to cover the full card.
+
+Known, accepted tradeoff: on the PH-wide card the pan-right case can carry
+eastern Mindanao/Samar coastline off the right edge of the frame so every pin
+clears the plate. Every pin stays visible, which is the requirement; the
+coastline crop is the cost.
 
 ### Performance
 

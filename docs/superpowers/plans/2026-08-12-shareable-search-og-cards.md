@@ -1936,6 +1936,13 @@ export function resetFontCacheForTesting(): void {
 
 - [ ] **Step 3: Write the cards**
 
+> **Superseded 2026-08-18:** the aspect fit below could land a pin under the
+> caption plate or the wordmark — on the PH-wide card, every Mindanao pin. A
+> new pure module, `og/layout.ts`, now owns the plate/wordmark rects
+> (`PLATE`, `WORDMARK`) and `card.tsx` imports its geometry from there instead
+> of hardcoding it inline as shown below. See de806a2 and Task 7's superseded
+> note for the routing side of the fix.
+
 Create `src/modules/share/og/card.tsx`:
 
 ```tsx
@@ -2351,6 +2358,19 @@ indistinguishable from one that works."
 - Produces: `GET(request: NextRequest): Promise<Response>` at `/api/og/search`.
 
 - [ ] **Step 1: Implement the route**
+
+> **Superseded 2026-08-18 (de806a2):** the plain `fitBBox` call below could
+> bury a pin under the caption plate or wordmark. The route now calls
+> `layoutBBox(data.bbox, pins, CARD_WIDTH, CARD_HEIGHT)` from the new
+> `og/layout.ts` in place of `fitBBox`: it aspect-fits as before, then pans
+> the map right or up (whichever moves less) so every pin clears both
+> overlays, falling back to a zoom-out into the free band between them if no
+> pan fits without a pin running off the card edge. `og/layout.ts` is the
+> source of truth for the plate/wordmark rects that `card.tsx` renders — see
+> Task 6's superseded note. Known tradeoff, left as-is: on the PH-wide card
+> the pan-right case can carry eastern Mindanao/Samar coastline off the right
+> edge of the frame so every pin stays clear of the plate; every pin is
+> always visible, the coastline crop is the accepted cost.
 
 Create `src/app/api/og/search/route.ts`:
 
