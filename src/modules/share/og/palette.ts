@@ -1,6 +1,12 @@
 /**
  * Warm Horizon, hand-converted to sRGB hex for satori.
  *
+ * NOTE (2026-08-18): the app moved to the "Quiet Ledger" palette
+ * (src/app/globals.css). OG cards deliberately stay on Warm Horizon for now —
+ * retheming them needs the font-subsetting pipeline (assets/README.md) and
+ * card.test.tsx pixel checks, tracked as a follow-up. The oklch annotations
+ * below therefore describe the OLD tokens, not the current globals.css.
+ *
  * Satori's vendored parser (parse-css-color 0.2.1) accepts hex, rgb(), hsl(),
  * and named colors — and nothing else. No oklch(), oklab(), lab(), lch(),
  * hwb(), or color-mix(). The app's palette is entirely oklch

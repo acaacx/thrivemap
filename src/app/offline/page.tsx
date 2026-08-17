@@ -30,18 +30,18 @@ const OFFLINE_CSS = `
   .offline-page {
     margin: 0;
     min-height: 100vh;
-    background: #fdfaf3;
-    color: #3a3229;
-    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    background: #f7faf8;
+    color: #1f2d2b;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   .offline-header {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e4ddd0;
+    border-bottom: 1px solid #d5e1de;
   }
   .offline-brand {
     font-weight: 700;
     font-size: 1.125rem;
-    color: #2f6763;
+    color: #2f6f68;
     letter-spacing: 0.01em;
   }
   .offline-main {
@@ -56,12 +56,12 @@ const OFFLINE_CSS = `
     margin: 0 0 0.5rem;
   }
   .offline-lede {
-    color: #6b6255;
+    color: #596966;
     margin: 0 0 2rem;
     line-height: 1.5;
   }
   #offline-empty {
-    color: #6b6255;
+    color: #596966;
     margin: 0;
   }
   #offline-list {
@@ -71,7 +71,7 @@ const OFFLINE_CSS = `
   }
   .offline-item {
     padding: 1rem 0;
-    border-bottom: 1px solid #e4ddd0;
+    border-bottom: 1px solid #d5e1de;
   }
   .offline-item:last-child {
     border-bottom: none;
@@ -81,35 +81,35 @@ const OFFLINE_CSS = `
     margin: 0 0 0.25rem;
   }
   .offline-item-address {
-    color: #6b6255;
+    color: #596966;
     margin: 0 0 0.5rem;
   }
   .offline-item-tel {
-    color: #2f6763;
+    color: #2f6f68;
     font-weight: 600;
     text-decoration: underline;
   }
   @media (prefers-color-scheme: dark) {
     .offline-page {
-      background: #232019;
-      color: #f0ece2;
+      background: #182220;
+      color: #e6eeec;
     }
     .offline-header {
-      border-bottom-color: #3a352b;
+      border-bottom-color: #2c3a37;
     }
     .offline-brand {
-      color: #7fc2bd;
+      color: #7fb8b0;
     }
     .offline-lede,
     #offline-empty,
     .offline-item-address {
-      color: #b8b0a0;
+      color: #a9b8b4;
     }
     .offline-item {
-      border-bottom-color: #3a352b;
+      border-bottom-color: #2c3a37;
     }
     .offline-item-tel {
-      color: #7fc2bd;
+      color: #7fb8b0;
     }
   }
 `;

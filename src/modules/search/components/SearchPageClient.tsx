@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { List, Loader2, Map as MapIcon, SlidersHorizontal } from "lucide-react";
+import { Loader2, SearchX } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,18 +17,32 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
-import dynamic from "next/dynamic";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
+import { cn } from "@/lib/utils";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
 import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
 import { ShareButton } from "@/modules/share/components/ShareButton";
+import { ActiveFilterChips, deriveActiveChips } from "./ActiveFilterChips";
+import { FilterBar } from "./FilterBar";
 import { LocationSearchBox } from "./LocationSearchBox";
-import { SearchFilters, type FilterState } from "./SearchFilters";
+import {
+  DESKTOP_VIEW_OPTIONS,
+  MOBILE_VIEW_OPTIONS,
+  MapListToggle,
+} from "./MapListToggle";
+import {
+  EMPTY_FILTER_STATE,
+  SearchFilters,
+  countActiveFilters,
+  type FilterState,
+} from "./SearchFilters";
 import type { SearchParams, SortOption } from "../schemas";
 
 // MapLibre is heavy — load it only on the client, after the list renders.
@@ -50,6 +66,8 @@ interface SearchClinicRow {
   is_open_now: boolean | null;
   service_names: string[];
   offers_online_services: boolean;
+  offers_in_person_services?: boolean;
+  wheelchair_accessible?: boolean | null;
   last_verified_at: string | null;
   logo_url: string | null;
 }
@@ -97,6 +115,28 @@ function paramsToQueryString(params: SearchParams): string {
   return qs.toString();
 }
 
+function toCardData(c: SearchClinicRow) {
+  return {
+    id: c.clinic_id,
+    slug: c.slug,
+    name: c.name,
+    status: c.status,
+    address: c.address_line1,
+    city: c.city,
+    province: c.province,
+    distanceKm: c.distance_km,
+    serviceNames: c.service_names,
+    isOpenNow: c.is_open_now,
+    offersOnline: c.offers_online_services,
+    offersInPerson: c.offers_in_person_services,
+    wheelchairAccessible: c.wheelchair_accessible,
+    lastVerifiedAt: c.last_verified_at,
+    logoUrl: c.logo_url,
+    latitude: c.latitude,
+    longitude: c.longitude,
+  };
+}
+
 export function SearchPageClient({
   initialParams,
   initialResult,
@@ -107,6 +147,8 @@ export function SearchPageClient({
   const [params, setParams] = useState<SearchParams>(initialParams);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [desktopView, setDesktopView] = useState<"split" | "list">("split");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [pendingBounds, setPendingBounds] = useState<{
     bounds: MapBounds;
     center: { latitude: number; longitude: number };
@@ -125,7 +167,7 @@ export function SearchPageClient({
     [initialParams],
   );
 
-  const { data, isFetching } = useQuery<SearchResponse>({
+  const { data, isFetching, isError, refetch } = useQuery<SearchResponse>({
     queryKey: ["clinic-search", queryString],
     queryFn: async () => {
       const res = await fetch(`/api/search?${queryString}`);
@@ -143,7 +185,7 @@ export function SearchPageClient({
       setSelectedId(null);
       setParams(next);
       const qs = paramsToQueryString(next);
-      router.replace(`${pathname}?${qs}`, { scroll: false });
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [pathname, router],
   );
@@ -205,6 +247,38 @@ export function SearchPageClient({
     });
   }
 
+  function clearFilters() {
+    onFiltersChange({ ...EMPTY_FILTER_STATE, radius: params.radius });
+  }
+
+  function clearLocation() {
+    applyParams({
+      ...params,
+      lat: undefined,
+      lng: undefined,
+      north: undefined,
+      south: undefined,
+      east: undefined,
+      west: undefined,
+      loc: undefined,
+      q: undefined,
+      cursor: undefined,
+    });
+  }
+
+  function expandSearchArea() {
+    const hasCenter = params.lat != null && params.lng != null;
+    applyParams({
+      ...params,
+      radius: hasCenter ? Math.min(100, Math.max(25, params.radius * 2)) : 50,
+      north: undefined,
+      south: undefined,
+      east: undefined,
+      west: undefined,
+      cursor: undefined,
+    });
+  }
+
   function onSearchThisArea() {
     if (!pendingBounds) return;
     applyParams({
@@ -238,23 +312,23 @@ export function SearchPageClient({
     }
   }
 
-  const activeFilterCount =
-    filterState.services.length +
-    filterState.ages.length +
-    ["verified", "online", "inperson", "open", "accessible"].filter(
-      (k) => filterState[k as keyof FilterState],
-    ).length;
+  const activeFilterCount = countActiveFilters(filterState);
+  // Filters that only live in the "More filters" sheet.
+  const moreCount =
+    (filterState.verified ? 1 : 0) + (filterState.inperson ? 1 : 0);
 
-  const filtersPanel = (
-    <SearchFilters
-      serviceOptions={serviceOptions}
-      value={filterState}
-      onChange={onFiltersChange}
-      showRadius={params.lat != null}
-    />
-  );
+  const locationLabel = params.loc ?? (params.q ? `“${params.q}”` : null);
+
+  const chips = deriveActiveChips({
+    filters: filterState,
+    serviceOptions,
+    location: locationLabel,
+    onFiltersChange,
+    onClearLocation: clearLocation,
+  });
 
   const selectedClinic = clinics.find((c) => c.clinic_id === selectedId);
+  const showingMapDesktop = desktopView === "split";
 
   const mapElement = (
     <div className="relative h-full min-h-[320px]">
@@ -283,81 +357,93 @@ export function SearchPageClient({
       </MapErrorBoundary>
       {pendingBounds && (
         <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
-          <Button onClick={onSearchThisArea} className="rounded-full shadow-lg">
+          <Button
+            onClick={onSearchThisArea}
+            size="lg"
+            className="border border-primary-hover"
+          >
             Search this area
           </Button>
         </div>
       )}
-      {/* Mobile bottom-sheet style preview for a selected marker */}
+      {/* Mobile preview for a selected marker */}
       {selectedClinic && (
         <div className="absolute inset-x-3 bottom-3 z-10 md:hidden">
-          <ClinicCard
-            clinic={{
-              id: selectedClinic.clinic_id,
-              slug: selectedClinic.slug,
-              name: selectedClinic.name,
-              status: selectedClinic.status,
-              address: selectedClinic.address_line1,
-              city: selectedClinic.city,
-              province: selectedClinic.province,
-              distanceKm: selectedClinic.distance_km,
-              serviceNames: selectedClinic.service_names,
-              isOpenNow: selectedClinic.is_open_now,
-              offersOnline: selectedClinic.offers_online_services,
-              latitude: selectedClinic.latitude,
-              longitude: selectedClinic.longitude,
-            }}
-            selected
-          />
+          <ClinicCard clinic={toCardData(selectedClinic)} selected />
         </div>
       )}
     </div>
   );
 
+  const resultsCount = clinics.length;
+  const countLabel = `${resultsCount} clinic${resultsCount === 1 ? "" : "s"} found${
+    params.loc ? ` near ${params.loc}` : params.q ? ` for “${params.q}”` : ""
+  }`;
+
   return (
     <div className="flex flex-1 flex-col">
       {/* Toolbar */}
       <div className="border-b bg-background">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center">
-          <div className="min-w-0 flex-1 lg:max-w-xl">
-            <LocationSearchBox
-              onLocation={({ latitude, longitude, label }) =>
-                applyParams({
-                  ...params,
-                  lat: latitude,
-                  lng: longitude,
-                  north: undefined,
-                  south: undefined,
-                  east: undefined,
-                  west: undefined,
-                  loc: label,
-                  cursor: undefined,
-                })
-              }
-            />
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-3 px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1 lg:max-w-2xl">
+              <LocationSearchBox
+                submitLabel="Search"
+                onLocation={({ latitude, longitude, label }) =>
+                  applyParams({
+                    ...params,
+                    lat: latitude,
+                    lng: longitude,
+                    north: undefined,
+                    south: undefined,
+                    east: undefined,
+                    west: undefined,
+                    loc: label,
+                    q: undefined,
+                    cursor: undefined,
+                  })
+                }
+                onTextSearch={(text) =>
+                  applyParams({
+                    ...params,
+                    q: text || undefined,
+                    cursor: undefined,
+                  })
+                }
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+              <ShareButton />
+              <MapListToggle
+                label="Choose list or map view"
+                value={mobileView}
+                onChange={setMobileView}
+                options={MOBILE_VIEW_OPTIONS}
+                className="md:hidden"
+              />
+              <MapListToggle
+                label="Choose map and list, or list only"
+                value={desktopView}
+                onChange={setDesktopView}
+                options={DESKTOP_VIEW_OPTIONS}
+                className="hidden md:inline-flex"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Sheet>
-              <SheetTrigger
-                render={<Button variant="outline" className="rounded-full" />}
-              >
-                <SlidersHorizontal className="size-4" aria-hidden />
-                Filters
-                {activeFilterCount > 0 && (
-                  <span className="grid size-5 place-items-center rounded-full bg-primary text-xs text-primary-foreground">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </SheetTrigger>
-              <SheetContent side="left" className="w-80 overflow-y-auto p-6">
-                <SheetHeader className="p-0 pb-4">
-                  <SheetTitle>Filter clinics</SheetTitle>
-                </SheetHeader>
-                {filtersPanel}
-              </SheetContent>
-            </Sheet>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterBar
+              serviceOptions={serviceOptions}
+              value={filterState}
+              onChange={onFiltersChange}
+              onOpenMore={() => setMoreOpen(true)}
+              moreCount={moreCount}
+              totalCount={activeFilterCount}
+              className="min-w-0 flex-1"
+            />
             <Select
               value={params.sort}
+              items={SORT_LABELS}
               onValueChange={(sort) =>
                 applyParams({
                   ...params,
@@ -367,9 +453,10 @@ export function SearchPageClient({
               }
             >
               <SelectTrigger
-                className="w-44 rounded-full"
+                className="w-52 data-[size=default]:h-11"
                 aria-label="Sort results"
               >
+                <span className="text-muted-foreground">Sort:</span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -380,115 +467,152 @@ export function SearchPageClient({
                 ))}
               </SelectContent>
             </Select>
-            <ShareButton />
-            {/* Mobile list/map toggle */}
-            <div
-              className="flex rounded-full border p-0.5 md:hidden"
-              role="group"
-              aria-label="Toggle list or map view"
-            >
-              <Button
-                size="sm"
-                variant={mobileView === "list" ? "default" : "ghost"}
-                className="rounded-full"
-                onClick={() => setMobileView("list")}
-                aria-pressed={mobileView === "list"}
-              >
-                <List className="size-4" aria-hidden /> List
-              </Button>
-              <Button
-                size="sm"
-                variant={mobileView === "map" ? "default" : "ghost"}
-                className="rounded-full"
-                onClick={() => setMobileView("map")}
-                aria-pressed={mobileView === "map"}
-              >
-                <MapIcon className="size-4" aria-hidden /> Map
-              </Button>
-            </div>
           </div>
+
+          <ActiveFilterChips chips={chips} onClearAll={clearFilters} />
         </div>
       </div>
 
-      {/* Results + map split */}
-      <div className="mx-auto grid w-full max-w-[1600px] flex-1 md:grid-cols-[minmax(380px,42%)_1fr]">
-        {/* Results list */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent
+          side="left"
+          className="w-full max-w-sm overflow-y-auto p-6"
+        >
+          <SheetHeader className="p-0 pb-4">
+            <SheetTitle className="text-lg font-semibold">
+              More filters
+            </SheetTitle>
+            <SheetDescription>
+              Narrow results by service, age group, and listed options.
+              {activeFilterCount > 0 &&
+                ` ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active.`}
+            </SheetDescription>
+          </SheetHeader>
+          <SearchFilters
+            serviceOptions={serviceOptions}
+            value={filterState}
+            onChange={onFiltersChange}
+            showRadius={params.lat != null}
+          />
+          <div className="mt-6 flex gap-2 border-t pt-4">
+            <Button size="lg" onClick={() => setMoreOpen(false)}>
+              Show {resultsCount} clinic{resultsCount === 1 ? "" : "s"}
+            </Button>
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="lg" onClick={clearFilters}>
+                Clear all
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Results + map split. The map stays mounted in every view — it is
+          hidden with CSS so MapLibre keeps its viewport and pending
+          "Search this area" state across toggles. */}
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[1600px] flex-1",
+          showingMapDesktop
+            ? "md:grid-cols-[minmax(360px,40%)_1fr]"
+            : "md:grid-cols-1",
+        )}
+      >
         <section
           aria-label="Clinic results"
-          className={`min-h-0 overflow-y-auto border-r px-4 py-4 sm:px-6 md:max-h-[calc(100vh-8.5rem)] ${
-            mobileView === "map" ? "hidden md:block" : ""
-          }`}
+          className={cn(
+            "min-h-0 overflow-y-auto px-4 py-4 sm:px-6 md:max-h-[calc(100vh-4rem)]",
+            showingMapDesktop
+              ? "md:border-r"
+              : "md:mx-auto md:w-full md:max-w-3xl",
+            mobileView === "map" ? "hidden md:block" : "",
+          )}
         >
           <div
             aria-live="polite"
-            className="mb-3 text-sm text-muted-foreground"
+            className="mb-4 flex min-h-6 items-center gap-2 text-sm text-muted-foreground"
           >
             {isFetching && !data ? (
-              "Searching…"
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Searching for clinics…
+              </>
             ) : (
               <>
-                {clinics.length} clinic{clinics.length === 1 ? "" : "s"} found
-                {params.loc ? ` near ${params.loc}` : ""}
+                <span className="font-medium text-foreground">
+                  {countLabel}
+                </span>
                 {isFetching && (
-                  <Loader2
-                    className="ml-2 inline size-3.5 animate-spin"
-                    aria-hidden
-                  />
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Updating…
+                  </span>
                 )}
               </>
             )}
           </div>
-          <div className="space-y-3">
-            {clinics.map((clinic) => (
-              <ClinicCard
-                key={clinic.clinic_id}
-                clinic={{
-                  id: clinic.clinic_id,
-                  slug: clinic.slug,
-                  name: clinic.name,
-                  status: clinic.status,
-                  address: clinic.address_line1,
-                  city: clinic.city,
-                  province: clinic.province,
-                  distanceKm: clinic.distance_km,
-                  serviceNames: clinic.service_names,
-                  isOpenNow: clinic.is_open_now,
-                  offersOnline: clinic.offers_online_services,
-                  lastVerifiedAt: clinic.last_verified_at,
-                  logoUrl: clinic.logo_url,
-                  latitude: clinic.latitude,
-                  longitude: clinic.longitude,
-                }}
-                selected={clinic.clinic_id === selectedId}
-                onSelect={setSelectedId}
-              />
-            ))}
-            {clinics.length === 0 && !isFetching && (
-              <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">
-                  No clinics found in this area yet.
-                </p>
-                <p className="mt-1">
-                  Try widening the distance, removing filters, or searching a
-                  nearby city. Know a clinic here?{" "}
-                  <a
-                    href="/suggest-clinic"
-                    className="underline underline-offset-4"
-                  >
-                    Suggest it
-                  </a>
-                  .
-                </p>
-              </div>
-            )}
-          </div>
-          {nextCursor && (
-            <div className="py-4 text-center">
+
+          {isError && !data ? (
+            <ErrorState
+              title="We couldn't load clinics right now."
+              body="Your search hasn't been lost — your location and filters are still set."
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          ) : (
+            <div className="flex flex-col gap-(--stack-gap)">
+              {clinics.map((clinic) => (
+                <ClinicCard
+                  key={clinic.clinic_id}
+                  clinic={toCardData(clinic)}
+                  selected={clinic.clinic_id === selectedId}
+                  onSelect={setSelectedId}
+                />
+              ))}
+              {clinics.length === 0 && !isFetching && (
+                <EmptyState
+                  icon={<SearchX className="size-5" aria-hidden />}
+                  title="We couldn't find a matching clinic nearby."
+                  body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
+                  actions={
+                    <>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={expandSearchArea}
+                      >
+                        Expand search area
+                      </Button>
+                      {activeFilterCount > 0 && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          onClick={() => setMoreOpen(true)}
+                        >
+                          Remove a filter
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        render={<Link href="/suggest-clinic" />}
+                      >
+                        Suggest a clinic
+                      </Button>
+                    </>
+                  }
+                />
+              )}
+            </div>
+          )}
+
+          {nextCursor && !isError && (
+            <div className="py-6 text-center">
               <Button
                 variant="outline"
+                size="lg"
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="rounded-full"
               >
                 {loadingMore && (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -502,9 +626,11 @@ export function SearchPageClient({
         {/* Map */}
         <section
           aria-label="Map"
-          className={`min-h-[60vh] md:block md:max-h-[calc(100vh-8.5rem)] md:min-h-0 ${
-            mobileView === "list" ? "hidden" : ""
-          }`}
+          className={cn(
+            "min-h-[60vh] md:max-h-[calc(100vh-4rem)] md:min-h-0",
+            mobileView === "list" ? "hidden" : "",
+            showingMapDesktop ? "md:block" : "md:hidden",
+          )}
         >
           {mapElement}
         </section>

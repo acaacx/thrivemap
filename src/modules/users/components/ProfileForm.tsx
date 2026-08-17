@@ -25,7 +25,7 @@ export function ProfileForm({
         </p>
       )}
       {state.message && (
-        <p role="status" className="text-sm text-[var(--verified)]">
+        <p role="status" className="text-sm text-success">
           {state.message}
         </p>
       )}
@@ -39,7 +39,7 @@ export function ProfileForm({
           required
         />
       </div>
-      <Button type="submit" className="rounded-full" disabled={pending}>
+      <Button type="submit" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Save changes
       </Button>

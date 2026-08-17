@@ -43,12 +43,12 @@ export function ChangeRequestForm({
     return (
       <div
         role="status"
-        className="rounded-2xl border border-[var(--verified)]/40 bg-[var(--verified)]/10 p-8 text-center"
+        className="rounded-xl border border-success/40 bg-success-subtle p-8 text-center"
       >
         <p className="font-heading text-xl font-semibold">Request sent</p>
         <p className="mt-2 text-sm text-muted-foreground">{done}</p>
         <Button
-          className="mt-6 rounded-full"
+          className="mt-6"
           render={<Link href={`/clinics/${clinicSlug}`} />}
         >
           Back to clinic page
@@ -98,7 +98,7 @@ export function ChangeRequestForm({
           placeholder="Describe the correction — include the right information if you know it."
         />
       </div>
-      <Button type="submit" className="rounded-full" disabled={pending}>
+      <Button type="submit" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Send correction request
       </Button>

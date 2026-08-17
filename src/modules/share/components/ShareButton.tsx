@@ -44,15 +44,18 @@ export function ShareButton({
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="rounded-full"
-      onClick={share}
-    >
+    <Button type="button" variant="outline" size="lg" onClick={share}>
       <Share2 className="size-4" aria-hidden />
-      {copied ? "Link copied" : label}
+      {copied ? (
+        "Link copied"
+      ) : (
+        <span>
+          Share
+          <span className="hidden sm:inline">
+            {label.replace(/^Share/, "")}
+          </span>
+        </span>
+      )}
     </Button>
   );
 }

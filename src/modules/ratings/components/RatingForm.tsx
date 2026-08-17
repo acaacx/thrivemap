@@ -126,7 +126,7 @@ export function RatingForm({ clinicId, slug, own }: RatingFormProps) {
           className={`rounded-lg border px-4 py-3 text-sm ${
             feedback.kind === "error"
               ? "border-destructive/40 bg-destructive/10"
-              : "border-[var(--verified)]/40 bg-[var(--verified)]/10"
+              : "border-success/40 bg-success-subtle"
           }`}
         >
           {feedback.text}
@@ -144,11 +144,7 @@ export function RatingForm({ clinicId, slug, own }: RatingFormProps) {
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          className="rounded-full"
-          disabled={form.formState.isSubmitting}
-        >
+        <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting && (
             <Loader2 aria-hidden className="mr-2 size-4 animate-spin" />
           )}
@@ -158,7 +154,6 @@ export function RatingForm({ clinicId, slug, own }: RatingFormProps) {
           <Button
             type="button"
             variant="ghost"
-            className="rounded-full"
             disabled={removePending}
             onClick={remove}
           >

@@ -139,7 +139,7 @@ export function TherapistManager({
           className={`rounded-lg border px-4 py-3 text-sm ${
             feedback.kind === "error"
               ? "border-destructive/40 bg-destructive/10"
-              : "border-[var(--verified)]/40 bg-[var(--verified)]/10"
+              : "border-success/40 bg-success-subtle"
           }`}
         >
           {feedback.text}

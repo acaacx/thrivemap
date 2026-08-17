@@ -42,7 +42,7 @@ export function AuthForm({ mode, next }: AuthFormProps) {
       {state.message && (
         <div
           role="status"
-          className="rounded-lg border border-[var(--verified)]/30 bg-[var(--verified)]/10 px-4 py-3 text-sm"
+          className="rounded-lg border border-success/40 bg-success-subtle px-4 py-3 text-sm"
         >
           {state.message}
         </div>
@@ -81,11 +81,7 @@ export function AuthForm({ mode, next }: AuthFormProps) {
               </p>
             )}
           </div>
-          <Button
-            type="submit"
-            className="w-full rounded-full"
-            disabled={passwordPending}
-          >
+          <Button type="submit" className="w-full" disabled={passwordPending}>
             {passwordPending && (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             )}
@@ -106,11 +102,7 @@ export function AuthForm({ mode, next }: AuthFormProps) {
               placeholder="you@example.com"
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full rounded-full"
-            disabled={magicPending}
-          >
+          <Button type="submit" className="w-full" disabled={magicPending}>
             {magicPending && (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             )}

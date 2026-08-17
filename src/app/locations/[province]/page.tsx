@@ -48,9 +48,9 @@ export default async function ProvincePage({ params }: PageProps) {
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <div className="bg-secondary/50">
+        <div className="border-b bg-secondary">
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-            <h1 className="font-heading text-3xl font-semibold sm:text-4xl">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Clinics in {provinceName}
             </h1>
             {cities.length > 0 && (
@@ -59,7 +59,7 @@ export default async function ProvincePage({ params }: PageProps) {
                   <Link
                     key={city.city_slug}
                     href={`/locations/${province}/${city.city_slug}`}
-                    className="rounded-full border bg-background px-4 py-1.5 text-sm hover:border-primary/50"
+                    className="inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium transition-colors duration-150 hover:border-primary/60 hover:bg-primary-subtle/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     {city.city}
                   </Link>
@@ -69,7 +69,7 @@ export default async function ProvincePage({ params }: PageProps) {
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <h2 className="font-heading text-xl font-semibold">
+          <h2 className="text-xl font-semibold">
             {rows.length} listed clinic{rows.length === 1 ? "" : "s"}
           </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">

@@ -46,7 +46,7 @@ export default async function CityPage({ params }: PageProps) {
     <>
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <div className="bg-secondary/50">
+        <div className="border-b bg-secondary">
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
             <p className="text-sm text-muted-foreground">
               <Link
@@ -56,19 +56,16 @@ export default async function CityPage({ params }: PageProps) {
                 {cityEntry?.province ?? slugToTitle(province)}
               </Link>
             </p>
-            <h1 className="mt-1 font-heading text-3xl font-semibold sm:text-4xl">
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
               Clinics in {cityName}
             </h1>
-            <Button
-              className="mt-6 rounded-full"
-              render={<Link href="/clinics" />}
-            >
+            <Button className="mt-6" render={<Link href="/clinics" />}>
               Search on the map
             </Button>
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <h2 className="font-heading text-xl font-semibold">
+          <h2 className="text-xl font-semibold">
             {rows.length} listed clinic{rows.length === 1 ? "" : "s"}
           </h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">

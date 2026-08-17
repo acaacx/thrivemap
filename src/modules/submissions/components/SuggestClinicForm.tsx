@@ -110,13 +110,13 @@ export function SuggestClinicForm({
     return (
       <div
         role="status"
-        className="rounded-2xl border border-[var(--verified)]/40 bg-[var(--verified)]/10 p-8 text-center"
+        className="rounded-xl border border-success/40 bg-success-subtle p-8 text-center"
       >
         <p className="font-heading text-xl font-semibold">
           Suggestion received
         </p>
         <p className="mt-2 text-sm text-muted-foreground">{successMessage}</p>
-        <Button className="mt-6 rounded-full" render={<Link href="/clinics" />}>
+        <Button className="mt-6" render={<Link href="/clinics" />}>
           Back to search
         </Button>
       </div>
@@ -178,11 +178,7 @@ export function SuggestClinicForm({
         )}
 
         <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={onFinalSubmit}
-            disabled={submitting}
-            className="rounded-full"
-          >
+          <Button onClick={onFinalSubmit} disabled={submitting}>
             {submitting && (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             )}
@@ -190,11 +186,7 @@ export function SuggestClinicForm({
               ? "It's not listed — submit my suggestion"
               : "Submit suggestion"}
           </Button>
-          <Button
-            variant="outline"
-            className="rounded-full"
-            onClick={() => setPhase("form")}
-          >
+          <Button variant="outline" onClick={() => setPhase("form")}>
             Back to edit
           </Button>
         </div>
@@ -446,7 +438,7 @@ export function SuggestClinicForm({
         </p>
       )}
 
-      <Button type="submit" className="rounded-full" disabled={submitting}>
+      <Button type="submit" disabled={submitting}>
         {submitting && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Check for duplicates &amp; review
       </Button>
