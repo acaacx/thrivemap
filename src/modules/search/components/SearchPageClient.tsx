@@ -439,7 +439,7 @@ export function SearchPageClient({
               onOpenMore={() => setMoreOpen(true)}
               moreCount={moreCount}
               totalCount={activeFilterCount}
-              className="min-w-0 flex-1"
+              className="flex-1"
             />
             <Select
               value={params.sort}
@@ -453,7 +453,7 @@ export function SearchPageClient({
               }
             >
               <SelectTrigger
-                className="w-52 data-[size=default]:h-11"
+                className="flex-1 data-[size=default]:h-11 sm:w-52 sm:flex-none"
                 aria-label="Sort results"
               >
                 <span className="text-muted-foreground">Sort:</span>
