@@ -286,7 +286,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
           )}
 
           <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_360px] lg:gap-8">
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               {clinic.description && (
                 <Card>
                   <CardHeader>
@@ -412,7 +412,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               {location?.latitude != null && location?.longitude != null && (
                 <Card className="overflow-hidden py-0">
                   <ClinicProfileMap
@@ -563,7 +563,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                         aria-hidden
                       />
                       <a
-                        className="truncate underline-offset-4 hover:underline"
+                        className="min-w-0 truncate underline-offset-4 hover:underline"
                         href={clinic.website}
                         target="_blank"
                         rel="noopener noreferrer"
