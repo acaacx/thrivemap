@@ -24,6 +24,7 @@ import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
 import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
+import { ShareButton } from "@/modules/share/components/ShareButton";
 import { LocationSearchBox } from "./LocationSearchBox";
 import { SearchFilters, type FilterState } from "./SearchFilters";
 import type { SearchParams, SortOption } from "../schemas";
@@ -379,6 +380,7 @@ export function SearchPageClient({
                 ))}
               </SelectContent>
             </Select>
+            <ShareButton />
             {/* Mobile list/map toggle */}
             <div
               className="flex rounded-full border p-0.5 md:hidden"
