@@ -35,6 +35,9 @@ test.describe("OG card route", () => {
     expect(response.status()).toBe(200);
     expect((await response.body()).subarray(0, 4)).toEqual(PNG_MAGIC);
     expect(response.headers()["x-og-card"]).toBe("fallback");
+    // Distinguishes "nothing to draw" from a broken render — the deploy
+    // smoke check accepts this reason and rejects the others.
+    expect(response.headers()["x-og-card-reason"]).toBe("no-results");
     expect(response.headers()["cache-control"]).toContain("s-maxage=60");
   });
 

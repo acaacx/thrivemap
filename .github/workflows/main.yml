@@ -119,13 +119,27 @@ jobs:
           # are dynamic, so they only reach the serverless bundle via
           # outputFileTracingIncludes — and a tracing miss degrades to the
           # fallback card, which still returns 200 with image/png. Only the
-          # x-og-card header tells the two apart, so assert on it.
+          # x-og-card headers tell the two apart, so assert on them.
+          #
+          # An empty database (production before its first Places import) also
+          # falls back, with x-og-card-reason: no-results — that is healthy,
+          # and it still proves the assets loaded (the renderer awaits them
+          # before it can report "nothing found"). Only timeout/error fail.
+          # The first hit warms the function; the cold start alone can blow the
+          # 2 s render budget, which would read as a spurious "timeout".
           echo "Checking /api/og/search..."
+          curl -fsS -o /dev/null "$SMOKE_URL/api/og/search?loc=Cebu+City&warm=1" || true
           CARD_HEADERS=$(curl -fsS -o /tmp/og.png -D - "$SMOKE_URL/api/og/search?loc=Cebu+City")
           echo "$CARD_HEADERS" | grep -qi "content-type: image/png" \
             || { echo "::error::OG card did not return image/png"; echo "$CARD_HEADERS"; exit 1; }
-          echo "$CARD_HEADERS" | grep -qi "x-og-card: full" \
-            || { echo "::error::OG card fell back — fonts or geometry are missing from the bundle (check outputFileTracingIncludes)"; echo "$CARD_HEADERS"; exit 1; }
+          if echo "$CARD_HEADERS" | grep -qi "x-og-card: full"; then
+            echo "OG card: full render"
+          elif echo "$CARD_HEADERS" | grep -qi "x-og-card-reason: no-results"; then
+            echo "OG card: fallback (no clinics match — expected until data is imported)"
+          else
+            echo "::error::OG card fell back — renderer broken or too slow (tracing miss? check outputFileTracingIncludes and x-og-card-reason)"
+            echo "$CARD_HEADERS"; exit 1
+          fi
           test "$(stat -c%s /tmp/og.png)" -gt 5000 \
             || { echo "::error::OG card PNG is implausibly small"; exit 1; }
 

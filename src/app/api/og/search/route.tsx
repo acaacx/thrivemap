@@ -41,23 +41,39 @@ const CLUSTER_DISTANCE_PX = 14;
 const CACHE_FULL = "public, s-maxage=86400, stale-while-revalidate=604800";
 const CACHE_FALLBACK = "public, s-maxage=60, stale-while-revalidate=300";
 
-function headers(variant: "full" | "fallback"): Record<string, string> {
+/**
+ * Why the fallback rendered. `no-results` is the healthy case (an empty
+ * database — production before its first import — or an empty bbox); the
+ * other two mean the full renderer itself is broken or too slow.
+ */
+type FallbackReason = "no-results" | "timeout" | "error";
+
+function headers(
+  variant: "full" | "fallback",
+  reason?: FallbackReason,
+): Record<string, string> {
   return {
     "Content-Type": "image/png",
     "Cache-Control": variant === "full" ? CACHE_FULL : CACHE_FALLBACK,
-    // The deploy smoke check reads this: a tracing miss produces a fallback,
-    // which is otherwise indistinguishable from a working card.
+    // The deploy smoke check reads these: a tracing miss produces a fallback,
+    // which is otherwise indistinguishable from a working card — and an empty
+    // database also produces a fallback, which must not fail the deploy.
     "x-og-card": variant,
+    ...(reason ? { "x-og-card-reason": reason } : {}),
   };
+}
+
+class DeadlineError extends Error {
+  constructor(ms: number) {
+    super(`og card exceeded ${ms}ms budget`);
+    this.name = "DeadlineError";
+  }
 }
 
 /** Rejects after the budget so a hung query cannot stall the crawler. */
 function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`og card exceeded ${ms}ms budget`)),
-      ms,
-    );
+    const timer = setTimeout(() => reject(new DeadlineError(ms)), ms);
     work.then(
       (value) => {
         clearTimeout(timer);
@@ -115,6 +131,7 @@ async function renderFull(params: SearchParams, names: Record<string, string>) {
 async function renderFallback(
   params: SearchParams,
   names: Record<string, string>,
+  reason: FallbackReason,
 ) {
   const labels = buildFallbackLabels(params, names);
   // Fonts are best-effort here: a font read failure is one of the reasons we
@@ -130,7 +147,7 @@ async function renderFallback(
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     ...(fonts ? { fonts } : {}),
-    headers: headers("fallback"),
+    headers: headers("fallback", reason),
   });
 }
 
@@ -142,6 +159,9 @@ export async function GET(request: NextRequest) {
   );
   const names = await serviceNames();
 
+  // A null full render means the query ran and found nothing — and, because
+  // renderFull awaits fonts and geometry alongside it, that the assets loaded.
+  let reason: FallbackReason = "no-results";
   try {
     const full = await withDeadline(
       renderFull(params, names),
@@ -149,15 +169,19 @@ export async function GET(request: NextRequest) {
     );
     if (full) return full;
   } catch (error) {
+    reason = error instanceof DeadlineError ? "timeout" : "error";
     console.error("og card: falling back", error);
   }
 
   try {
-    return await renderFallback(params, names);
+    return await renderFallback(params, names, reason);
   } catch (error) {
     // Nothing renders. Better an empty 200 the crawler ignores than a 500 it
     // remembers as a broken URL.
     console.error("og card: fallback render failed", error);
-    return new Response(null, { status: 200, headers: headers("fallback") });
+    return new Response(null, {
+      status: 200,
+      headers: headers("fallback", "error"),
+    });
   }
 }
