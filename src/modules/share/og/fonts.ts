@@ -10,10 +10,13 @@ import { join } from "node:path";
  * outputFileTracingIncludes in next.config.ts.
  */
 
+/** Satori's accepted weights — `next/og` does not export its `FontOptions`. */
+export type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+
 export interface LoadedFont {
   name: string;
   data: Buffer;
-  weight: number;
+  weight: FontWeight;
   style: "normal";
 }
 

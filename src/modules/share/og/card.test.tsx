@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ImageResponse } from "next/og";
 import { SearchCard } from "./card";
 import { FallbackCard } from "./fallback";
-import { loadFonts } from "./fonts";
+import { loadFonts, type LoadedFont } from "./fonts";
 import type { CardLabels } from "./label";
 import { PALETTE } from "./palette";
 import { CARD_HEIGHT, CARD_WIDTH } from "./projection";
@@ -21,7 +21,7 @@ const LABELS: CardLabels = {
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
-async function render(element: ReactElement, fonts?: unknown[]) {
+async function render(element: ReactElement, fonts?: LoadedFont[]) {
   const response = new ImageResponse(element, {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
