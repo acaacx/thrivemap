@@ -10,7 +10,7 @@ import {
   type SheetSnap,
 } from "../search-ui-context";
 import type { ShellView } from "../view-preference";
-import { ClinicBottomSheet } from "./ClinicBottomSheet";
+import { ClinicBottomSheet, useHydrated } from "./ClinicBottomSheet";
 
 interface AppShellProps {
   /** Mobile List | Map. Desktop always shows both. */
@@ -29,7 +29,12 @@ interface AppShellProps {
   selectedId?: string | null;
   initialSelectedId?: string | null;
   onSelectedChange?: (id: string | null) => void;
+  /** Controlled sheet position (mobile map view). */
+  sheetSnap?: SheetSnap;
   initialSheetSnap?: SheetSnap;
+  onSheetSnapChange?: (snap: SheetSnap) => void;
+  /** Scroll offset of the results list to restore on mount (Back). */
+  initialListScrollTop?: number;
 }
 
 /**
@@ -54,7 +59,10 @@ export function AppShell({
   selectedId,
   initialSelectedId,
   onSelectedChange,
+  sheetSnap,
   initialSheetSnap,
+  onSheetSnapChange,
+  initialListScrollTop,
 }: AppShellProps) {
   return (
     <MotionProvider>
@@ -62,7 +70,9 @@ export function AppShell({
         selectedId={selectedId}
         initialSelectedId={initialSelectedId}
         onSelectedChange={onSelectedChange}
+        sheetSnap={sheetSnap}
         initialSheetSnap={initialSheetSnap}
+        onSheetSnapChange={onSheetSnapChange}
       >
         <ShellLayout
           view={view}
@@ -70,6 +80,7 @@ export function AppShell({
           filters={filters}
           resultsHeader={resultsHeader}
           map={map}
+          initialListScrollTop={initialListScrollTop}
         >
           {children}
         </ShellLayout>
@@ -85,18 +96,29 @@ function ShellLayout({
   resultsHeader,
   children,
   map,
+  initialListScrollTop,
 }: Pick<
   AppShellProps,
-  "view" | "search" | "filters" | "resultsHeader" | "children" | "map"
+  | "view"
+  | "search"
+  | "filters"
+  | "resultsHeader"
+  | "children"
+  | "map"
+  | "initialListScrollTop"
 >) {
   const desktop = useIsDesktop();
   const { sheetSnap, setSheetSnap } = useSearchUI();
   const mapView = view === "map";
   const sheet = mapView && !desktop;
+  // `data-hydrated` = the shell is interactive (tests wait on it before
+  // clicking; a click before hydration is silently lost).
+  const hydrated = useHydrated();
 
   return (
     <div
       data-slot="app-shell"
+      data-hydrated={hydrated ? "" : undefined}
       className="relative flex h-[calc(100dvh-var(--app-header-h))] min-h-0 flex-col overflow-hidden bg-background md:grid md:grid-cols-[minmax(340px,2fr)_3fr]"
     >
       <section
@@ -113,6 +135,7 @@ function ShellLayout({
           snap={sheetSnap}
           onSnapChange={setSheetSnap}
           header={resultsHeader}
+          initialScrollTop={initialListScrollTop}
         >
           {children}
         </ClinicBottomSheet>

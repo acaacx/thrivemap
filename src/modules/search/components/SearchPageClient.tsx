@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Loader2, SearchX } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -19,11 +19,16 @@ import { ErrorState } from "@/components/error-state";
 import { useIsDesktop } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
-import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
+import type {
+  ClinicMapCamera,
+  ClinicMapHandle,
+  ClinicMapMarker,
+} from "@/modules/maps/components/ClinicMap";
 import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
 import { ActiveFilterChips, deriveActiveChips } from "./ActiveFilterChips";
 import { AppShell } from "./AppShell";
+import { RESULTS_SCROLL_SLOT } from "./ClinicBottomSheet";
 import { ClinicPreview, type ClinicPreviewData } from "./ClinicPreview";
 import { FilterBar } from "./FilterBar";
 import { FilterSheet } from "./FilterSheet";
@@ -31,13 +36,19 @@ import { LocationPermissionPrompt } from "./LocationPermissionPrompt";
 import { LocationSearch } from "./LocationSearch";
 import { MapListToggle } from "./MapListToggle";
 import { ResultsHeader } from "./ResultsHeader";
+import { ResultsPlaceholder } from "./ResultsPlaceholder";
 import {
   EMPTY_FILTER_STATE,
   countActiveFilters,
   type FilterState,
 } from "./SearchFilters";
 import { ServiceChip } from "./ServiceChip";
-import { useSearchUI } from "../search-ui-context";
+import { useSearchUI, type SheetSnap } from "../search-ui-context";
+import {
+  readMatchingSnapshot,
+  snapshotSearch,
+  writeSnapshot,
+} from "../search-snapshot";
 import {
   buildShellUrl,
   cameraKey,
@@ -47,6 +58,7 @@ import {
 import type { SearchParams } from "../schemas";
 import type { GeoResult } from "../use-geolocate";
 import {
+  isShellView,
   readStoredView,
   resolveInitialView,
   writeStoredView,
@@ -142,6 +154,8 @@ function SearchMap({
   zoom,
   cameraKey: key,
   onMoved,
+  initialCamera,
+  cameraRef,
 }: {
   markers: ClinicMapMarker[];
   markersStale: boolean;
@@ -152,6 +166,8 @@ function SearchMap({
     bounds: MapBounds,
     center: { latitude: number; longitude: number },
   ) => void;
+  initialCamera: ClinicMapCamera | null;
+  cameraRef: React.RefObject<ClinicMapHandle | null>;
 }) {
   const { selectedId, setSelected, hoveredId, setSheetSnap, sheetSnap } =
     useSearchUI();
@@ -174,6 +190,8 @@ function SearchMap({
         if (sheetSnap === "collapsed") setSheetSnap("mid");
       }}
       onMoved={onMoved}
+      initialCamera={initialCamera}
+      cameraRef={cameraRef}
       className="h-full w-full"
     />
   );
@@ -267,6 +285,35 @@ export function SearchPageClient({
   const [selectedId, setSelectedIdState] = useState<string | null>(
     initialSelectedId,
   );
+  // Back from a clinic page: the UI state saved when leaving (map camera,
+  // list scroll, sheet height). Matched on the canonical URL of *this*
+  // render's params (window.location still points at the previous page
+  // while a client navigation renders). Client-only; nothing rendered
+  // during hydration depends on it.
+  const [snapshot] = useState(() =>
+    readMatchingSnapshot(
+      snapshotSearch(
+        buildShellUrl({
+          params: initialParams,
+          view: isShellView(initialView) ? initialView : null,
+          selectedId: initialSelectedId,
+        }),
+      ),
+    ),
+  );
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>(
+    () => snapshot?.sheetSnap ?? "collapsed",
+  );
+  const mapCameraRef = useRef<ClinicMapHandle | null>(null);
+  const initialCamera = useMemo<ClinicMapCamera | null>(
+    () =>
+      snapshot?.mapCenter && snapshot.mapZoom != null
+        ? { center: snapshot.mapCenter, zoom: snapshot.mapZoom }
+        : null,
+    [snapshot],
+  );
+  // Inline hint after location permission was denied / unavailable.
+  const [locationHint, setLocationHint] = useState(false);
   // View: an explicit choice this session > the link's `?view=` > the device
   // preference (localStorage, read after hydration) > map.
   const [chosenView, setChosenView] = useState<ShellView | null>(null);
@@ -358,6 +405,34 @@ export function SearchPageClient({
     [params, selectedId],
   );
 
+  // Save where the visitor is before a clinic page opens (any link into
+  // /clinics/<slug> from the results: card title, "View clinic", preview).
+  const saveSnapshot = useCallback(() => {
+    const list = document.querySelector<HTMLElement>(
+      `[data-slot="${RESULTS_SCROLL_SLOT}"]`,
+    );
+    const camera = mapCameraRef.current?.getCamera() ?? null;
+    writeSnapshot({
+      url: buildShellUrl({
+        params,
+        view: viewInUrl ? view : null,
+        selectedId,
+      }),
+      listScrollTop: list?.scrollTop ?? 0,
+      mapCenter: camera?.center ?? null,
+      mapZoom: camera?.zoom ?? null,
+      sheetSnap,
+      selectedId,
+    });
+  }, [params, selectedId, sheetSnap, view, viewInUrl]);
+
+  function onResultsClickCapture(e: ReactMouseEvent<HTMLDivElement>) {
+    const anchor = (e.target as HTMLElement | null)?.closest?.("a[href]");
+    if (!anchor) return;
+    const href = anchor.getAttribute("href") ?? "";
+    if (/^\/clinics\/[^/?#]+/.test(href)) saveSnapshot();
+  }
+
   const clinics = useMemo(
     () => [...(data?.clinics ?? []), ...extraPages],
     [data, extraPages],
@@ -381,6 +456,27 @@ export function SearchPageClient({
 
   const searching = hasSearchIntent(params);
   const hasCoords = params.lat != null && params.lng != null;
+
+  // "First" load = no search results have been on screen yet (fresh visit,
+  // or the first search from the empty prompt — the prompt's data is not a
+  // result list). Later fetches keep the previous results visible.
+  const [shownResults, setShownResults] = useState(false);
+  const haveFreshResults = searching && !!data && !isPlaceholderData;
+  // Latches on the render fresh results arrive (state adjusted during
+  // render, the React-sanctioned way to derive a sticky flag).
+  if (haveFreshResults && !shownResults) setShownResults(true);
+  const firstLoad = searching && isFetching && !shownResults;
+  const updating = searching && isFetching && shownResults;
+
+  // Nothing to scroll (no results / failed) — lift the collapsed sheet so
+  // the explanation and its actions are on screen. Once per occurrence.
+  const noResults =
+    searching && !isFetching && (isError || (data?.clinics.length ?? 0) === 0);
+  const [liftedFor, setLiftedFor] = useState<string | null>(null);
+  if (noResults && liftedFor !== queryString) {
+    setLiftedFor(queryString);
+    if (sheetSnap === "collapsed") setSheetSnap("mid");
+  }
 
   const mapCenter = useMemo(() => {
     if (params.lat != null && params.lng != null) {
@@ -464,10 +560,19 @@ export function SearchPageClient({
     });
   }
 
+  const nextRadius = !hasCoords
+    ? 50
+    : params.radius < 25
+      ? 25
+      : params.radius < 50
+        ? 50
+        : 100;
+  const canExpand = !hasCoords || params.radius < 100;
+
   function expandSearchArea() {
     applyParams({
       ...params,
-      radius: hasCoords ? Math.min(100, Math.max(25, params.radius * 2)) : 50,
+      radius: nextRadius,
       north: undefined,
       south: undefined,
       east: undefined,
@@ -554,6 +659,8 @@ export function SearchPageClient({
           zoom={mapZoom}
           cameraKey={cameraKey(params)}
           onMoved={(bounds, center) => setPendingBounds({ bounds, center })}
+          initialCamera={initialCamera}
+          cameraRef={mapCameraRef}
         />
       </MapErrorBoundary>
       {pendingBounds && (
@@ -588,11 +695,24 @@ export function SearchPageClient({
         onTextSearch={(text) =>
           applyParams({ ...params, q: text || undefined, cursor: undefined })
         }
-        onLocateDenied={() => searchInputRef.current?.focus()}
+        onLocateDenied={() => {
+          setLocationHint(true);
+          searchInputRef.current?.focus();
+        }}
         onClear={() => {
           if (locationLabel) clearLocation();
         }}
       />
+      {locationHint && (
+        <p
+          id="location-hint"
+          role="status"
+          className="text-sm text-muted-foreground"
+        >
+          Location is off — that&apos;s fine. Type a city, province, or barangay
+          above to search.
+        </p>
+      )}
     </>
   );
 
@@ -625,8 +745,9 @@ export function SearchPageClient({
     <ResultsHeader
       count={resultsCount}
       context={[serviceLabel, locationLabel]}
-      loading={isFetching && !data}
-      updating={isFetching && !!data}
+      loading={firstLoad}
+      updating={updating}
+      error={isError && !data}
       trailing={toggle}
     />
   );
@@ -641,12 +762,18 @@ export function SearchPageClient({
         map={mapElement}
         selectedId={selectedId}
         onSelectedChange={setSelectedId}
+        sheetSnap={sheetSnap}
+        onSheetSnapChange={setSheetSnap}
+        initialListScrollTop={snapshot?.listScrollTop}
       >
         {!searching ? (
           <>
             <LocationPermissionPrompt
               onLocated={onLocation}
-              onDenied={() => searchInputRef.current?.focus()}
+              onDenied={() => {
+                setLocationHint(true);
+                searchInputRef.current?.focus();
+              }}
             />
             {shortcuts.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -694,58 +821,85 @@ export function SearchPageClient({
             onRetry={() => void refetch()}
             retrying={isFetching}
           />
+        ) : firstLoad ? (
+          <ResultsPlaceholder />
         ) : (
-          <SearchResults clinics={clinics}>
-            {clinics.length === 0 && !isFetching && (
-              <EmptyState
-                icon={<SearchX className="size-5" aria-hidden />}
-                title="We couldn't find a matching clinic nearby."
-                body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
-                actions={
-                  <>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      onClick={expandSearchArea}
-                    >
-                      Expand search area
-                    </Button>
-                    {activeFilterCount > 0 && (
+          <div className="contents" onClickCapture={onResultsClickCapture}>
+            {isError && (
+              <ErrorState
+                title="We couldn't refresh these results."
+                body="Showing the last results we had. Your location and filters are still set."
+                onRetry={() => void refetch()}
+                retrying={isFetching}
+                className="p-4 sm:p-4"
+              />
+            )}
+            <SearchResults clinics={clinics}>
+              {clinics.length === 0 && !isFetching && (
+                <EmptyState
+                  icon={<SearchX className="size-5" aria-hidden />}
+                  title="We couldn't find a matching clinic nearby."
+                  body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
+                  actions={
+                    <>
+                      {canExpand && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          onClick={expandSearchArea}
+                        >
+                          Expand search area
+                          {hasCoords && (
+                            <span className="font-normal text-muted-foreground">
+                              to {nextRadius} km
+                            </span>
+                          )}
+                        </Button>
+                      )}
+                      {activeFilterCount > 0 && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          onClick={clearFilters}
+                        >
+                          Remove filters
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="lg"
-                        onClick={() => setMoreOpen(true)}
+                        render={<Link href="/services" />}
                       >
-                        Remove a filter
+                        Browse all services
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        render={<Link href="/suggest-clinic" />}
+                      >
+                        Suggest a clinic
+                      </Button>
+                    </>
+                  }
+                />
+              )}
+              {nextCursor && (
+                <div className="py-4 text-center">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore && (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
                     )}
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      render={<Link href="/suggest-clinic" />}
-                    >
-                      Suggest a clinic
-                    </Button>
-                  </>
-                }
-              />
-            )}
-            {nextCursor && (
-              <div className="py-4 text-center">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore && (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  )}
-                  Load more clinics
-                </Button>
-              </div>
-            )}
-          </SearchResults>
+                    Load more clinics
+                  </Button>
+                </div>
+              )}
+            </SearchResults>
+          </div>
         )}
       </AppShell>
 

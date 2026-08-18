@@ -12,6 +12,8 @@ interface ResultsHeaderProps {
   loading?: boolean;
   /** Refetch while previous results stay on screen. */
   updating?: boolean;
+  /** The request failed and nothing is on screen. */
+  error?: boolean;
   /** Right-aligned control (List | Map toggle on small screens). */
   trailing?: ReactNode;
   className?: string;
@@ -27,6 +29,7 @@ export function ResultsHeader({
   context = [],
   loading = false,
   updating = false,
+  error = false,
   trailing,
   className,
 }: ResultsHeaderProps) {
@@ -48,7 +51,11 @@ export function ResultsHeader({
           aria-live="polite"
           className="flex items-center gap-2 text-sm text-muted-foreground"
         >
-          {loading ? (
+          {error ? (
+            <span className="font-medium text-foreground">
+              Results unavailable
+            </span>
+          ) : loading ? (
             <>
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Finding therapy centers nearby…
@@ -61,7 +68,7 @@ export function ResultsHeader({
               {updating && (
                 <span className="inline-flex items-center gap-1.5">
                   <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Updating…
+                  Updating results…
                 </span>
               )}
             </>

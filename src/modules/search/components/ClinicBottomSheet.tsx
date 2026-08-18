@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import { useReducedMotion } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 import type { SheetSnap } from "../search-ui-context";
 import {
+  SHEET_COLLAPSED_PX,
   nextSnap,
   resolveSnap,
   snapHeights,
@@ -33,8 +35,22 @@ interface ClinicBottomSheetProps {
   header?: ReactNode;
   /** The scrolling results. */
   children: ReactNode;
+  /** Restore this scroll offset once on mount (Back from a clinic). */
+  initialScrollTop?: number;
   className?: string;
 }
+
+/** False during SSR and the hydration pass, true afterwards. */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
+/** Scroll container of the results — read by the search-state snapshot. */
+export const RESULTS_SCROLL_SLOT = "results-scroll";
 
 const DRAG_THRESHOLD_PX = 4;
 const CALM_EASE = [0.22, 0.61, 0.36, 1] as const;
@@ -52,13 +68,21 @@ export function ClinicBottomSheet({
   onSnapChange,
   header,
   children,
+  initialScrollTop = 0,
   className,
 }: ClinicBottomSheetProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // Snap-dependent attributes differ from the server render when a snapshot
+  // restores the sheet position; render the server values until hydrated.
+  const hydrated = useHydrated();
   // Always bound to `style` (a motion value added after mount is not
-  // subscribed); "auto" when the block is a plain panel.
-  const height = useMotionValue<number | "auto">("auto");
+  // subscribed); "auto" when the block is a plain panel. In sheet mode the
+  // server-rendered height is the collapsed peek so the sheet does not
+  // cover the map before hydration (md: classes override it on desktop).
+  const height = useMotionValue<number | "auto">(
+    enabled ? SHEET_COLLAPSED_PX : "auto",
+  );
   const reduced = useReducedMotion();
   const [containerH, setContainerH] = useState(0);
   // Latest values for the (non-reactive) gesture handlers.
@@ -104,6 +128,28 @@ export function ClinicBottomSheet({
     settle(snap, !settledOnce.current);
     settledOnce.current = true;
   }, [enabled, containerH, snap, settle]);
+
+  // Restore the list scroll offset once. The list is only scrollable after
+  // the sheet has its first height (a frame after the instant settle), so
+  // try now and again shortly after; setting the same value twice is inert.
+  const restoreScrollRef = useRef(initialScrollTop);
+  useEffect(() => {
+    const top = restoreScrollRef.current;
+    const list = listRef.current;
+    if (!top || !list) return;
+    const apply = () => {
+      list.scrollTop = top;
+    };
+    apply();
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(apply);
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, []);
 
   // Leaving sheet mode: back to a plain panel.
   useEffect(() => {
@@ -251,7 +297,7 @@ export function ClinicBottomSheet({
     <m.div
       ref={rootRef}
       data-slot="results-region"
-      data-sheet-snap={enabled ? snap : undefined}
+      data-sheet-snap={enabled && hydrated ? snap : undefined}
       role="region"
       aria-label="Search results"
       style={{ height }}
@@ -276,11 +322,13 @@ export function ClinicBottomSheet({
           <button
             type="button"
             aria-label={
-              snap === "expanded" ? "Collapse results" : "Expand results"
+              hydrated && snap === "expanded"
+                ? "Collapse results"
+                : "Expand results"
             }
             onClick={onHandleClick}
             onKeyDown={onHandleKeyDown}
-            className="mx-auto grid h-6 w-full place-items-center rounded-t-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 md:hidden"
+            className="mx-auto grid h-8 w-full place-items-center rounded-t-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 md:hidden"
           >
             <span aria-hidden className="h-1 w-10 rounded-full bg-border" />
           </button>
@@ -293,6 +341,7 @@ export function ClinicBottomSheet({
       </div>
       <div
         ref={listRef}
+        data-slot={RESULTS_SCROLL_SLOT}
         className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-3 pb-4 pt-1 sm:px-4"
       >
         {children}

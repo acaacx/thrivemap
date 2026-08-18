@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Point } from "geojson";
 import { isReducedMotion } from "@/lib/reduced-motion";
 import type { MapBounds } from "../types";
@@ -11,6 +11,16 @@ import type { MapBounds } from "../types";
 // import.meta.url (the request 404s), so vector tiles never parse. Serve the
 // worker ourselves — copied to public/ by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
+export interface ClinicMapCamera {
+  center: { latitude: number; longitude: number };
+  zoom: number;
+}
+
+/** Imperative peek at the camera (for the search-state snapshot). */
+export interface ClinicMapHandle {
+  getCamera(): ClinicMapCamera | null;
+}
 
 export interface ClinicMapMarker {
   id: string;
@@ -46,6 +56,14 @@ interface ClinicMapProps {
   cameraKey?: string | null;
   /** True while `markers` still belong to a previous search (placeholder data). */
   markersStale?: boolean;
+  /**
+   * Restore a previous camera (Back from a clinic page): the map is created
+   * at exactly this position, without animation, and the initial fit is
+   * skipped so the visitor sees the map they left.
+   */
+  initialCamera?: ClinicMapCamera | null;
+  /** Receives {@link ClinicMapHandle} once the map exists. */
+  cameraRef?: RefObject<ClinicMapHandle | null>;
   className?: string;
 }
 
@@ -72,6 +90,8 @@ export function ClinicMap({
   onMapClick,
   cameraKey,
   markersStale = false,
+  initialCamera = null,
+  cameraRef,
   className,
 }: ClinicMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,6 +103,8 @@ export function ClinicMap({
   const onSelectRef = useRef(onSelect);
   const onMovedRef = useRef(onMoved);
   const onMapClickRef = useRef(onMapClick);
+  // Only the camera at mount time matters; later changes are ignored.
+  const initialCameraRef = useRef(initialCamera);
   onSelectRef.current = onSelect;
   onMovedRef.current = onMoved;
   onMapClickRef.current = onMapClick;
@@ -94,16 +116,32 @@ export function ClinicMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const restored = initialCameraRef.current;
     const map = new maplibregl.Map({
       container: containerRef.current,
       // OpenFreeMap: keyless vector tiles, no usage cap — raw
       // tile.openstreetmap.org raster is off-limits for production apps.
       style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [center.longitude, center.latitude],
-      zoom,
+      center: restored
+        ? [restored.center.longitude, restored.center.latitude]
+        : [center.longitude, center.latitude],
+      zoom: restored ? restored.zoom : zoom,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+    if (cameraRef) {
+      cameraRef.current = {
+        getCamera() {
+          const live = mapRef.current;
+          if (!live) return null;
+          const c = live.getCenter();
+          return {
+            center: { latitude: c.lat, longitude: c.lng },
+            zoom: live.getZoom(),
+          };
+        },
+      };
+    }
     if (process.env.NODE_ENV !== "production") {
       // Exposed for e2e tests and local debugging only.
       (window as unknown as Record<string, unknown>).__thrivemapMap = map;
@@ -278,6 +316,7 @@ export function ClinicMap({
       map.remove();
       mapRef.current = null;
       loadedRef.current = false;
+      if (cameraRef) cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -329,7 +368,9 @@ export function ClinicMap({
     if (lastKeyRef.current === cameraKey) return;
     const first = lastKeyRef.current === undefined;
     lastKeyRef.current = cameraKey;
-    if (cameraKey === null) {
+    if (cameraKey === null || (first && initialCameraRef.current)) {
+      // Visitor-framed map ("Search this area") or a restored camera: the
+      // results must not re-frame it.
       fitPendingRef.current = null;
       return;
     }

@@ -30,9 +30,12 @@ interface SearchUIProviderProps {
   /** Controlled selection (the search page owns it and mirrors it to the URL). */
   selectedId?: string | null;
   initialSelectedId?: string | null;
+  /** Controlled sheet position (the search page snapshots it for Back). */
+  sheetSnap?: SheetSnap;
   initialSheetSnap?: SheetSnap;
   /** Fires after selection changes so the URL / map can follow. */
   onSelectedChange?: (id: string | null) => void;
+  onSheetSnapChange?: (snap: SheetSnap) => void;
 }
 
 /**
@@ -44,8 +47,10 @@ export function SearchUIProvider({
   children,
   selectedId: controlledSelectedId,
   initialSelectedId = null,
+  sheetSnap: controlledSheetSnap,
   initialSheetSnap = "collapsed",
   onSelectedChange,
+  onSheetSnapChange,
 }: SearchUIProviderProps) {
   const [internalSelectedId, setSelectedState] = useState<string | null>(
     initialSelectedId,
@@ -55,7 +60,18 @@ export function SearchUIProvider({
       ? internalSelectedId
       : controlledSelectedId;
   const [hoveredId, setHovered] = useState<string | null>(null);
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>(initialSheetSnap);
+  const [internalSheetSnap, setSheetSnapState] =
+    useState<SheetSnap>(initialSheetSnap);
+  const sheetSnap =
+    controlledSheetSnap === undefined ? internalSheetSnap : controlledSheetSnap;
+
+  const setSheetSnap = useCallback(
+    (snap: SheetSnap) => {
+      setSheetSnapState(snap);
+      onSheetSnapChange?.(snap);
+    },
+    [onSheetSnapChange],
+  );
 
   const setSelected = useCallback(
     (id: string | null) => {
@@ -74,7 +90,7 @@ export function SearchUIProvider({
       sheetSnap,
       setSheetSnap,
     }),
-    [selectedId, setSelected, hoveredId, sheetSnap],
+    [selectedId, setSelected, hoveredId, sheetSnap, setSheetSnap],
   );
 
   return (

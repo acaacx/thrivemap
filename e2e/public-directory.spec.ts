@@ -107,6 +107,9 @@ test.describe("clinic search", () => {
     // Alphabetical (and the other non-distance sorts) used to be limit-only:
     // page one was all you ever got.
     await page.goto("/clinics?sort=alphabetical");
+    // The shell streams in server-rendered; a click before hydration is
+    // lost (there is nothing to replay it), so wait until it is interactive.
+    await page.locator("[data-slot=app-shell][data-hydrated]").waitFor();
     const cards = page.locator("[data-clinic-id]");
     await expect(cards.first()).toBeVisible();
     const firstPage = await cards.count();
