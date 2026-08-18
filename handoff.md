@@ -12,6 +12,8 @@ inquiries, ratings, PWA) are complete. Multilingual **dropped entirely**
 done; the remaining work is **operational: populate prod with real clinics**.
 Session 2026-08-18 (late) added the admin tooling for exactly that: clinic
 editor + publish flow (`c7f03aa`) and by-name Places lookup (`dbde18d`).
+Session 2026-08-18 (later) ran the **mobile QA pass** (`/qa`, Standard tier)
+and shipped 5 fixes.
 
 **Locked decisions (do not relitigate):**
 
@@ -36,9 +38,17 @@ editor + publish flow (`c7f03aa`) and by-name Places lookup (`dbde18d`).
 - Ratings: structured only, NO free text anywhere (RA 10175 anti-defamation,
   enforced by schema).
 - PWA: manifest + offline shell + offline favorites snapshot ONLY; hand-rolled
-  `public/sw.js`.
+  `public/sw.js`. SW registration is dev-disabled (`SwRegister.tsx`).
 - Map tiles = OpenFreeMap vector tiles (keyless). Never raw
   `tile.openstreetmap.org` in production.
+- **Mobile map is lazy (2026-08-18, ISSUE-002)**: `SearchPageClient` mounts
+  `ClinicMap` only once revealed (md+ viewport OR mobile "Map" view), then keeps
+  it mounted. Guarded by `e2e/mobile-map-lazy.spec.ts`. Don't re-mount it
+  eagerly "for prefetch".
+- **`LocationSearchBox` has an `embedded` prop** (2026-08-18, ISSUE-006): use
+  it whenever the box sits inside another `<form>` (renders `<div role=search>`,
+  Enter/button local, no navigation on free text). `SuggestClinicForm` uses it
+  with `submitLabel="Search area"`.
 - **Deploys are owned by Vercel git integration** (2026-08-12). `main.yml`
   deploy job waits for the Vercel deployment via the GitHub deployments API,
   then smoke tests. No `DEPLOY_HOOK_URL`.
@@ -57,65 +67,96 @@ editor + publish flow (`c7f03aa`) and by-name Places lookup (`dbde18d`).
 
 ## Finished and verified
 
-`main` = `dbde18d`, pushed 2026-08-18 ~03:40 PHT. GitHub `Main` run
-32061294761 on `dbde18d` **success** (validate / migrate / deploy+smoke); prod
-`/api/health` 200 afterwards → new card is live at `/admin/candidates`.
-Local on `dbde18d`: `pnpm test` 209/209, typecheck, lint,
-format:check green; e2e `places-import.spec.ts` 2/2 (chromium).
+`main` = `90743ab`, **pushed 2026-08-18** (`8057107..90743ab`); Vercel build
++ `main.yml` smoke were in flight at handoff time — **not yet confirmed
+green**. Local at `90743ab`: `pnpm test` 221/221, typecheck, lint (0 errors;
+2 pre-existing warnings, see traps), format green; e2e `public-directory`
+20/20 chromium+mobile, `mobile-map-lazy` 1/1 mobile, `caregiver-flows`
+suggest/correction 3/3 chromium.
 
+- **Mobile QA pass 2026-08-18** (`/qa`, Pixel 7 393px + iPhone SE 375px,
+  local dev). Report: `.gstack/qa-reports/qa-report-localhost-2026-08-18.md`
+  (+ `baseline.json`, screenshots; `.gstack/` is gitignored — also copied to
+  `~/.gstack/projects/acaacx-thrivemap/alaric-main-test-outcome-2026-08-18T0630.md`).
+  Health 87 → 97. Fixed, one commit each:
+  - `809fded` ISSUE-003 (high) clinic detail horizontal overflow — grid
+    columns lacked `min-w-0`; long Contact email/URL blew the track to 441px.
+  - `2a3b71a` ISSUE-005 service page hero CTA overflow at 375px (now wraps).
+  - `61bb4a2` ISSUE-001 Sort select overlapped "More filters" on phones /
+    larger-text pref (FilterBar no `min-w-0`; Sort `flex-1` on phones,
+    `sm:w-52` up; wraps full-width for long labels).
+  - `a48284f` + test `b944f51` ISSUE-002 lazy mobile map (see locked).
+  - `f40745a` + test `90743ab` ISSUE-006 nested `<form>` on `/suggest-clinic`
+    (see locked; `LocationSearchBox.test.tsx` covers default vs embedded).
+  Flows verified working on mobile: menu sheet, Display prefs persistence,
+  city search → `lat/lng`, filters sheet, list/map toggle, favorites (44px),
+  sign-in redirect with `?next=`, inquiry send (native validation → thread
+  page), `/offline` favorites snapshot, share (link copied).
+- **Worktree cleanup 2026-08-18 ~05:40 PHT**: removed 4 stale worktrees + 7
+  local branches. (A NEW one appeared since — see traps.)
+- **Prod data bootstrap started (2026-08-17 21:45Z)**: user added
+  "IntelliSpeech Therapy Center" (Dao, Dumaguete City) via by-name lookup.
+  SQL confirmed row in `external_place_candidates`, `status = 'new'`,
+  `promoted_clinic_id null` → **not yet promoted**, so no draft exists.
+  Two clinic ids seen in `/admin/clinics/*` logs (`ddb4f3ba…`,
+  `e0a3509f…`) — earlier promotions, status unknown.
 - **By-name Places lookup (`dbde18d`)**: `/admin/candidates` card "Look up a
   center by name" (`PlaceLookupCard.tsx`). `lookupPlacesByNameAction(name,
   city?)` — moderator+, rate limit `place-lookup` 20/hr, `placeLookupNameSchema`
-  (2–80 chars, letters/digits/`&.,'()/-`), query `"<name>[, <city>],
-  Philippines"`, `maxPages: 1`, returns hits + `alreadyCandidate` flags, writes
-  nothing. `addPlaceCandidateAction(hit)` — validates with `lookupPlaceSchema`,
-  upserts one row via `upsertPlaceCandidates` (extracted from
-  `runPlacesImport`, `src/modules/imports/server.ts`; job path unchanged),
-  audit action `add_place_candidate`, `revalidatePath`. Runbook step in
-  `docs/operations/deployment.md` "Populating clinics".
-- **Clinic editor + publish flow (`c7f03aa`)**: `/admin/clinics/[clinicId]`
-  (identity form, services + profile forms reused from portal via
-  `action`/`submitLabel` props, `ClinicStatusCard` → `setClinicStatus` with
-  allowed transitions + required reason), `/admin/clinics` status filter chips,
-  ImportTriggerCard "Other city" free text (`importCityTextSchema`, letters
-  only, `slugifyCity` for idempotency), runbook "Populating clinics".
-- Earlier 2026-08-18: 1:10m OG outline `e09d1c1`; Vercel Preview builds fixed
-  (`NEXT_PUBLIC_SUPABASE_URL` Preview scope); GitHub Actions unblocked (repo
-  public); PR #2 OG cards `61c495a`; branch `UI` `618306e` (migration 22 +
-  service redesign); OG smoke `e678dec`.
+  (2–80 chars), query `"<name>[, <city>], Philippines"`, `maxPages: 1`, writes
+  nothing. `addPlaceCandidateAction(hit)` upserts one row via
+  `upsertPlaceCandidates` (`src/modules/imports/server.ts`), audit
+  `add_place_candidate`. Runbook in `docs/operations/deployment.md`.
+- **Clinic editor + publish flow (`c7f03aa`)**: `/admin/clinics/[clinicId]`,
+  `ClinicStatusCard` → `setClinicStatus` with allowed transitions + required
+  reason, `/admin/clinics` status filter chips, ImportTriggerCard "Other city".
+- Earlier 2026-08-18: 1:10m OG outline `e09d1c1`; Vercel Preview builds fixed;
+  GitHub Actions unblocked (repo public); PR #2 OG cards `61c495a`; branch `UI`
+  `618306e` (migration 22 + service redesign); OG smoke `e678dec`; PR #3
+  calm-ui redesign `44d1692` merged `8057107`.
 
 ## Half-done / not started
 
-- **Production has ZERO clinics.** Seed is demo-only by design.
-  **Blocker: prod likely has no administrator.** `handle_new_user` grants only
-  `user`; promotion is manual SQL (`docs/operations/deployment.md` step 3).
-  No hosted DB creds locally (Vercel rows Sensitive/write-only, keychain read
-  blocked). Needs the user: sign up on `https://thrivemap.vercel.app`, then in
-  Supabase SQL editor (project `slwguxbeijcpixsegtzm`):
-  `insert into public.user_roles (user_id, role) select id, 'administrator'
-  from auth.users where email = '<their email>' on conflict do nothing;`
-  then `/admin/candidates` → **Look up a center by name** (known centers) or
-  **Run an import** + `/admin/jobs` "Run tick now" → Promote →
-  `/admin/clinics?status=draft` → edit → publish.
+- **Confirm the `90743ab` deploy**: `npx vercel ls thrivemap --prod --scope
+  abensontech` / GitHub Actions `main.yml`. Then eyeball prod on a **real
+  phone** — headless Chromium has no WebGL2, so map behaviour (lazy mount →
+  resize on reveal, pins, "Search this area") could NOT be exercised locally.
+- **Deferred low QA issues** (in the report): ISSUE-004 bare `?loc=City`
+  without `lat/lng` (e.g. the 3 OG test URLs) says "near City" but neither
+  filters nor sorts; ISSUE-007 header "Sign in" `<a href="/login">` has no
+  `?next=`; ISSUE-008 `/account/*` tab pills 38px + no scroll affordance;
+  ISSUE-009 Display popover overhangs menu sheet (cosmetic).
+- **Production has no PUBLISHED clinics yet.** Pipeline reminder — each step
+  manual in the UI: `/admin/candidates` → Add (by-name) or import → candidate
+  list at BOTTOM of page → **Promote** → clinic `draft` →
+  `/admin/clinics?status=draft` (bare `/admin/clinics` shows nothing until a
+  status chip / search is chosen) → edit (needs services + primary location
+  with coords, else search never returns it) → `ClinicStatusCard`:
+  `draft → pending_review → published_unverified` (reason required).
+  `published_unverified` IS publicly visible; only `?verified=1` hides it.
+  SQL: `select normalized_name, status, promoted_clinic_id from
+  external_place_candidates where normalized_name ilike '%name%';`
+- **Resend not configured in prod → inquiry emails do NOT send** (dev adapter
+  logs only). Same for Upstash (rate limits lax) and PostHog.
 - **Facebook Sharing Debugger gate** (three distinct cards) after first data:
   `/clinics`, `?services=occupational-therapy&loc=Davao+City`,
   `?services=speech-therapy&loc=Cebu+City&verified=1`.
-- **Design observation, not fixed:** OG caption plate (bottom-left, ~880×230)
-  can cover pins near the bottom edge (PH-wide card: Davao pin).
-- **Optional providers still dev adapters in prod**: Upstash Redis, Resend,
-  PostHog (`[DEV ADAPTER] Upstash not configured` in prod logs; suspected empty
-  Sensitive Vercel rows; `vercel env rm` classifier-blocked, `env add` allowed).
-  Note: without Upstash, `checkRateLimit` (import 10/hr, lookup 20/hr) is the
-  dev adapter in prod — effectively per-instance / lax.
+- **Design observation, not fixed:** OG caption plate can cover pins near the
+  bottom edge (PH-wide card: Davao pin).
 - **No approval gate on production migrations** — Free plan. Accepted.
-- Cold-start OG render can exceed 2 s (one `timeout` seen); warm ~1 s.
+- Cold-start OG render can exceed 2 s; warm ~1 s.
+- Local seed has one leftover test inquiry `[e2e] Mobile QA inquiry`
+  (caregiver@ → Little Steps, id `5f706b10-…`). Harmless.
 
 ## Single next action
 
-Hand the user the admin bootstrap steps above (sign up → promote SQL →
-`/admin/candidates` lookup/import → promote → edit → publish). After first
-data, run the Facebook Sharing Debugger check on the three URLs. Nothing is
-blocked on code.
+Confirm the `90743ab` production deploy went green (Vercel + `main.yml`
+smoke), then check `/clinics` and a clinic page on a real phone. After that,
+resume the plan the user was choosing between: (1) keep populating prod
+(Promote IntelliSpeech, edit draft, publish), (3) configure Resend + Upstash +
+PostHog env in Vercel (`vercel env add` via stdin allowed; `env rm` blocked),
+(4) Facebook Sharing Debugger on the three OG URLs once data exists.
+(2) mobile QA is done.
 
 ## Accepted tradeoffs from the wizard config
 
@@ -137,42 +178,59 @@ not "fix" them silently — but they are real:
 
 ## Traps / non-obvious facts
 
+- **New stray worktree**: `.claude/worktrees/thrivemap-uber-ux-162dd9` exists
+  (appeared after the 05:40 cleanup). Root `pnpm lint` reports its
+  `display-prefs.test.ts` warning twice; root `pnpm format` would rewrite its
+  files. `git worktree list` first; also an old `stash@{0}` from `c5bd966`.
+- **gstack `browse` quirks** (used by `/qa`): `$B js` prints nothing when the
+  snippet has top-level `const`/`let` or an async IIFE — write a single
+  expression chain (`await x.then(...)`) or a sync IIFE. `@eN` refs from
+  `snapshot -i` often fail with "matched multiple elements" — click via JS
+  filtering visible buttons by text. Server restarts silently drop viewport +
+  cookies; re-set `viewport` and re-login. Full-page `snapshot -a` is unreadable
+  on mobile — use `screenshot --viewport` + `window.scrollTo`.
+- **Locally only the clinic managed by clinicrep@ shows "Send an inquiry"**:
+  `little-steps-developmental-center` (query `clinic_managers` on local
+  Supabase REST with the service-role key). Other seeded clinics show
+  "Represent this clinic? Claim it." instead.
 - **Permission classifier blocks `gh pr merge`, `vercel redeploy`, `vercel env
   rm`, keychain reads.** `vercel env add` via stdin pipe was allowed. Merge =
   `git merge --no-ff <branch>` on `main` + `git push`. Rebuild = empty commit +
   push. Foreground `sleep N; cmd` chains are blocked — use `run_in_background`
   + `until` loop.
-- **`/admin/candidates` now has TWO city controls** — Playwright
+- **`/admin/candidates` has TWO city controls** — Playwright
   `getByLabel("City")` is ambiguous; use `getByLabel("City", { exact: true })`
   for the import `<select>` and `getByLabel("City (optional)")` for the lookup
   input. `places-import.spec.ts` already does this.
 - **FixturePlacesProvider answers any non-`autism-therapy…` query with
-  `fixtures/generic.json`** (Fixture Developmental Clinic / Fixture Child
-  Wellness Center) — that is what by-name lookup returns locally, regardless of
-  the name typed. Provider slug is `google` even for fixtures (rows must merge).
-- **Server-action result unions**: `{ error?: undefined; hits }` does not
-  narrow on `if (result.error)`; use an explicit `ok: true|false` discriminant
-  (`PlaceLookupResult`).
+  `fixtures/generic.json`** — that is what by-name lookup returns locally,
+  regardless of the name typed. Provider slug is `google` even for fixtures.
+- **Server-action result unions**: use an explicit `ok: true|false`
+  discriminant (`PlaceLookupResult`); `if (result.error)` doesn't narrow.
 - **A GitHub job with 0 steps and a 3-second duration is not a code failure**
   — read `check-runs/<job>/annotations`. Was billing; repo is public now.
 - **DevSwarm worktrees hold unmerged branches** under
-  `~/.devswarm/repos/0/*/`. `git worktree list` first.
+  `~/.devswarm/repos/0/*/`. `git worktree remove` of the shell's cwd → next
+  command fails "Unable to read current working directory" — `cd` repo root.
+- **Vercel MCP runtime logs**: `query: "POST"` matches nothing; search by path
+  and `source: serverless`. Server-action failures returned as `{ error }`
+  never appear as error-level logs — check the UI toast / DB row.
+- **`external_place_candidates` has no `name` column** — use
+  `normalized_name` (or `raw_payload`).
 - **OG assets ship only via `outputFileTracingIncludes`** (`next.config.ts`,
   key `/api/og/search`). A tracing miss = `x-og-card-reason: error`; an empty
   DB = `no-results`.
-- **OG render tests need `// @vitest-environment node`** at the top of the
-  file. `assets/geo/*.geojson` is in `.prettierignore` — never format it.
-- **Vercel runtime logs lag / time out** via MCP: scope to a deployment id or
-  15 m window and query text; `[DEV ADAPTER]` lines confirm which providers
-  are live.
+- **OG render tests need `// @vitest-environment node`**; component tests need
+  `// @vitest-environment jsdom` + `afterEach(cleanup)` (no auto-cleanup).
+  `assets/geo/*.geojson` is in `.prettierignore` — never format it.
 - **Next metadata: nested `openGraph` is overwritten wholesale, not merged.**
-- **`pnpm format` from the repo root reformats files inside
-  `.claude/worktrees/*`**; `pnpm lint` picks up worktree `.next` output.
 - **`import "next/og"` fails under plain Node ESM** — scripts use `next/og.js`.
 - **`pyftsubset --instance-features` does not exist**; freeze axes with
   `fonttools varLib.instancer`, then subset. `uvx --from fonttools …` works.
 - **`rm -rf .next` while `next dev` runs kills the server.** Stop dev first.
-- Headless Chromium has no WebGL2 → MapLibre errors on `/clinics`; expected.
+- Headless Chromium has no WebGL2 → MapLibre errors on any page that mounts a
+  map (`/clinics` map view, clinic detail sidebar, suggest-clinic pin);
+  expected. Since ISSUE-002 the mobile List view no longer triggers them.
 - **`z.string().url()` does NOT reject surrounding whitespace.**
 - **A failed Vercel build never re-aliases**; green `/api/health` proves
   nothing about the newest build. Preview URLs 302 (deployment protection).
@@ -185,8 +243,7 @@ not "fix" them silently — but they are real:
 - **Hook/CLI deploys create NO GitHub deployment records.** Truth:
   `npx vercel ls thrivemap --prod --scope abensontech`.
 - **Provider probe**: `GET /api/locations?q=cebu` — `"placeId":"dev:..."` =
-  DevMapProvider, `ChIJ...` = Google live. CDN caches 60s/300s — fresh query
-  strings when probing.
+  DevMapProvider, `ChIJ...` = Google live. CDN caches 60s/300s.
 - Only `GOOGLE_MAPS_SERVER_API_KEY` matters for maps + Places. Never add
   `NEXT_PUBLIC_` to the server key or to `SENTRY_AUTH_TOKEN`.
 - `SMOKE_URL` = `https://thrivemap.vercel.app` only.
@@ -196,11 +253,12 @@ not "fix" them silently — but they are real:
 - Hosted `db push` roles exclude `extensions` from search_path — migrations
   touching pg_trgm/postgis need explicit `set search_path`.
 - `handoff.md` is in `.prettierignore` (hook-regenerated). Don't remove it.
-- e2e: `expect.timeout: 15_000`, `workers: 2` (`PW_WORKERS`).
-  `pnpm test:integration -- <pattern>` does NOT filter — use
-  `npx vitest run --config vitest.integration.config.ts <pattern>`.
-  Single spec: `npx playwright test e2e/<file> --project=chromium`. Restart
-  dev server between full e2e runs. chromium-skip via `testInfo.project.name`.
+- e2e: `expect.timeout: 15_000`, `workers: 2` (`PW_WORKERS`); projects
+  `chromium` (Desktop Chrome) + `mobile` (Pixel 7); phone-only specs skip via
+  `testInfo.project.name !== "mobile"`. `pnpm test:integration -- <pattern>`
+  does NOT filter — use `npx vitest run --config vitest.integration.config.ts
+  <pattern>`. Single spec: `npx playwright test e2e/<file> --project=chromium`.
+  Restart dev server between full e2e runs.
 - supabase CLI not on PATH — `pnpm db:reset` / `pnpm db:types`. RLS subqueries
   run as caller — security-definer helpers for cross-table checks. New
   tables/functions need explicit grants. Optional RPC params need SQL
@@ -209,8 +267,10 @@ not "fix" them silently — but they are real:
   around ALL `ClinicMap` renders. MapLibre worker copied to `public/maplibre/`.
 - zod 4 + zodResolver: 3-generic `useForm`, no `.coerce`/`.default()`,
   `z.uuid()`. shadcn = Base UI, not Radix (no `asChild`; `render={<Link/>}`).
-- react-hooks/static-components flags `const Icon = serviceIcon(...)` + JSX in
-  a component body — `service-glyph.tsx` uses `createElement`; keep that.
+- react-hooks lint (v6 rules): no setState-in-effect — use
+  `useSyncExternalStore` for media queries (see `SearchPageClient`), derived
+  setState-during-render for mount-once flags; `service-glyph.tsx` uses
+  `createElement` to dodge `static-components`; keep that.
 - Test markers `[e2e]%` / `[itest]%`; therapists: remove storage objects before
   rows. Demo logins (password `password123`, LOCAL seed only): admin@ /
   moderator@ / caregiver@ / clinicrep@ `thrivemap.test`.
