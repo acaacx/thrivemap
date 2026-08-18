@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { siteConfig } from "@/lib/site-config";
-import { getServices, searchClinics } from "@/modules/clinics/queries";
-import { SearchPageClient } from "@/modules/search/components/SearchPageClient";
+import { SearchShell } from "@/modules/search/components/SearchShell";
 import { parseSearchParams } from "@/modules/search/schemas";
 import { buildFallbackLabels } from "@/modules/share/og/label";
 
@@ -91,28 +87,12 @@ export default async function ClinicsPage({
 }) {
   const raw = await searchParams;
   const params = parseSearchParams(raw);
-  const [initialResult, services] = await Promise.all([
-    searchClinics(params),
-    getServices(),
-  ]);
+  const flat = (key: string) => {
+    const value = raw[key];
+    return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  };
 
   return (
-    <>
-      <SiteHeader />
-      <main id="main-content" className="flex flex-1 flex-col">
-        <h1 className="sr-only">Find therapy and developmental clinics</h1>
-        <Suspense>
-          <SearchPageClient
-            initialParams={params}
-            initialResult={initialResult}
-            serviceOptions={services.map((s) => ({
-              slug: s.slug,
-              name: s.name,
-            }))}
-          />
-        </Suspense>
-      </main>
-      <SiteFooter />
-    </>
+    <SearchShell params={params} view={flat("view")} selectedId={flat("sel")} />
   );
 }

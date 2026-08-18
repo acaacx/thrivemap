@@ -1,8 +1,40 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("landing page", () => {
-  test("shows hero, services, and featured clinics", async ({ page }) => {
+  test("is the app shell: search prompt, service shortcuts, map", async ({
+    page,
+  }) => {
     await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: /where are you looking for support/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: /search by city/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /use my location/i }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /speech & language therapy/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: /^map/i })).toBeAttached();
+  });
+
+  test("a search from the homepage rewrites the URL to /clinics", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const searchBox = page.getByRole("combobox", { name: /search by city/i });
+    await searchBox.fill("Quezon");
+    await page.getByRole("option", { name: /quezon city/i }).click();
+    await expect(page).toHaveURL(/\/clinics\?.*lat=14\.6/);
+    await expect(page.getByText(/clinics? found/)).toBeVisible();
+  });
+});
+
+test.describe("about page", () => {
+  test("carries the former marketing sections", async ({ page }) => {
+    await page.goto("/about");
     await expect(
       page.getByRole("heading", {
         name: /find the right support near you/i,
@@ -75,6 +107,9 @@ test.describe("clinic search", () => {
     // Alphabetical (and the other non-distance sorts) used to be limit-only:
     // page one was all you ever got.
     await page.goto("/clinics?sort=alphabetical");
+    // The shell streams in server-rendered; a click before hydration is
+    // lost (there is nothing to replay it), so wait until it is interactive.
+    await page.locator("[data-slot=app-shell][data-hydrated]").waitFor();
     const cards = page.locator("[data-clinic-id]");
     await expect(cards.first()).toBeVisible();
     const firstPage = await cards.count();

@@ -26,7 +26,12 @@ import { SNAPSHOT_KEY } from "@/modules/favorites/snapshot";
  * across that navigation, so the pathname change is our signal that cookies
  * may have changed. Display-only — servers re-verify auth on every action.
  */
-export function AccountMenu() {
+export function AccountMenu({
+  hideSignedOut = false,
+}: {
+  /** App shell: "Sign in" lives in the menu, so render nothing when signed out. */
+  hideSignedOut?: boolean;
+} = {}) {
   const pathname = usePathname();
   // undefined = not yet resolved, null = signed out
   const [email, setEmail] = useState<string | null | undefined>(undefined);
@@ -43,11 +48,13 @@ export function AccountMenu() {
   }, [pathname]);
 
   if (email === undefined) {
+    if (hideSignedOut) return null;
     // Placeholder keeps the header height stable while the cookie is read.
     return <div className="h-10 w-16" aria-hidden />;
   }
 
   if (email === null) {
+    if (hideSignedOut) return null;
     // "Find clinics" already lives in the main nav; a second primary
     // button here would compete with it.
     return (

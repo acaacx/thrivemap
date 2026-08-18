@@ -2,14 +2,25 @@
 
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Point } from "geojson";
+import { isReducedMotion } from "@/lib/reduced-motion";
 import type { MapBounds } from "../types";
 
 // Turbopack doesn't emit the worker chunk MapLibre resolves relative to
 // import.meta.url (the request 404s), so vector tiles never parse. Serve the
 // worker ourselves — copied to public/ by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
+export interface ClinicMapCamera {
+  center: { latitude: number; longitude: number };
+  zoom: number;
+}
+
+/** Imperative peek at the camera (for the search-state snapshot). */
+export interface ClinicMapHandle {
+  getCamera(): ClinicMapCamera | null;
+}
 
 export interface ClinicMapMarker {
   id: string;
@@ -25,6 +36,8 @@ interface ClinicMapProps {
   center: { latitude: number; longitude: number };
   zoom?: number;
   selectedId?: string | null;
+  /** Card under the pointer (desktop) — its marker grows a little. */
+  hoveredId?: string | null;
   onSelect?: (id: string) => void;
   onMoved?: (
     bounds: MapBounds,
@@ -33,7 +46,30 @@ interface ClinicMapProps {
   ) => void;
   /** Click anywhere on the map (used for pin placement in forms). */
   onMapClick?: (location: { latitude: number; longitude: number }) => void;
+  /**
+   * Identifies "a new search". When provided, the camera re-frames only when
+   * this changes (eases to `center`, then fits the results once they arrive)
+   * — never on filter tweaks or selection. `null` = the visitor framed the
+   * map themselves ("Search this area"): leave the camera alone. When
+   * omitted, the map simply follows `center` (pin-placement forms).
+   */
+  cameraKey?: string | null;
+  /** True while `markers` still belong to a previous search (placeholder data). */
+  markersStale?: boolean;
+  /**
+   * Restore a previous camera (Back from a clinic page): the map is created
+   * at exactly this position, without animation, and the initial fit is
+   * skipped so the visitor sees the map they left.
+   */
+  initialCamera?: ClinicMapCamera | null;
+  /** Receives {@link ClinicMapHandle} once the map exists. */
+  cameraRef?: RefObject<ClinicMapHandle | null>;
   className?: string;
+}
+
+/** Camera options that respect the OS and site reduce-motion settings. */
+function motionOptions(): { duration?: number } {
+  return isReducedMotion() ? { duration: 0 } : {};
 }
 
 /**
@@ -48,17 +84,27 @@ export function ClinicMap({
   center,
   zoom = 12,
   selectedId,
+  hoveredId = null,
   onSelect,
   onMoved,
   onMapClick,
+  cameraKey,
+  markersStale = false,
+  initialCamera = null,
+  cameraRef,
   className,
 }: ClinicMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Mirrors loadedRef for effects that must re-run once the style is ready
+  // (the initial fit: results usually arrive before MapLibre has loaded).
+  const [loaded, setLoaded] = useState(false);
   const onSelectRef = useRef(onSelect);
   const onMovedRef = useRef(onMoved);
   const onMapClickRef = useRef(onMapClick);
+  // Only the camera at mount time matters; later changes are ignored.
+  const initialCameraRef = useRef(initialCamera);
   onSelectRef.current = onSelect;
   onMovedRef.current = onMoved;
   onMapClickRef.current = onMapClick;
@@ -70,16 +116,32 @@ export function ClinicMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const restored = initialCameraRef.current;
     const map = new maplibregl.Map({
       container: containerRef.current,
       // OpenFreeMap: keyless vector tiles, no usage cap — raw
       // tile.openstreetmap.org raster is off-limits for production apps.
       style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [center.longitude, center.latitude],
-      zoom,
+      center: restored
+        ? [restored.center.longitude, restored.center.latitude]
+        : [center.longitude, center.latitude],
+      zoom: restored ? restored.zoom : zoom,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+    if (cameraRef) {
+      cameraRef.current = {
+        getCamera() {
+          const live = mapRef.current;
+          if (!live) return null;
+          const c = live.getCenter();
+          return {
+            center: { latitude: c.lat, longitude: c.lng },
+            zoom: live.getZoom(),
+          };
+        },
+      };
+    }
     if (process.env.NODE_ENV !== "production") {
       // Exposed for e2e tests and local debugging only.
       (window as unknown as Record<string, unknown>).__thrivemapMap = map;
@@ -96,6 +158,7 @@ export function ClinicMap({
 
     map.on("load", () => {
       loadedRef.current = true;
+      setLoaded(true);
       map.addSource("clinics", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -112,22 +175,23 @@ export function ClinicMap({
         source: "clinics",
         filter: ["!", ["has", "point_count"]],
         paint: {
-          // Muted palette (globals.css): selected = --primary-hover, verified
-          // = --primary, unverified = --subtle. Selection is also signalled by
-          // size and stroke so it never relies on hue alone.
+          // Muted palette (globals.css): every clinic is a small neutral teal
+          // dot (--primary); the selected one is larger and --primary-hover.
+          // Selection is also signalled by size and stroke so it never relies
+          // on hue alone; hover (desktop) is a gentle size bump.
           "circle-color": [
             "case",
             ["boolean", ["get", "selected"], false],
             "#255b56",
-            ["boolean", ["get", "verified"], false],
             "#2f6f68",
-            "#5f6e6b",
           ],
           "circle-radius": [
             "case",
             ["boolean", ["get", "selected"], false],
             11,
-            7,
+            ["boolean", ["get", "hovered"], false],
+            9,
+            6.5,
           ],
           "circle-stroke-width": [
             "case",
@@ -136,6 +200,29 @@ export function ClinicMap({
             2,
           ],
           "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Verified: a subtle inner dot (data comes from the same source, so it
+      // stays in step with clustering and selection).
+      map.addLayer({
+        id: "clinic-point-verified",
+        type: "circle",
+        source: "clinics",
+        filter: [
+          "all",
+          ["!", ["has", "point_count"]],
+          ["boolean", ["get", "verified"], false],
+        ],
+        paint: {
+          "circle-color": "#ffffff",
+          "circle-radius": [
+            "case",
+            ["boolean", ["get", "selected"], false],
+            3,
+            2,
+          ],
+          "circle-opacity": 0.9,
         },
       });
 
@@ -180,6 +267,7 @@ export function ClinicMap({
         map.easeTo({
           center: (feature.geometry as Point).coordinates as [number, number],
           zoom: zoomTo,
+          ...motionOptions(),
         });
       });
 
@@ -228,6 +316,7 @@ export function ClinicMap({
       map.remove();
       mapRef.current = null;
       loadedRef.current = false;
+      if (cameraRef) cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -248,29 +337,86 @@ export function ClinicMap({
           name: m.name,
           verified: m.verified,
           selected: m.id === selectedId,
+          hovered: m.id === hoveredId,
         },
       })),
     });
   }
 
-  useEffect(syncMarkers, [markers, selectedId]);
+  useEffect(syncMarkers, [markers, selectedId, hoveredId]);
 
+  // Legacy mode (no cameraKey): follow `center` whenever it changes.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || cameraKey !== undefined) return;
     programmaticMove.current = true;
-    map.easeTo({ center: [center.longitude, center.latitude], zoom });
+    map.easeTo({
+      center: [center.longitude, center.latitude],
+      zoom,
+      ...motionOptions(),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center.latitude, center.longitude]);
 
+  // Search mode: a new cameraKey eases to the search centre and arms a
+  // one-off fit; the fit runs once results for that search are on the map.
+  const fitPendingRef = useRef<string | null>(null);
+  const lastKeyRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || cameraKey === undefined) return;
+    if (lastKeyRef.current === cameraKey) return;
+    const first = lastKeyRef.current === undefined;
+    lastKeyRef.current = cameraKey;
+    if (cameraKey === null || (first && initialCameraRef.current)) {
+      // Visitor-framed map ("Search this area") or a restored camera: the
+      // results must not re-frame it.
+      fitPendingRef.current = null;
+      return;
+    }
+    fitPendingRef.current = cameraKey;
+    if (!first) {
+      programmaticMove.current = true;
+      map.easeTo({
+        center: [center.longitude, center.latitude],
+        zoom,
+        ...motionOptions(),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loaded || cameraKey == null) return;
+    if (markersStale) return;
+    if (fitPendingRef.current !== cameraKey || markers.length === 0) return;
+    fitPendingRef.current = null;
+    const bounds = new maplibregl.LngLatBounds();
+    for (const marker of markers) {
+      bounds.extend([marker.longitude, marker.latitude]);
+    }
+    bounds.extend([center.longitude, center.latitude]);
+    programmaticMove.current = true;
+    map.fitBounds(bounds, {
+      padding: 56,
+      maxZoom: 14,
+      ...motionOptions(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markers, cameraKey, markersStale, loaded]);
+
+  // Selection: bring the marker into view only if it is off-screen, and
+  // keep the visitor's zoom either way.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
     const marker = markers.find((m) => m.id === selectedId);
-    if (marker) {
-      programmaticMove.current = true;
-      map.easeTo({ center: [marker.longitude, marker.latitude] });
-    }
+    if (!marker) return;
+    const lngLat: [number, number] = [marker.longitude, marker.latitude];
+    if (map.getBounds().contains(lngLat)) return;
+    programmaticMove.current = true;
+    map.easeTo({ center: lngLat, ...motionOptions() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 

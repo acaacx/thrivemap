@@ -11,6 +11,7 @@ import {
   Globe,
   Mail,
   MapPin,
+  Navigation,
   Phone,
   Video,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import { clinicAcceptsInquiries } from "@/modules/inquiries/queries";
 import { CareTeamSection } from "@/modules/therapists/components/CareTeamSection";
 import { RatingsSection } from "@/modules/ratings/components/RatingsSection";
 import { ClinicProfileMap } from "./profile-map";
+import { BackToResults, DistanceFromSearch } from "./search-context";
 
 export const revalidate = 300;
 
@@ -164,10 +166,30 @@ export default async function ClinicProfilePage({ params }: PageProps) {
     ],
   };
 
+  const directionsHref = location
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        [
+          location.address_line1,
+          location.city,
+          location.province,
+          "Philippines",
+        ]
+          .filter(Boolean)
+          .join(", "),
+      )}`
+    : null;
+  const phoneHref = clinic.phone
+    ? `tel:${clinic.phone.replaceAll(" ", "")}`
+    : null;
+  const hasActions = Boolean(directionsHref || phoneHref);
+
   return (
     <>
       <SiteHeader />
-      <main id="main-content" className="flex-1">
+      <main
+        id="main-content"
+        className={hasActions ? "flex-1 pb-24 lg:pb-0" : "flex-1"}
+      >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -176,43 +198,48 @@ export default async function ClinicProfilePage({ params }: PageProps) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
         />
-        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/" />}>Home</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/clinics" />}>
-                  Clinics
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              {location && (
-                <>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbLink
-                      render={
-                        <Link
-                          href={`/locations/${location.province_slug}/${location.city_slug}`}
-                        />
-                      }
-                    >
-                      {location.city}
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                </>
-              )}
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{clinic.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href="/" />}>
+                    Home
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href="/clinics" />}>
+                    Clinics
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {location && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink
+                        render={
+                          <Link
+                            href={`/locations/${location.province_slug}/${location.city_slug}`}
+                          />
+                        }
+                      >
+                        {location.city}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </>
+                )}
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{clinic.name}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <BackToResults />
+          </div>
 
-          {/* Header */}
-          <header className="mt-8 flex flex-wrap items-start justify-between gap-4">
+          {/* Header: what it is, whether it is verified, where it is. */}
+          <header className="mt-6 flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -229,7 +256,19 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                     className="mt-1 size-4 shrink-0 text-subtle"
                     aria-hidden
                   />
-                  {formattedAddress}
+                  <span>
+                    {formattedAddress}
+                    {location.latitude != null &&
+                      location.longitude != null && (
+                        <>
+                          <DistanceFromSearch
+                            latitude={location.latitude}
+                            longitude={location.longitude}
+                            className="block text-sm sm:inline sm:text-base sm:before:mx-1 sm:before:content-['·']"
+                          />
+                        </>
+                      )}
+                  </span>
                 </p>
               )}
               {clinic.last_verified_at && (
@@ -285,23 +324,12 @@ export default async function ClinicProfilePage({ params }: PageProps) {
             </div>
           )}
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_360px] lg:gap-8">
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px] lg:gap-8">
+            {/* Main column: services → about → accessibility → ages →
+                languages → hours → contact → map, then the rest.
+                min-w-0: long unbreakable contact details must truncate,
+                not widen the column past the viewport. */}
             <div className="min-w-0 space-y-6">
-              {clinic.description && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">
-                      <h2>About</h2>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="max-w-prose whitespace-pre-line text-base leading-relaxed text-foreground">
-                      {clinic.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl">
@@ -345,27 +373,17 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                 </CardContent>
               </Card>
 
-              <CareTeamSection therapists={clinic.clinic_therapists} />
-
-              <RatingsSection clinicId={clinic.id} slug={clinic.slug} />
-
-              {clinic.clinic_age_groups.length > 0 && (
+              {clinic.description && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">
-                      <h2>Age groups served</h2>
+                      <h2>About</h2>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
-                    {clinic.clinic_age_groups.map((ag) => (
-                      <Badge
-                        key={ag.age_group}
-                        variant="outline"
-                        className="h-8 px-3"
-                      >
-                        {AGE_LABELS[ag.age_group] ?? ag.age_group}
-                      </Badge>
-                    ))}
+                  <CardContent>
+                    <p className="max-w-prose whitespace-pre-line text-base leading-relaxed text-foreground">
+                      {clinic.description}
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -397,6 +415,27 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                 </Card>
               )}
 
+              {clinic.clinic_age_groups.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">
+                      <h2>Age groups served</h2>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    {clinic.clinic_age_groups.map((ag) => (
+                      <Badge
+                        key={ag.age_group}
+                        variant="outline"
+                        className="h-8 px-3"
+                      >
+                        {AGE_LABELS[ag.age_group] ?? ag.age_group}
+                      </Badge>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               {clinic.clinic_languages.length > 0 && (
                 <Card>
                   <CardHeader>
@@ -406,84 +445,6 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   </CardHeader>
                   <CardContent className="text-base">
                     {clinic.clinic_languages.map((l) => l.language).join(", ")}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="min-w-0 space-y-6">
-              {location?.latitude != null && location?.longitude != null && (
-                <Card className="overflow-hidden py-0">
-                  <ClinicProfileMap
-                    clinicId={clinic.id}
-                    slug={clinic.slug}
-                    clinicName={clinic.name}
-                    latitude={location.latitude}
-                    longitude={location.longitude}
-                    verified={isVerified}
-                    address={formattedAddress}
-                  />
-                </Card>
-              )}
-
-              {(location || clinic.phone || clinic.website) && (
-                <Card>
-                  <CardContent className="flex flex-col gap-2">
-                    {location && (
-                      <Button
-                        size="lg"
-                        className="w-full justify-start"
-                        render={
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                              [
-                                location.address_line1,
-                                location.city,
-                                location.province,
-                                "Philippines",
-                              ]
-                                .filter(Boolean)
-                                .join(", "),
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          />
-                        }
-                      >
-                        <MapPin aria-hidden /> Directions
-                        <ExternalLink className="ml-auto size-4" aria-hidden />
-                      </Button>
-                    )}
-                    {clinic.phone && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full justify-start"
-                        render={
-                          <a href={`tel:${clinic.phone.replaceAll(" ", "")}`} />
-                        }
-                      >
-                        <Phone aria-hidden /> Call {clinic.phone}
-                      </Button>
-                    )}
-                    {clinic.website && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full justify-start"
-                        render={
-                          <a
-                            href={clinic.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          />
-                        }
-                      >
-                        <Globe aria-hidden /> Website
-                        <ExternalLink className="ml-auto size-4" aria-hidden />
-                      </Button>
-                    )}
                   </CardContent>
                 </Card>
               )}
@@ -500,7 +461,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       Hours not listed yet.
                     </p>
                   ) : (
-                    <dl className="space-y-2 text-base">
+                    <dl className="grid gap-x-8 gap-y-2 text-base sm:grid-cols-2">
                       {hours.map((h) => (
                         <div
                           key={h.day_of_week}
@@ -536,7 +497,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       />
                       <a
                         className="underline-offset-4 hover:underline"
-                        href={`tel:${clinic.phone.replaceAll(" ", "")}`}
+                        href={phoneHref ?? undefined}
                       >
                         {clinic.phone}
                       </a>
@@ -588,8 +549,98 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                       </a>
                     </p>
                   ))}
+                  {!clinic.phone &&
+                    !clinic.email &&
+                    !clinic.website &&
+                    clinic.clinic_social_links.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No contact details listed yet.
+                      </p>
+                    )}
                 </CardContent>
               </Card>
+
+              {location?.latitude != null && location?.longitude != null && (
+                <Card className="overflow-hidden py-0">
+                  <CardHeader className="pt-6">
+                    <CardTitle className="text-xl">
+                      <h2>Location</h2>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-0 pb-0">
+                    <p className="px-6 pb-4 text-base text-muted-foreground">
+                      {formattedAddress}
+                    </p>
+                    <ClinicProfileMap
+                      clinicId={clinic.id}
+                      slug={clinic.slug}
+                      clinicName={clinic.name}
+                      latitude={location.latitude}
+                      longitude={location.longitude}
+                      verified={isVerified}
+                      address={formattedAddress}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              <CareTeamSection therapists={clinic.clinic_therapists} />
+
+              <RatingsSection clinicId={clinic.id} slug={clinic.slug} />
+            </div>
+
+            {/* Sidebar: the actions (desktop; the sticky bar covers small
+                screens), inquiries, and listing housekeeping. */}
+            <div className="min-w-0 space-y-6">
+              {hasActions && (
+                <Card className="hidden lg:sticky lg:top-20 lg:block">
+                  <CardContent className="flex flex-col gap-2">
+                    {directionsHref && (
+                      <Button
+                        size="lg"
+                        className="w-full justify-start"
+                        render={
+                          <a
+                            href={directionsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        }
+                      >
+                        <Navigation aria-hidden /> Directions
+                        <ExternalLink className="ml-auto size-4" aria-hidden />
+                      </Button>
+                    )}
+                    {phoneHref && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full justify-start"
+                        render={<a href={phoneHref} />}
+                      >
+                        <Phone aria-hidden /> Call {clinic.phone}
+                      </Button>
+                    )}
+                    {clinic.website && (
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        className="w-full justify-start"
+                        render={
+                          <a
+                            href={clinic.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        }
+                      >
+                        <Globe aria-hidden /> Website
+                        <ExternalLink className="ml-auto size-4" aria-hidden />
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <InquiryCta
                 clinicId={clinic.id}
@@ -611,12 +662,14 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
+                      size="lg"
                       render={<Link href={`/clinics/${clinic.slug}/report`} />}
                     >
                       Report incorrect information
                     </Button>
                     <Button
                       variant="outline"
+                      size="lg"
                       render={
                         <Link href={`/clinics/${clinic.slug}/suggest-edit`} />
                       }
@@ -625,6 +678,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                     </Button>
                     <Button
                       variant="ghost"
+                      size="lg"
                       render={<Link href={`/clinics/${clinic.slug}/claim`} />}
                     >
                       Claim this clinic
@@ -635,6 +689,45 @@ export default async function ClinicProfilePage({ params }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* Small screens: the two actions stay within thumb reach. */}
+        {hasActions && (
+          <div
+            data-slot="clinic-action-bar"
+            className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-background/85 lg:hidden"
+          >
+            <div className="mx-auto flex max-w-5xl items-center gap-2">
+              {directionsHref && (
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  render={
+                    <a
+                      href={directionsHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Directions to ${clinic.name} (opens Google Maps)`}
+                    />
+                  }
+                >
+                  <Navigation aria-hidden /> Directions
+                </Button>
+              )}
+              {phoneHref && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  render={
+                    <a href={phoneHref} aria-label={`Call ${clinic.name}`} />
+                  }
+                >
+                  <Phone aria-hidden /> Call
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </main>
       <SiteFooter />
     </>

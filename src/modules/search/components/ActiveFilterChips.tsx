@@ -97,8 +97,8 @@ export function ActiveFilterChips({
           </li>
         ))}
         <li>
-          <Button variant="ghost" size="sm" onClick={onClearAll}>
-            Clear filters
+          <Button variant="ghost" size="lg" onClick={onClearAll}>
+            Clear all
           </Button>
         </li>
       </ul>

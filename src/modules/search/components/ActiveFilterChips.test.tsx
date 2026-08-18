@@ -101,9 +101,7 @@ describe("ActiveFilterChips", () => {
       screen.getByRole("button", { name: "Remove filter: Open now" }),
     );
     expect(remove).toHaveBeenCalled();
-    await userEvent.click(
-      screen.getByRole("button", { name: /clear filters/i }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /clear all/i }));
     expect(clear).toHaveBeenCalled();
   });
 });

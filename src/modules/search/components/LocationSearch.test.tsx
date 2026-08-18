@@ -2,12 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { LocationSearchBox } from "./LocationSearchBox";
+import { LocationSearch } from "./LocationSearch";
 
-// Regression: ISSUE-006 — LocationSearchBox always rendered its own <form>,
+// Regression: ISSUE-006 — the location box always rendered its own <form>,
 // so embedding it in SuggestClinicForm produced invalid nested forms and let
 // Enter / free text bubble into the host form or navigate away.
-// Found by /qa on 2026-08-18
+// Found by /qa on 2026-08-18 (against LocationSearchBox, this component's
+// predecessor — the box was replaced by LocationSearch on the app-shell
+// branch, which inherited the same defect and the same `embedded` fix).
 // Report: .gstack/qa-reports/qa-report-localhost-2026-08-18.md
 
 const push = vi.fn();
@@ -35,10 +37,10 @@ beforeEach(() => {
   );
 });
 
-describe("LocationSearchBox", () => {
+describe("LocationSearch", () => {
   it("renders a <form> by default and navigates on free-text search", async () => {
     const user = userEvent.setup();
-    render(<LocationSearchBox />);
+    render(<LocationSearch />);
 
     expect(
       screen.getByRole("search", { name: /find clinics by location/i }).tagName,
@@ -56,7 +58,7 @@ describe("LocationSearchBox", () => {
     const hostSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
     render(
       <form onSubmit={hostSubmit}>
-        <LocationSearchBox embedded submitLabel="Search area" />
+        <LocationSearch embedded submitLabel="Search area" />
       </form>,
     );
 

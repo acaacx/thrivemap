@@ -29,9 +29,14 @@ export interface NavLink {
 export function MobileNav({
   links,
   secondary,
+  showDisplayPrefs = true,
+  navLabel = "Main",
 }: {
   links: NavLink[];
   secondary: NavLink;
+  /** The app shell keeps Display in the header, so the sheet omits it. */
+  showDisplayPrefs?: boolean;
+  navLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -51,7 +56,7 @@ export function MobileNav({
             Site navigation
           </SheetDescription>
         </SheetHeader>
-        <nav aria-label="Main" className="flex flex-col p-3">
+        <nav aria-label={navLabel} className="flex flex-col p-3">
           {links.map((link) => {
             const active =
               pathname === link.href ||
@@ -73,7 +78,9 @@ export function MobileNav({
           })}
         </nav>
         <div className="mt-auto flex flex-col gap-3 border-t p-5">
-          <DisplayPreferences className="w-full justify-start sm:hidden" />
+          {showDisplayPrefs && (
+            <DisplayPreferences className="w-full justify-start sm:hidden" />
+          )}
           <Button
             variant="outline"
             size="lg"
