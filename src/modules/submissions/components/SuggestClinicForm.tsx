@@ -247,9 +247,10 @@ export function SuggestClinicForm({
           clinic.
         </p>
         <LocationSearch
+          embedded
           onLocation={(loc) => setMapCenter(loc)}
           showLocate={false}
-          submitLabel="Find area"
+          submitLabel="Search area"
         />
         <div className="h-64 overflow-hidden rounded-xl border">
           <MapErrorBoundary

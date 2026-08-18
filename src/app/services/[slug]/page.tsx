@@ -160,6 +160,7 @@ export default async function ServicePage({ params }: PageProps) {
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <Button
                     size="lg"
+                    className="h-auto min-h-11 max-w-full py-2.5 text-center whitespace-normal"
                     render={<Link href={`/clinics?services=${service.slug}`} />}
                   >
                     Search {service.name.toLowerCase()} near you

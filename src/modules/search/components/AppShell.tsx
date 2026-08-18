@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MotionProvider } from "@/components/motion-provider";
 import { useIsDesktop } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,8 @@ interface AppShellProps {
  * and a persistent map 60%. Mobile: search strip on top; below it the map
  * fills the viewport and results live in a draggable bottom sheet over the
  * map (`view="map"`), or the list takes the whole area (`view="list"`). The
- * map is hidden with CSS, never unmounted, so MapLibre keeps its viewport.
+ * map mounts the first time its pane is actually shown and is only hidden
+ * with CSS after that, so MapLibre keeps its viewport across toggles.
  *
  * The results block is one DOM node in every layout — it only changes how
  * it is positioned — so cards, live regions and ids are never duplicated.
@@ -111,6 +112,14 @@ function ShellLayout({
   const { sheetSnap, setSheetSnap } = useSearchUI();
   const mapView = view === "map";
   const sheet = mapView && !desktop;
+  // The map pane is hidden with CSS on phones in list view. Don't mount
+  // MapLibre behind it — an invisible 0x0 canvas still costs a WebGL context
+  // plus the style, glyph and tile downloads. Once revealed it stays mounted,
+  // so toggling List/Map keeps the camera instead of re-downloading.
+  const [mapRevealed, setMapRevealed] = useState(false);
+  if (!mapRevealed && (desktop || mapView)) {
+    setMapRevealed(true);
+  }
   // `data-hydrated` = the shell is interactive (tests wait on it before
   // clicking; a click before hydration is silently lost).
   const hydrated = useHydrated();
@@ -145,7 +154,7 @@ function ShellLayout({
         aria-label="Map"
         className={cn("relative min-h-0 flex-1", !mapView && "hidden md:block")}
       >
-        {map}
+        {mapRevealed ? map : null}
       </section>
     </div>
   );

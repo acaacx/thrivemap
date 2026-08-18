@@ -32,6 +32,13 @@ export interface LocationSearchProps {
   submitLabel?: string;
   /** Visually hide the submit button (Enter still submits). */
   hideSubmit?: boolean;
+  /**
+   * Render without a `<form>` so the box can live inside another form
+   * (nested forms are invalid HTML). Enter and the button call the search
+   * directly — the host form is never submitted — and free text that matched
+   * no place never navigates away from the half-filled host form.
+   */
+  embedded?: boolean;
   size?: "default" | "large";
   ref?: Ref<HTMLInputElement>;
   className?: string;
@@ -54,6 +61,7 @@ export function LocationSearch({
   onClear,
   submitLabel = "Search",
   hideSubmit = false,
+  embedded = false,
   size = "default",
   ref,
   className,
@@ -176,6 +184,15 @@ export function LocationSearch({
       onTextSearch(text);
       return;
     }
+    if (embedded) {
+      // Embedded in someone else's form: never navigate away from it.
+      toast.info(
+        text
+          ? "No matching place found. Try a city, province, or barangay."
+          : "Type a city, province, or barangay to search.",
+      );
+      return;
+    }
     // Free-text search (clinic name / place); empty query = every clinic.
     const params = new URLSearchParams();
     if (text) params.set("q", text);
@@ -197,6 +214,12 @@ export function LocationSearch({
       setOpen(false);
       return;
     }
+    if (embedded && e.key === "Enter") {
+      // No <form> of our own to submit — and the host form must not submit.
+      e.preventDefault();
+      submit();
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -211,18 +234,25 @@ export function LocationSearch({
   const large = size === "large";
   const working = busy || locating;
   const trailing = (query ? 1 : 0) + (showLocate ? 1 : 0);
+  // Nested <form> elements are invalid HTML, so an embedded box is a plain
+  // <div role="search"> and drives the search from Enter / the button.
+  const Root = embedded ? "div" : "form";
 
   return (
     <MotionProvider>
       <div ref={containerRef} className={cn("relative w-full", className)}>
-        <form
+        <Root
           role="search"
           aria-label="Find clinics by location"
           className="flex w-full items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
+          onSubmit={
+            embedded
+              ? undefined
+              : (e: React.FormEvent) => {
+                  e.preventDefault();
+                  submit();
+                }
+          }
         >
           <div className="relative min-w-0 flex-1">
             <Search
@@ -300,7 +330,8 @@ export function LocationSearch({
             />
           </div>
           <Button
-            type="submit"
+            type={embedded ? "button" : "submit"}
+            onClick={embedded ? submit : undefined}
             size="lg"
             disabled={busy}
             aria-label={submitLabel}
@@ -319,7 +350,7 @@ export function LocationSearch({
               {submitLabel}
             </span>
           </Button>
-        </form>
+        </Root>
       </div>
     </MotionProvider>
   );

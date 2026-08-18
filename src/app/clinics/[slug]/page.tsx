@@ -524,7 +524,7 @@ export default async function ClinicProfilePage({ params }: PageProps) {
                         aria-hidden
                       />
                       <a
-                        className="truncate underline-offset-4 hover:underline"
+                        className="min-w-0 truncate underline-offset-4 hover:underline"
                         href={clinic.website}
                         target="_blank"
                         rel="noopener noreferrer"
