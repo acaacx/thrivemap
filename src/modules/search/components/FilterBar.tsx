@@ -59,7 +59,12 @@ export function FilterBar({
     <div
       role="group"
       aria-label="Refine results"
-      className={cn("flex flex-wrap items-center gap-2", className)}
+      className={cn(
+        "flex flex-nowrap items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        // Fade the trailing edge so the row reads as scrollable.
+        "[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] pr-10",
+        className,
+      )}
     >
       <Popover>
         <PopoverTrigger

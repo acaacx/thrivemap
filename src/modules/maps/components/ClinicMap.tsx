@@ -4,6 +4,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import type { Point } from "geojson";
+import { isReducedMotion } from "@/lib/reduced-motion";
 import type { MapBounds } from "../types";
 
 // Turbopack doesn't emit the worker chunk MapLibre resolves relative to
@@ -33,7 +34,22 @@ interface ClinicMapProps {
   ) => void;
   /** Click anywhere on the map (used for pin placement in forms). */
   onMapClick?: (location: { latitude: number; longitude: number }) => void;
+  /**
+   * Identifies "a new search". When provided, the camera re-frames only when
+   * this changes (eases to `center`, then fits the results once they arrive)
+   * — never on filter tweaks or selection. `null` = the visitor framed the
+   * map themselves ("Search this area"): leave the camera alone. When
+   * omitted, the map simply follows `center` (pin-placement forms).
+   */
+  cameraKey?: string | null;
+  /** True while `markers` still belong to a previous search (placeholder data). */
+  markersStale?: boolean;
   className?: string;
+}
+
+/** Camera options that respect the OS and site reduce-motion settings. */
+function motionOptions(): { duration?: number } {
+  return isReducedMotion() ? { duration: 0 } : {};
 }
 
 /**
@@ -51,6 +67,8 @@ export function ClinicMap({
   onSelect,
   onMoved,
   onMapClick,
+  cameraKey,
+  markersStale = false,
   className,
 }: ClinicMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -180,6 +198,7 @@ export function ClinicMap({
         map.easeTo({
           center: (feature.geometry as Point).coordinates as [number, number],
           zoom: zoomTo,
+          ...motionOptions(),
         });
       });
 
@@ -255,22 +274,76 @@ export function ClinicMap({
 
   useEffect(syncMarkers, [markers, selectedId]);
 
+  // Legacy mode (no cameraKey): follow `center` whenever it changes.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || cameraKey !== undefined) return;
     programmaticMove.current = true;
-    map.easeTo({ center: [center.longitude, center.latitude], zoom });
+    map.easeTo({
+      center: [center.longitude, center.latitude],
+      zoom,
+      ...motionOptions(),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center.latitude, center.longitude]);
 
+  // Search mode: a new cameraKey eases to the search centre and arms a
+  // one-off fit; the fit runs once results for that search are on the map.
+  const fitPendingRef = useRef<string | null>(null);
+  const lastKeyRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || cameraKey === undefined) return;
+    if (lastKeyRef.current === cameraKey) return;
+    const first = lastKeyRef.current === undefined;
+    lastKeyRef.current = cameraKey;
+    if (cameraKey === null) {
+      fitPendingRef.current = null;
+      return;
+    }
+    fitPendingRef.current = cameraKey;
+    if (!first) {
+      programmaticMove.current = true;
+      map.easeTo({
+        center: [center.longitude, center.latitude],
+        zoom,
+        ...motionOptions(),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || cameraKey == null) return;
+    if (markersStale) return;
+    if (fitPendingRef.current !== cameraKey || markers.length === 0) return;
+    fitPendingRef.current = null;
+    const bounds = new maplibregl.LngLatBounds();
+    for (const marker of markers) {
+      bounds.extend([marker.longitude, marker.latitude]);
+    }
+    bounds.extend([center.longitude, center.latitude]);
+    programmaticMove.current = true;
+    map.fitBounds(bounds, {
+      padding: 56,
+      maxZoom: 14,
+      ...motionOptions(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markers, cameraKey, markersStale]);
+
+  // Selection: bring the marker into view only if it is off-screen, and
+  // keep the visitor's zoom either way.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
     const marker = markers.find((m) => m.id === selectedId);
-    if (marker) {
-      programmaticMove.current = true;
-      map.easeTo({ center: [marker.longitude, marker.latitude] });
-    }
+    if (!marker) return;
+    const lngLat: [number, number] = [marker.longitude, marker.latitude];
+    if (map.getBounds().contains(lngLat)) return;
+    programmaticMove.current = true;
+    map.easeTo({ center: lngLat, ...motionOptions() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 

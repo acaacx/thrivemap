@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VerificationBadge } from "@/modules/clinics/components/VerificationBadge";
-import { LocationSearchBox } from "@/modules/search/components/LocationSearchBox";
+import { LocationSearch } from "@/modules/search/components/LocationSearch";
 import {
   findLikelyDuplicates,
   submitClinic,
@@ -246,7 +246,11 @@ export function SuggestClinicForm({
           Search a nearby area, then click the map to place the pin on the
           clinic.
         </p>
-        <LocationSearchBox onLocation={(loc) => setMapCenter(loc)} />
+        <LocationSearch
+          onLocation={(loc) => setMapCenter(loc)}
+          showLocate={false}
+          submitLabel="Find area"
+        />
         <div className="h-64 overflow-hidden rounded-xl border">
           <MapErrorBoundary
             fallback={

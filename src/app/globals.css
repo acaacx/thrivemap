@@ -122,6 +122,15 @@
   --section-y-lg: 6rem;
   /* Gap between stacked result cards / list items. */
   --stack-gap: 1rem;
+  /* Application shell (search + map). Header is compact so the map and the
+     first result stay above the fold on a small phone. */
+  --app-header-h: 3.5rem;
+  --sheet-collapsed-h: 7.5rem;
+  --sheet-mid-h: 50dvh;
+  --sheet-expanded-h: 92dvh;
+  /* Motion durations — calm, decelerating (pair with --ease-calm). */
+  --motion-fast: 150ms;
+  --motion-base: 240ms;
   --sidebar: #f1f6f4;
   --sidebar-foreground: #1f2d2b;
   --sidebar-primary: #2f6f68;
