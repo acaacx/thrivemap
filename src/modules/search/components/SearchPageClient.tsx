@@ -1,24 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
-import { Loader2, SearchX } from "lucide-react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { useIsDesktop } from "@/lib/use-media-query";
-import { cn } from "@/lib/utils";
-import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import type {
   ClinicMapCamera,
   ClinicMapHandle,
@@ -26,13 +19,15 @@ import type {
 } from "@/modules/maps/components/ClinicMap";
 import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
-import { ActiveFilterChips, deriveActiveChips } from "./ActiveFilterChips";
+import {
+  ActiveFilterChips,
+  deriveActiveChips,
+  sheetOnlyChips,
+} from "./ActiveFilterChips";
 import { AppShell } from "./AppShell";
 import { RESULTS_SCROLL_SLOT } from "./ClinicBottomSheet";
-import { ClinicPreview, type ClinicPreviewData } from "./ClinicPreview";
 import { FilterBar } from "./FilterBar";
 import { FilterSheet } from "./FilterSheet";
-import { LocationPermissionPrompt } from "./LocationPermissionPrompt";
 import { LocationSearch } from "./LocationSearch";
 import { MapListToggle } from "./MapListToggle";
 import { ResultsHeader } from "./ResultsHeader";
@@ -42,7 +37,13 @@ import {
   countActiveFilters,
   type FilterState,
 } from "./SearchFilters";
-import { ServiceChip } from "./ServiceChip";
+import { SearchLanding } from "./SearchLanding";
+import {
+  LoadMoreButton,
+  NoResultsState,
+  SearchResults,
+  type SearchClinicRow,
+} from "./SearchResultsPanel";
 import { useSearchUI, type SheetSnap } from "../search-ui-context";
 import {
   readMatchingSnapshot,
@@ -71,29 +72,6 @@ const ClinicMap = dynamic(
   { ssr: false },
 );
 
-interface SearchClinicRow {
-  clinic_id: string;
-  slug: string;
-  name: string;
-  status: string;
-  address_line1: string | null;
-  barangay: string | null;
-  city: string | null;
-  province: string | null;
-  latitude: number;
-  longitude: number;
-  distance_km: number | null;
-  is_open_now: boolean | null;
-  service_names: string[];
-  offers_online_services: boolean;
-  offers_in_person_services?: boolean;
-  wheelchair_accessible?: boolean | null;
-  phone?: string | null;
-  website?: string | null;
-  last_verified_at: string | null;
-  logo_url: string | null;
-}
-
 interface SearchResponse {
   clinics: SearchClinicRow[];
   nextCursor: string | null;
@@ -112,35 +90,10 @@ interface SearchPageClientProps {
 /** Whole-country framing for the empty state and text-only searches. */
 const PHILIPPINES = { latitude: 12.6, longitude: 122.5 };
 const METRO_MANILA = { latitude: 14.5995, longitude: 120.9842 };
-const SHORTCUT_COUNT = 5;
 
 function subscribeToStorage(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
-}
-
-function toCardData(c: SearchClinicRow): ClinicPreviewData {
-  return {
-    id: c.clinic_id,
-    slug: c.slug,
-    name: c.name,
-    status: c.status,
-    address: c.address_line1,
-    city: c.city,
-    province: c.province,
-    distanceKm: c.distance_km,
-    serviceNames: c.service_names,
-    isOpenNow: c.is_open_now,
-    offersOnline: c.offers_online_services,
-    offersInPerson: c.offers_in_person_services,
-    wheelchairAccessible: c.wheelchair_accessible,
-    lastVerifiedAt: c.last_verified_at,
-    logoUrl: c.logo_url,
-    latitude: c.latitude,
-    longitude: c.longitude,
-    phone: c.phone ?? null,
-    website: c.website ?? null,
-  };
 }
 
 /**
@@ -194,74 +147,6 @@ function SearchMap({
       cameraRef={cameraRef}
       className="h-full w-full"
     />
-  );
-}
-
-/**
- * Results list + preview. Inside <AppShell> for the shared UI state. On
- * small screens the selected clinic's preview replaces the list (Back
- * returns); on desktop it sits above the list.
- */
-function SearchResults({
-  clinics,
-  children,
-}: {
-  clinics: SearchClinicRow[];
-  /** Empty state / load-more — rendered after the cards. */
-  children?: ReactNode;
-}) {
-  const desktop = useIsDesktop();
-  const { selectedId, setSelected, setHovered, sheetSnap, setSheetSnap } =
-    useSearchUI();
-  const selected = selectedId
-    ? clinics.find((c) => c.clinic_id === selectedId)
-    : undefined;
-  const preview = selected ? toCardData(selected) : null;
-  const previewOnly = !!preview && !desktop;
-  const previewRef = useRef<HTMLElement>(null);
-  // Mobile: the preview replaces the list — start it at the top of the sheet.
-  useEffect(() => {
-    if (previewOnly) previewRef.current?.scrollIntoView({ block: "start" });
-  }, [previewOnly, selectedId]);
-
-  function select(id: string) {
-    setSelected(id);
-    if (!desktop && sheetSnap === "collapsed") setSheetSnap("mid");
-  }
-
-  return (
-    <>
-      {preview && (
-        <ClinicPreview
-          ref={previewRef}
-          key={preview.id}
-          clinic={preview}
-          variant={desktop ? "panel" : "sheet"}
-          onClose={() => setSelected(null)}
-          // Desktop: pinned above the list while it scrolls beneath.
-          className={desktop ? "sticky top-0 z-10" : undefined}
-        />
-      )}
-      <div
-        className={cn(
-          "flex flex-col gap-(--stack-gap)",
-          previewOnly && "hidden",
-        )}
-        aria-hidden={previewOnly || undefined}
-      >
-        {clinics.map((clinic) => (
-          <ClinicCard
-            key={clinic.clinic_id}
-            variant="compact"
-            clinic={toCardData(clinic)}
-            selected={clinic.clinic_id === selectedId}
-            onSelect={select}
-            onHoverChange={desktop ? setHovered : undefined}
-          />
-        ))}
-        {children}
-      </div>
-    </>
   );
 }
 
@@ -632,13 +517,16 @@ export function SearchPageClient({
           : "")
       : null;
 
-  // The search field itself shows (and clears) the place, so chips are
-  // filters only.
-  const chips = deriveActiveChips({
-    filters: filterState,
-    serviceOptions,
-    onFiltersChange,
-  });
+  // The search field itself shows (and clears) the place, and the chip bar
+  // shows services / ages / toggles in place, so the removable row lists
+  // only the sheet-only filters (plus "Clear all" for everything).
+  const chips = sheetOnlyChips(
+    deriveActiveChips({
+      filters: filterState,
+      serviceOptions,
+      onFiltersChange,
+    }),
+  );
 
   const resultsCount = clinics.length;
 
@@ -726,11 +614,13 @@ export function SearchPageClient({
         moreCount={moreCount}
         showDistance={hasCoords}
       />
-      <ActiveFilterChips chips={chips} onClearAll={clearFilters} />
+      <ActiveFilterChips
+        chips={chips}
+        onClearAll={clearFilters}
+        showClearAll={activeFilterCount > 0}
+      />
     </div>
   );
-
-  const shortcuts = serviceOptions.slice(0, SHORTCUT_COUNT);
 
   const emptyHeader = (
     <div className="flex items-center justify-between gap-3 md:hidden">
@@ -767,53 +657,18 @@ export function SearchPageClient({
         initialListScrollTop={snapshot?.listScrollTop}
       >
         {!searching ? (
-          <>
-            <LocationPermissionPrompt
-              onLocated={onLocation}
-              onDenied={() => {
-                setLocationHint(true);
-                searchInputRef.current?.focus();
-              }}
-            />
-            {shortcuts.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Popular services
-                </p>
-                <ul className="flex flex-wrap gap-2" aria-label="Services">
-                  {shortcuts.map((service) => (
-                    <li key={service.slug}>
-                      <ServiceChip
-                        label={service.name}
-                        pressed={filterState.services.includes(service.slug)}
-                        onClick={() => toggleService(service.slug)}
-                      />
-                    </li>
-                  ))}
-                  {serviceOptions.length > SHORTCUT_COUNT && (
-                    <li>
-                      <ServiceChip
-                        label="More"
-                        more
-                        onClick={() => setMoreOpen(true)}
-                      />
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
-            <p className="text-sm text-muted-foreground">
-              Or{" "}
-              <button
-                type="button"
-                className="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                onClick={() => applyParams({ ...params, sort: "alphabetical" })}
-              >
-                browse every clinic
-              </button>
-              .
-            </p>
-          </>
+          <SearchLanding
+            serviceOptions={serviceOptions}
+            selectedServices={filterState.services}
+            onToggleService={toggleService}
+            onOpenMore={() => setMoreOpen(true)}
+            onLocated={onLocation}
+            onDenied={() => {
+              setLocationHint(true);
+              searchInputRef.current?.focus();
+            }}
+            onBrowseAll={() => applyParams({ ...params, sort: "alphabetical" })}
+          />
         ) : isError && !data ? (
           <ErrorState
             title="We couldn't load clinics right now."
@@ -836,67 +691,17 @@ export function SearchPageClient({
             )}
             <SearchResults clinics={clinics}>
               {clinics.length === 0 && !isFetching && (
-                <EmptyState
-                  icon={<SearchX className="size-5" aria-hidden />}
-                  title="We couldn't find a matching clinic nearby."
-                  body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
-                  actions={
-                    <>
-                      {canExpand && (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={expandSearchArea}
-                        >
-                          Expand search area
-                          {hasCoords && (
-                            <span className="font-normal text-muted-foreground">
-                              to {nextRadius} km
-                            </span>
-                          )}
-                        </Button>
-                      )}
-                      {activeFilterCount > 0 && (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={clearFilters}
-                        >
-                          Remove filters
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        render={<Link href="/services" />}
-                      >
-                        Browse all services
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="lg"
-                        render={<Link href="/suggest-clinic" />}
-                      >
-                        Suggest a clinic
-                      </Button>
-                    </>
-                  }
+                <NoResultsState
+                  canExpand={canExpand}
+                  hasCoords={hasCoords}
+                  nextRadius={nextRadius}
+                  onExpand={expandSearchArea}
+                  activeFilterCount={activeFilterCount}
+                  onClearFilters={clearFilters}
                 />
               )}
               {nextCursor && (
-                <div className="py-4 text-center">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore && (
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                    )}
-                    Load more clinics
-                  </Button>
-                </div>
+                <LoadMoreButton onClick={loadMore} loading={loadingMore} />
               )}
             </SearchResults>
           </div>

@@ -48,6 +48,8 @@ next-env.d.ts
 # Playwright artifacts
 test-results/
 playwright-report/
+# scripts/lighthouse-a11y.mjs output
+.lighthouse/
 .superpowers/
 .gstack/
 .devswarm-temp/

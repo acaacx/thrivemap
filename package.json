@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
+    "lighthouse:a11y": "node scripts/lighthouse-a11y.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:start": "supabase start",

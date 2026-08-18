@@ -328,7 +328,10 @@ export function ClinicBottomSheet({
             }
             onClick={onHandleClick}
             onKeyDown={onHandleKeyDown}
-            className="mx-auto grid h-8 w-full place-items-center rounded-t-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 md:hidden"
+            // Visually 32px; the ::before extends the hit target 12px above
+            // the sheet edge (over the map) for a 44px touch target without
+            // adding a blank band between the handle and the header.
+            className="relative mx-auto grid h-8 w-full place-items-center rounded-t-xl before:absolute before:inset-x-0 before:-top-3 before:bottom-0 before:content-[''] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 md:hidden"
           >
             <span aria-hidden className="h-1 w-10 rounded-full bg-border" />
           </button>

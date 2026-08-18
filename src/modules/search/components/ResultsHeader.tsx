@@ -47,9 +47,11 @@ export function ResultsHeader({
             {contextLine}
           </p>
         )}
-        <p
+        {/* h2: the results section heading — cards below are h3, so this
+            keeps the outline h1 → h2 → h3 (Lighthouse `heading-order`). */}
+        <h2
           aria-live="polite"
-          className="flex items-center gap-2 text-sm text-muted-foreground"
+          className="flex items-center gap-2 text-sm font-normal text-muted-foreground"
         >
           {error ? (
             <span className="font-medium text-foreground">
@@ -73,7 +75,7 @@ export function ResultsHeader({
               )}
             </>
           )}
-        </p>
+        </h2>
       </div>
       {trailing}
     </div>
