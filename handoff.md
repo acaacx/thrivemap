@@ -1,7 +1,8 @@
 # Handoff — ThriveMap, branch `claude/thrivemap-uber-ux-162dd9`
 
 Worktree: `/Users/alaric/code/ausomeapp/.claude/worktrees/thrivemap-uber-ux-162dd9`
-(base `main` @ `8057107`). Plan: `~/.claude/plans/claude-design-prompt-composed-reef.md`.
+(branched off `main` @ `8057107`; `origin/main` @ `1c0c239` merged in at
+`20dbe70`). Plan: `~/.claude/plans/claude-design-prompt-composed-reef.md`.
 
 ## What we are trying to do
 
@@ -10,26 +11,32 @@ application** ("Uber-style"): the homepage *is* the search shell, results sit
 in a bottom sheet over the map on mobile and beside a persistent map on
 desktop, one primary action per screen, calm "Quiet Ledger" visuals kept —
 **without touching backend / RPC / `/api/*` / DB**. Everything is on this
-branch, unpushed, in three commits:
+branch, unpushed, in three feature commits plus a merge of `main`'s QA fixes:
 
 - `7f446a1` Stage A — app shell + location search + map-first layout (plan §1–3)
 - `ac8380e` Stage B — bottom sheet, compact cards, map/list sync, filter chips,
   clinic preview (§4–8)
 - `348c2f9` Stage C — clinic details, persistent search state, loading / empty /
   error states, reduced motion + a11y (§9–14)
+- `20dbe70` merge of `origin/main` @ `1c0c239` (mobile-QA fixes ISSUE-001/002/
+  003/005/006 that landed on `main` after this branch was cut)
 
-## Finished and verified (on `348c2f9`)
+## Finished and verified (on `20dbe70`)
 
 - `pnpm typecheck` clean; `pnpm lint` 0 errors (1 pre-existing warning: unused
   eslint-disable in `src/lib/display-prefs.test.ts`); `pnpm format:check`
-  clean; `pnpm test` 34 files / 254 tests green.
-- Playwright `public-directory` + `accessibility` + `caregiver-flows`, chromium
-  + mobile, against the worktree dev server: **45 passed, 1 skipped, 2 failed** —
-  both failures are `[mobile] suggest a clinic › duplicate check…` and
-  `[mobile] suggest a clinic › new clinic suggestion is accepted`, which pass in
-  isolation and fail only under the parallel full run (click lands before the
-  suggest form hydrates; the first one already failed on the Stage B baseline).
-  Not caused by this branch; untouched pages.
+  clean; `pnpm test` 35 files / 256 tests green.
+- Playwright `public-directory` + `accessibility` + `caregiver-flows` +
+  `mobile-map-lazy`, chromium + mobile, against the worktree dev server on
+  49638: **48 passed, 2 skipped, 0 failed**. The two `[mobile] suggest a
+  clinic` tests that used to fail under parallel load passed this run; treat
+  them as flaky, not fixed (see Traps).
+- 375px screenshot of `/clinics?loc=Quezon+City`: filter row is a single
+  horizontally scrolling chip row (Service / Age group / Online / Accessible /
+  Open now / More filters), `document.scrollWidth === innerWidth === 375`, no
+  control overlaps another. `/suggest-clinic` at 375px: `form form` count 0,
+  the embedded location box is a `DIV[role=search]`, no React DOM-nesting
+  console errors.
 - Screenshots (375 + 1280) of empty / results / selection+preview / detail
   with sticky bar / no-results / error (`/api/search` aborted) / reduced
   motion / back-restore in the scratchpad `shots-c/` (session-local, not in
@@ -65,6 +72,30 @@ branch, unpushed, in three commits:
     "auto")`) so it no longer covers the map pre-hydration; `data-sheet-snap`
     and the handle label render only after hydration (`useHydrated`, exported
     from `ClinicBottomSheet.tsx`); shell root has `data-hydrated`.
+- Merge of `main`'s QA fixes (`20dbe70`), issue by issue:
+  - ISSUE-003 (clinic detail horizontal scroll) — already fixed on the branch;
+    both grid columns and the contact links keep `min-w-0` / `truncate`. Took
+    the branch's section order (Services first, About after), not `main`'s.
+  - ISSUE-005 (service page CTA) — auto-merged from `main`, untouched file.
+  - ISSUE-001 (Sort select overlapping "More filters") — **moot**: Sort moved
+    into `FilterSheet` on this branch, the toolbar row has no Select. Verified
+    at 375px instead of porting `main`'s CSS.
+  - ISSUE-002 (MapLibre mounted behind the hidden mobile map pane) — intent
+    ported into `AppShell.tsx`: a `mapRevealed` latch (`desktop || mapView`,
+    set during render) gates `{mapRevealed ? map : null}` in the map
+    `<section>`. `main`'s duplicate `MD_UP_QUERY` / `subscribeMdUp` helpers in
+    `SearchPageClient.tsx` were dropped — `useIsDesktop()` is the same 768px
+    query. Regression test rewritten as `e2e/mobile-map-lazy.spec.ts` against
+    the new DOM: `?view=list` (the shell is map-first by default), waits on
+    `[data-slot=app-shell][data-hydrated]`, toggles via `role="radio"`.
+  - ISSUE-006 (nested `<form>` in suggest-clinic) — `main` fixed the deleted
+    `LocationSearchBox`; the same `embedded` prop is now on `LocationSearch`
+    (`Root = embedded ? "div" : "form"`, Enter intercepted in `onKeyDown`,
+    submit button `type="button"` + `onClick`, unmatched free text toasts
+    instead of navigating). `SuggestClinicForm` passes `embedded` +
+    `submitLabel="Search area"`. `main`'s `LocationSearchBox.test.tsx` was
+    rewritten as `src/modules/search/components/LocationSearch.test.tsx`
+    (same two cases).
 
 ## Half-done / not started
 
@@ -78,16 +109,18 @@ branch, unpushed, in three commits:
     is green on landing, search, clinic profile, service, about).
   - `SearchPageClient.tsx` is ~850 lines; the results branch could be
     extracted, but nothing depends on it.
-- Not pushed, no PR. Base `main` may have moved (`git fetch` first).
+- Not pushed, no PR. `origin/main` @ `1c0c239` is merged in; re-`git fetch`
+  before pushing in case it moved again.
 
 ## Single next action
 
 Push the branch and open a PR to `main` (`git push -u origin
 claude/thrivemap-uber-ux-162dd9`), or `git merge --no-ff` on `main` if `gh pr
-merge` is classifier-blocked as before. Before that, re-run
-`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test` and the three
-Playwright specs against a dev server started **from this worktree** (see
-Traps).
+merge` is classifier-blocked as before. The full check suite was green on
+`20dbe70`, so no re-verification is needed unless the branch changes; if it
+does, re-run `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`
+and the four Playwright specs against a dev server started **from this
+worktree** (see Traps).
 
 ## Decisions already made (do not relitigate)
 
@@ -114,6 +147,13 @@ Traps).
   `[data-clinic-id]`, `/clinics? found/`, `window.__thrivemapMap` (dev only),
   "Verified", "Clear all", clinic-page headings/buttons/JSON-LD/unverified
   banner text.
+- The mobile shell is **map-first**: with no `?view=` and no stored
+  preference, `resolveInitialView` falls back to `"map"`. Anything asserting
+  "list is the default on phones" (e.g. `main`'s original ISSUE-002 test) has
+  to pass `?view=list` explicitly.
+- The map mounts lazily but never unmounts: `AppShell` latches `mapRevealed`
+  on first reveal so List/Map toggling keeps the MapLibre camera. Don't turn
+  the latch into a plain `desktop || mapView` condition.
 - All of `main`'s locked product decisions still hold (local Supabase + dev
   adapters, pg job queue, Quiet Ledger design tokens in `globals.css`,
   OpenFreeMap tiles, candidate pipeline is the only way clinics enter prod,
@@ -129,8 +169,10 @@ Traps).
   the default config's `webServer` points at 3000 and would test `main`.
 - **Clicks before hydration are lost** (server-rendered shell, nothing replays
   them). Wait for `[data-slot=app-shell][data-hydrated]` (already done in the
-  "load more" test); the two `suggest a clinic` mobile failures under load are
-  the same race on an untouched form.
+  "load more" and `mobile-map-lazy` tests); the two `suggest a clinic` mobile
+  tests are the same race on an untouched form — they failed under parallel
+  load before the merge and passed after it. Flaky, not fixed: rerun them in
+  isolation before blaming a change.
 - **`window.location` is stale during a client navigation render** — that is
   why the snapshot is matched on the props-derived canonical URL. Don't
   "simplify" it back to `location.search`.
