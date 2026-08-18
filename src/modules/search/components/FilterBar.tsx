@@ -1,13 +1,19 @@
 "use client";
 
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import {
+  formatCountChip,
+  formatDistanceChip,
+  formatServiceChip,
+} from "../filter-chip-labels";
+import { FilterChip } from "./FilterChip";
 import {
   AgeCheckboxList,
   FILTER_FLAG_LABELS,
@@ -22,19 +28,19 @@ interface FilterBarProps {
   onChange: (next: FilterState) => void;
   /** Opens the full "More filters" sheet. */
   onOpenMore: () => void;
-  /** Filters that only live in the sheet (shown on desktop). */
+  /** Filters that only live in the sheet (verified, in-person). */
   moreCount: number;
-  /** All active filters (shown on mobile, where the sheet holds everything). */
-  totalCount: number;
+  /** Distance chip only makes sense once the search has coordinates. */
+  showDistance: boolean;
   className?: string;
 }
 
 /**
- * The visible filter row: two multi-select popovers, three plain toggles,
- * and "More filters". On small screens only "More filters" shows (the sheet
- * holds everything) so the toolbar stays short. Every control is a labelled button — no icon-only
- * meanings. Trigger labels avoid the word "filters" (only "More filters"
- * carries it) so the button is unambiguous for people and for tests.
+ * Primary chip row — Service · Distance · Age group · Online · Accessible ·
+ * Open now · More filters — one horizontal scroll on every screen. Menu
+ * chips open a small popover; toggles flip in place; everything else lives
+ * in the sheet. Only "More filters" carries the word "filters" so the button
+ * stays unambiguous for people and for tests.
  */
 export function FilterBar({
   serviceOptions,
@@ -42,16 +48,20 @@ export function FilterBar({
   onChange,
   onOpenMore,
   moreCount,
-  totalCount,
+  showDistance,
   className,
 }: FilterBarProps) {
   function setFlag(key: FilterFlagKey, flag: boolean) {
     onChange({ ...value, [key]: flag });
   }
 
-  const toggles: { key: FilterFlagKey; label: string }[] = [
-    { key: "online", label: FILTER_FLAG_LABELS.online },
-    { key: "accessible", label: "Accessibility" },
+  const toggles: { key: FilterFlagKey; label: string; title?: string }[] = [
+    { key: "online", label: "Online", title: FILTER_FLAG_LABELS.online },
+    {
+      key: "accessible",
+      label: "Accessible",
+      title: FILTER_FLAG_LABELS.accessible,
+    },
     { key: "open", label: FILTER_FLAG_LABELS.open },
   ];
 
@@ -60,31 +70,25 @@ export function FilterBar({
       role="group"
       aria-label="Refine results"
       className={cn(
-        "flex flex-nowrap items-center gap-2 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        // Fade the trailing edge so the row reads as scrollable.
-        "[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)] pr-10",
+        "-mx-3 flex flex-nowrap items-center gap-2 overflow-x-auto px-3 py-0.5 sm:-mx-4 sm:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
       <Popover>
         <PopoverTrigger
           render={
-            <Button
-              variant="outline"
-              size="lg"
-              className="hidden md:inline-flex"
-              aria-pressed={value.services.length > 0}
+            <FilterChip
+              kind="menu"
+              label={formatServiceChip(value.services, serviceOptions)}
+              active={value.services.length > 0}
+              aria-label={
+                value.services.length > 0
+                  ? `Service: ${formatServiceChip(value.services, serviceOptions)}`
+                  : "Service"
+              }
             />
           }
-        >
-          Service
-          {value.services.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              · {value.services.length}
-            </span>
-          )}
-          <ChevronDown aria-hidden className="text-subtle" />
-        </PopoverTrigger>
+        />
         <PopoverContent align="start" className="w-80 p-3">
           <p className="px-1 pb-1 text-sm font-semibold">Services</p>
           <ServiceCheckboxList
@@ -96,25 +100,46 @@ export function FilterBar({
         </PopoverContent>
       </Popover>
 
+      {showDistance && (
+        <Popover>
+          <PopoverTrigger
+            render={
+              <FilterChip
+                kind="menu"
+                label={formatDistanceChip(value.radius)}
+                active={value.radius !== 10}
+                aria-label={`Distance: ${formatDistanceChip(value.radius)}`}
+              />
+            }
+          />
+          <PopoverContent align="start" className="w-72 p-4">
+            <p className="pb-3 text-sm font-semibold">
+              Distance: within {value.radius} km
+            </p>
+            <Slider
+              aria-label="Search radius in kilometers"
+              min={1}
+              max={50}
+              step={1}
+              value={value.radius}
+              onValueChange={(v) =>
+                onChange({ ...value, radius: Array.isArray(v) ? v[0] : v })
+              }
+            />
+          </PopoverContent>
+        </Popover>
+      )}
+
       <Popover>
         <PopoverTrigger
           render={
-            <Button
-              variant="outline"
-              size="lg"
-              className="hidden md:inline-flex"
-              aria-pressed={value.ages.length > 0}
+            <FilterChip
+              kind="menu"
+              label={formatCountChip("Age group", value.ages.length)}
+              active={value.ages.length > 0}
             />
           }
-        >
-          Age group
-          {value.ages.length > 0 && (
-            <span className="text-sm text-muted-foreground">
-              · {value.ages.length}
-            </span>
-          )}
-          <ChevronDown aria-hidden className="text-subtle" />
-        </PopoverTrigger>
+        />
         <PopoverContent align="start" className="w-72 p-3">
           <p className="px-1 pb-1 text-sm font-semibold">Age groups served</p>
           <AgeCheckboxList
@@ -125,41 +150,25 @@ export function FilterBar({
         </PopoverContent>
       </Popover>
 
-      {toggles.map(({ key, label }) => (
-        <Button
+      {toggles.map(({ key, label, title }) => (
+        <FilterChip
           key={key}
-          type="button"
-          variant="outline"
-          size="lg"
-          className="hidden md:inline-flex"
-          aria-pressed={value[key]}
+          label={label}
+          pressed={value[key]}
           onClick={() => setFlag(key, !value[key])}
-          title={
-            key === "accessible" ? FILTER_FLAG_LABELS.accessible : undefined
-          }
-        >
-          {label}
-        </Button>
+          title={title}
+          aria-label={title}
+        />
       ))}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
+      <FilterChip
+        kind="menu"
+        label={formatCountChip("More filters", moreCount)}
+        active={moreCount > 0}
+        icon={<SlidersHorizontal className="size-4" aria-hidden />}
         onClick={onOpenMore}
         aria-haspopup="dialog"
-      >
-        <SlidersHorizontal aria-hidden />
-        More filters
-        {moreCount > 0 && (
-          <span className="text-sm text-muted-foreground">· {moreCount}</span>
-        )}
-        {moreCount === 0 && totalCount > 0 && (
-          <span className="text-sm text-muted-foreground md:hidden">
-            · {totalCount}
-          </span>
-        )}
-      </Button>
+      />
     </div>
   );
 }

@@ -4,55 +4,47 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import { Loader2, SearchX } from "lucide-react";
+import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { useIsDesktop } from "@/lib/use-media-query";
+import { cn } from "@/lib/utils";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import type { ClinicMapMarker } from "@/modules/maps/components/ClinicMap";
 import { MapErrorBoundary } from "@/modules/maps/components/MapErrorBoundary";
 import type { MapBounds } from "@/modules/maps/types";
 import { ActiveFilterChips, deriveActiveChips } from "./ActiveFilterChips";
 import { AppShell } from "./AppShell";
+import { ClinicPreview, type ClinicPreviewData } from "./ClinicPreview";
 import { FilterBar } from "./FilterBar";
+import { FilterSheet } from "./FilterSheet";
 import { LocationPermissionPrompt } from "./LocationPermissionPrompt";
 import { LocationSearch } from "./LocationSearch";
 import { MapListToggle } from "./MapListToggle";
 import { ResultsHeader } from "./ResultsHeader";
 import {
   EMPTY_FILTER_STATE,
-  SearchFilters,
   countActiveFilters,
   type FilterState,
 } from "./SearchFilters";
 import { ServiceChip } from "./ServiceChip";
+import { useSearchUI } from "../search-ui-context";
 import {
   buildShellUrl,
   cameraKey,
   hasSearchIntent,
   paramsToQueryString,
 } from "../query-string";
-import type { SearchParams, SortOption } from "../schemas";
+import type { SearchParams } from "../schemas";
 import type { GeoResult } from "../use-geolocate";
 import {
   readStoredView,
@@ -84,6 +76,8 @@ interface SearchClinicRow {
   offers_online_services: boolean;
   offers_in_person_services?: boolean;
   wheelchair_accessible?: boolean | null;
+  phone?: string | null;
+  website?: string | null;
   last_verified_at: string | null;
   logo_url: string | null;
 }
@@ -108,20 +102,12 @@ const PHILIPPINES = { latitude: 12.6, longitude: 122.5 };
 const METRO_MANILA = { latitude: 14.5995, longitude: 120.9842 };
 const SHORTCUT_COUNT = 5;
 
-const SORT_LABELS: Record<SortOption, string> = {
-  nearest: "Nearest",
-  relevance: "Most relevant",
-  verified_first: "Verified first",
-  recently_verified: "Recently verified",
-  alphabetical: "Alphabetical",
-};
-
 function subscribeToStorage(onChange: () => void) {
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
 }
 
-function toCardData(c: SearchClinicRow) {
+function toCardData(c: SearchClinicRow): ClinicPreviewData {
   return {
     id: c.clinic_id,
     slug: c.slug,
@@ -140,7 +126,125 @@ function toCardData(c: SearchClinicRow) {
     logoUrl: c.logo_url,
     latitude: c.latitude,
     longitude: c.longitude,
+    phone: c.phone ?? null,
+    website: c.website ?? null,
   };
+}
+
+/**
+ * The map pane — lives inside <AppShell> so it can read the shared UI state
+ * (hovered card) and move the mobile sheet when a marker is tapped.
+ */
+function SearchMap({
+  markers,
+  markersStale,
+  center,
+  zoom,
+  cameraKey: key,
+  onMoved,
+}: {
+  markers: ClinicMapMarker[];
+  markersStale: boolean;
+  center: { latitude: number; longitude: number };
+  zoom: number;
+  cameraKey: string | null;
+  onMoved: (
+    bounds: MapBounds,
+    center: { latitude: number; longitude: number },
+  ) => void;
+}) {
+  const { selectedId, setSelected, hoveredId, setSheetSnap, sheetSnap } =
+    useSearchUI();
+  return (
+    <ClinicMap
+      markers={markers}
+      markersStale={markersStale}
+      center={center}
+      zoom={zoom}
+      cameraKey={key}
+      selectedId={selectedId}
+      hoveredId={hoveredId}
+      onSelect={(id) => {
+        setSelected(id);
+        // Bring the card into view without moving the camera; on mobile
+        // lift the sheet so the preview is readable.
+        document
+          .querySelector(`[data-clinic-id="${id}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+        if (sheetSnap === "collapsed") setSheetSnap("mid");
+      }}
+      onMoved={onMoved}
+      className="h-full w-full"
+    />
+  );
+}
+
+/**
+ * Results list + preview. Inside <AppShell> for the shared UI state. On
+ * small screens the selected clinic's preview replaces the list (Back
+ * returns); on desktop it sits above the list.
+ */
+function SearchResults({
+  clinics,
+  children,
+}: {
+  clinics: SearchClinicRow[];
+  /** Empty state / load-more — rendered after the cards. */
+  children?: ReactNode;
+}) {
+  const desktop = useIsDesktop();
+  const { selectedId, setSelected, setHovered, sheetSnap, setSheetSnap } =
+    useSearchUI();
+  const selected = selectedId
+    ? clinics.find((c) => c.clinic_id === selectedId)
+    : undefined;
+  const preview = selected ? toCardData(selected) : null;
+  const previewOnly = !!preview && !desktop;
+  const previewRef = useRef<HTMLElement>(null);
+  // Mobile: the preview replaces the list — start it at the top of the sheet.
+  useEffect(() => {
+    if (previewOnly) previewRef.current?.scrollIntoView({ block: "start" });
+  }, [previewOnly, selectedId]);
+
+  function select(id: string) {
+    setSelected(id);
+    if (!desktop && sheetSnap === "collapsed") setSheetSnap("mid");
+  }
+
+  return (
+    <>
+      {preview && (
+        <ClinicPreview
+          ref={previewRef}
+          key={preview.id}
+          clinic={preview}
+          variant={desktop ? "panel" : "sheet"}
+          onClose={() => setSelected(null)}
+          // Desktop: pinned above the list while it scrolls beneath.
+          className={desktop ? "sticky top-0 z-10" : undefined}
+        />
+      )}
+      <div
+        className={cn(
+          "flex flex-col gap-(--stack-gap)",
+          previewOnly && "hidden",
+        )}
+        aria-hidden={previewOnly || undefined}
+      >
+        {clinics.map((clinic) => (
+          <ClinicCard
+            key={clinic.clinic_id}
+            variant="compact"
+            clinic={toCardData(clinic)}
+            selected={clinic.clinic_id === selectedId}
+            onSelect={select}
+            onHoverChange={desktop ? setHovered : undefined}
+          />
+        ))}
+        {children}
+      </div>
+    </>
+  );
 }
 
 /**
@@ -443,21 +547,13 @@ export function SearchPageClient({
           </div>
         }
       >
-        <ClinicMap
+        <SearchMap
           markers={markers}
           markersStale={isPlaceholderData}
           center={mapCenter}
           zoom={mapZoom}
           cameraKey={cameraKey(params)}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            setSelectedId(id);
-            document
-              .querySelector(`[data-clinic-id="${id}"]`)
-              ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-          }}
           onMoved={(bounds, center) => setPendingBounds({ bounds, center })}
-          className="h-full w-full"
         />
       </MapErrorBoundary>
       {pendingBounds && (
@@ -508,7 +604,7 @@ export function SearchPageClient({
         onChange={onFiltersChange}
         onOpenMore={() => setMoreOpen(true)}
         moreCount={moreCount}
-        totalCount={activeFilterCount}
+        showDistance={hasCoords}
       />
       <ActiveFilterChips chips={chips} onClearAll={clearFilters} />
     </div>
@@ -516,24 +612,38 @@ export function SearchPageClient({
 
   const shortcuts = serviceOptions.slice(0, SHORTCUT_COUNT);
 
+  const emptyHeader = (
+    <div className="flex items-center justify-between gap-3 md:hidden">
+      <p className="text-sm text-muted-foreground">
+        Search a place, or start with a service.
+      </p>
+      {toggle}
+    </div>
+  );
+
+  const resultsHeader = (
+    <ResultsHeader
+      count={resultsCount}
+      context={[serviceLabel, locationLabel]}
+      loading={isFetching && !data}
+      updating={isFetching && !!data}
+      trailing={toggle}
+    />
+  );
+
   return (
     <>
       <AppShell
         view={view}
         search={searchBlock}
         filters={filtersBlock}
+        resultsHeader={searching ? resultsHeader : emptyHeader}
         map={mapElement}
         selectedId={selectedId}
         onSelectedChange={setSelectedId}
       >
         {!searching ? (
           <>
-            <div className="flex items-center justify-between gap-3 md:hidden">
-              <p className="text-sm text-muted-foreground">
-                Search a place, or start with a service.
-              </p>
-              {toggle}
-            </div>
             <LocationPermissionPrompt
               onLocated={onLocation}
               onDenied={() => searchInputRef.current?.focus()}
@@ -577,71 +687,50 @@ export function SearchPageClient({
               .
             </p>
           </>
+        ) : isError && !data ? (
+          <ErrorState
+            title="We couldn't load clinics right now."
+            body="Your search hasn't been lost — your location and filters are still set."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
         ) : (
-          <>
-            <ResultsHeader
-              count={resultsCount}
-              context={[serviceLabel, locationLabel]}
-              loading={isFetching && !data}
-              updating={isFetching && !!data}
-              trailing={toggle}
-            />
-
-            {isError && !data ? (
-              <ErrorState
-                title="We couldn't load clinics right now."
-                body="Your search hasn't been lost — your location and filters are still set."
-                onRetry={() => void refetch()}
-                retrying={isFetching}
+          <SearchResults clinics={clinics}>
+            {clinics.length === 0 && !isFetching && (
+              <EmptyState
+                icon={<SearchX className="size-5" aria-hidden />}
+                title="We couldn't find a matching clinic nearby."
+                body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
+                actions={
+                  <>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={expandSearchArea}
+                    >
+                      Expand search area
+                    </Button>
+                    {activeFilterCount > 0 && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => setMoreOpen(true)}
+                      >
+                        Remove a filter
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      render={<Link href="/suggest-clinic" />}
+                    >
+                      Suggest a clinic
+                    </Button>
+                  </>
+                }
               />
-            ) : (
-              <div className="flex flex-col gap-(--stack-gap)">
-                {clinics.map((clinic) => (
-                  <ClinicCard
-                    key={clinic.clinic_id}
-                    clinic={toCardData(clinic)}
-                    selected={clinic.clinic_id === selectedId}
-                    onSelect={setSelectedId}
-                  />
-                ))}
-                {clinics.length === 0 && !isFetching && (
-                  <EmptyState
-                    icon={<SearchX className="size-5" aria-hidden />}
-                    title="We couldn't find a matching clinic nearby."
-                    body="Try a wider area or fewer filters. If you know a clinic here, you can suggest it so other families can find it too."
-                    actions={
-                      <>
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={expandSearchArea}
-                        >
-                          Expand search area
-                        </Button>
-                        {activeFilterCount > 0 && (
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            onClick={() => setMoreOpen(true)}
-                          >
-                            Remove a filter
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="lg"
-                          render={<Link href="/suggest-clinic" />}
-                        >
-                          Suggest a clinic
-                        </Button>
-                      </>
-                    }
-                  />
-                )}
-              </div>
             )}
-
-            {nextCursor && !isError && (
+            {nextCursor && (
               <div className="py-4 text-center">
                 <Button
                   variant="outline"
@@ -656,78 +745,24 @@ export function SearchPageClient({
                 </Button>
               </div>
             )}
-          </>
+          </SearchResults>
         )}
       </AppShell>
 
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent
-          side="left"
-          className="w-full max-w-sm overflow-y-auto p-6"
-        >
-          <SheetHeader className="p-0 pb-4">
-            <SheetTitle className="text-lg font-semibold">
-              More filters
-            </SheetTitle>
-            <SheetDescription>
-              Narrow results by service, age group, and listed options.
-              {activeFilterCount > 0 &&
-                ` ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active.`}
-            </SheetDescription>
-          </SheetHeader>
-          <SearchFilters
-            serviceOptions={serviceOptions}
-            value={filterState}
-            onChange={onFiltersChange}
-            showRadius={hasCoords}
-          />
-          <div className="mt-6 flex flex-col gap-2 border-t pt-4">
-            <p className="text-sm font-semibold">Sort results</p>
-            <Select
-              value={params.sort}
-              items={SORT_LABELS}
-              onValueChange={(sort) =>
-                applyParams({
-                  ...params,
-                  sort: sort as SortOption,
-                  cursor: undefined,
-                })
-              }
-            >
-              <SelectTrigger
-                className="w-full data-[size=default]:h-11"
-                aria-label="Sort results"
-              >
-                <span className="text-muted-foreground">Sort:</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(SORT_LABELS).map(([sortValue, label]) => (
-                  <SelectItem key={sortValue} value={sortValue}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              &ldquo;Nearest&rdquo; orders by distance from the place you
-              searched; it is not a rating.
-            </p>
-          </div>
-          <div className="mt-6 flex gap-2 border-t pt-4">
-            <Button size="lg" onClick={() => setMoreOpen(false)}>
-              {searching
-                ? `Show ${resultsCount} clinic${resultsCount === 1 ? "" : "s"}`
-                : "Done"}
-            </Button>
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="lg" onClick={clearFilters}>
-                Clear all
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      <FilterSheet
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        serviceOptions={serviceOptions}
+        value={filterState}
+        onChange={onFiltersChange}
+        onClearAll={clearFilters}
+        showRadius={hasCoords}
+        sort={params.sort}
+        onSortChange={(sort) =>
+          applyParams({ ...params, sort, cursor: undefined })
+        }
+        resultsCount={searching ? resultsCount : null}
+      />
     </>
   );
 }

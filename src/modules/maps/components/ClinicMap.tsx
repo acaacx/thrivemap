@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Point } from "geojson";
 import { isReducedMotion } from "@/lib/reduced-motion";
 import type { MapBounds } from "../types";
@@ -26,6 +26,8 @@ interface ClinicMapProps {
   center: { latitude: number; longitude: number };
   zoom?: number;
   selectedId?: string | null;
+  /** Card under the pointer (desktop) — its marker grows a little. */
+  hoveredId?: string | null;
   onSelect?: (id: string) => void;
   onMoved?: (
     bounds: MapBounds,
@@ -64,6 +66,7 @@ export function ClinicMap({
   center,
   zoom = 12,
   selectedId,
+  hoveredId = null,
   onSelect,
   onMoved,
   onMapClick,
@@ -74,6 +77,9 @@ export function ClinicMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Mirrors loadedRef for effects that must re-run once the style is ready
+  // (the initial fit: results usually arrive before MapLibre has loaded).
+  const [loaded, setLoaded] = useState(false);
   const onSelectRef = useRef(onSelect);
   const onMovedRef = useRef(onMoved);
   const onMapClickRef = useRef(onMapClick);
@@ -114,6 +120,7 @@ export function ClinicMap({
 
     map.on("load", () => {
       loadedRef.current = true;
+      setLoaded(true);
       map.addSource("clinics", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -130,22 +137,23 @@ export function ClinicMap({
         source: "clinics",
         filter: ["!", ["has", "point_count"]],
         paint: {
-          // Muted palette (globals.css): selected = --primary-hover, verified
-          // = --primary, unverified = --subtle. Selection is also signalled by
-          // size and stroke so it never relies on hue alone.
+          // Muted palette (globals.css): every clinic is a small neutral teal
+          // dot (--primary); the selected one is larger and --primary-hover.
+          // Selection is also signalled by size and stroke so it never relies
+          // on hue alone; hover (desktop) is a gentle size bump.
           "circle-color": [
             "case",
             ["boolean", ["get", "selected"], false],
             "#255b56",
-            ["boolean", ["get", "verified"], false],
             "#2f6f68",
-            "#5f6e6b",
           ],
           "circle-radius": [
             "case",
             ["boolean", ["get", "selected"], false],
             11,
-            7,
+            ["boolean", ["get", "hovered"], false],
+            9,
+            6.5,
           ],
           "circle-stroke-width": [
             "case",
@@ -154,6 +162,29 @@ export function ClinicMap({
             2,
           ],
           "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      // Verified: a subtle inner dot (data comes from the same source, so it
+      // stays in step with clustering and selection).
+      map.addLayer({
+        id: "clinic-point-verified",
+        type: "circle",
+        source: "clinics",
+        filter: [
+          "all",
+          ["!", ["has", "point_count"]],
+          ["boolean", ["get", "verified"], false],
+        ],
+        paint: {
+          "circle-color": "#ffffff",
+          "circle-radius": [
+            "case",
+            ["boolean", ["get", "selected"], false],
+            3,
+            2,
+          ],
+          "circle-opacity": 0.9,
         },
       });
 
@@ -267,12 +298,13 @@ export function ClinicMap({
           name: m.name,
           verified: m.verified,
           selected: m.id === selectedId,
+          hovered: m.id === hoveredId,
         },
       })),
     });
   }
 
-  useEffect(syncMarkers, [markers, selectedId]);
+  useEffect(syncMarkers, [markers, selectedId, hoveredId]);
 
   // Legacy mode (no cameraKey): follow `center` whenever it changes.
   useEffect(() => {
@@ -315,7 +347,7 @@ export function ClinicMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || cameraKey == null) return;
+    if (!map || !loaded || cameraKey == null) return;
     if (markersStale) return;
     if (fitPendingRef.current !== cameraKey || markers.length === 0) return;
     fitPendingRef.current = null;
@@ -331,7 +363,7 @@ export function ClinicMap({
       ...motionOptions(),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, cameraKey, markersStale]);
+  }, [markers, cameraKey, markersStale, loaded]);
 
   // Selection: bring the marker into view only if it is off-screen, and
   // keep the visitor's zoom either way.
