@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ActiveFilterChips, deriveActiveChips } from "./ActiveFilterChips";
+import {
+  ActiveFilterChips,
+  deriveActiveChips,
+  sheetOnlyChips,
+} from "./ActiveFilterChips";
 import type { FilterState } from "./SearchFilters";
 
 const base: FilterState = {
@@ -15,6 +19,8 @@ const base: FilterState = {
   accessible: false,
   radius: 10,
 };
+
+afterEach(cleanup);
 
 const serviceOptions = [
   { slug: "speech-therapy", name: "Speech & Language Therapy" },
@@ -103,5 +109,34 @@ describe("ActiveFilterChips", () => {
     expect(remove).toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: /clear all/i }));
     expect(clear).toHaveBeenCalled();
+  });
+
+  it("shows only clear-all when filters are active but no chips are listed", async () => {
+    const clear = vi.fn();
+    render(<ActiveFilterChips chips={[]} onClearAll={clear} showClearAll />);
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /clear all/i }));
+    expect(clear).toHaveBeenCalled();
+  });
+});
+
+describe("sheetOnlyChips", () => {
+  it("keeps only filters the chip bar cannot show (verified, in-person)", () => {
+    const chips = deriveActiveChips({
+      filters: {
+        ...base,
+        services: ["speech-therapy"],
+        ages: ["toddlers"],
+        online: true,
+        verified: true,
+        inperson: true,
+      },
+      serviceOptions,
+      onFiltersChange: () => {},
+    });
+    expect(sheetOnlyChips(chips).map((c) => c.key)).toEqual([
+      "verified",
+      "inperson",
+    ]);
   });
 });

@@ -6,5 +6,6 @@ supabase/.temp
 public/maplibre
 test-results
 playwright-report
+.lighthouse
 handoff.md
 assets/geo/*.geojson

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { FilterChip } from "./FilterChip";
 import {
   AGE_LABELS,
@@ -73,18 +74,46 @@ export function deriveActiveChips(args: {
   return chips;
 }
 
+/** Filters that only live in the "More filters" sheet — the chip bar has no
+ * chip for them, so the active row is the only place they are visible. */
+const SHEET_ONLY_KEYS: ReadonlySet<string> = new Set<FilterFlagKey>([
+  "verified",
+  "inperson",
+]);
+
+/**
+ * Keeps only chips the primary chip bar cannot already show. Services, age
+ * groups and the toggle flags are represented by the bar's own chips
+ * (active label / pressed state), so listing them again would be a
+ * duplicate.
+ */
+export function sheetOnlyChips(chips: ActiveChip[]): ActiveChip[] {
+  return chips.filter((chip) => SHEET_ONLY_KEYS.has(chip.key));
+}
+
 interface ActiveFilterChipsProps {
   chips: ActiveChip[];
   onClearAll: () => void;
+  /** Show "Clear all" even when `chips` is empty (other filters are active). */
+  showClearAll?: boolean;
   className?: string;
 }
 
 export function ActiveFilterChips({
   chips,
   onClearAll,
+  showClearAll = false,
   className,
 }: ActiveFilterChipsProps) {
-  if (chips.length === 0) return null;
+  if (chips.length === 0 && !showClearAll) return null;
+  const clearAll = (
+    <Button variant="ghost" size="lg" onClick={onClearAll}>
+      Clear all
+    </Button>
+  );
+  if (chips.length === 0) {
+    return <div className={cn("flex items-center", className)}>{clearAll}</div>;
+  }
   return (
     <div className={className}>
       <ul
@@ -96,11 +125,7 @@ export function ActiveFilterChips({
             <FilterChip label={chip.label} onRemove={chip.remove} />
           </li>
         ))}
-        <li>
-          <Button variant="ghost" size="lg" onClick={onClearAll}>
-            Clear all
-          </Button>
-        </li>
+        <li>{clearAll}</li>
       </ul>
     </div>
   );
