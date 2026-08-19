@@ -7,7 +7,11 @@ import {
 } from "@/modules/admin/actions";
 import { ClinicIdentityForm } from "@/modules/admin/components/ClinicIdentityForm";
 import { ClinicStatusCard } from "@/modules/admin/components/ClinicStatusCard";
-import { getClinicForEditing, requireModerator } from "@/modules/admin/server";
+import {
+  getClinicForEditing,
+  listImportCities,
+  requireModerator,
+} from "@/modules/admin/server";
 import { getServices } from "@/modules/clinics/queries";
 import { AdminRatingsPanel } from "@/modules/ratings/components/AdminRatingsPanel";
 import { PortalProfileForm } from "@/modules/portal/components/PortalProfileForm";
@@ -25,10 +29,11 @@ export default async function AdminClinicDetailPage({
   params: Promise<{ clinicId: string }>;
 }) {
   const { clinicId } = await params;
-  const [{ roles }, clinic, services] = await Promise.all([
+  const [{ roles }, clinic, services, cities] = await Promise.all([
     requireModerator(),
     getClinicForEditing(clinicId),
     getServices(),
+    listImportCities(),
   ]);
   if (!clinic) notFound();
 
@@ -38,6 +43,11 @@ export default async function AdminClinicDetailPage({
     clinic.clinic_locations.find((l) => l.is_primary) ??
     clinic.clinic_locations[0] ??
     null;
+  const matchedCity = primary
+    ? (cities.find(
+        (c) => c.city === primary.city && c.province === primary.province,
+      ) ?? null)
+    : null;
   const isPublic = PUBLIC_STATUSES.has(clinic.status);
   const source = clinic.clinic_source_records[0] ?? null;
 
@@ -82,9 +92,14 @@ export default async function AdminClinicDetailPage({
               <ClinicIdentityForm
                 clinicId={clinic.id}
                 hasLocation={primary !== null}
+                cities={cities}
+                currentLocationLabel={
+                  primary ? `${primary.city}, ${primary.province}` : null
+                }
                 initial={{
                   name: clinic.name,
                   address_line1: primary?.address_line1 ?? "",
+                  locationId: matchedCity?.id,
                 }}
               />
             </div>

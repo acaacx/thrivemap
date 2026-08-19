@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 /**
- * Admin-only identity edits for a clinic listing: the display name and the
- * primary address line. Imported drafts arrive with raw Google names and
- * addresses that usually need a human touch before publishing.
+ * Admin-only identity edits for a clinic listing: the display name, the
+ * primary address line, and (optionally) the seeded city/province to assign.
+ * Imported drafts arrive with raw Google names and addresses — and a
+ * nearest-seeded-city guess for location — that usually need a human touch
+ * before publishing.
  */
 export const adminClinicIdentitySchema = z.object({
   name: z
@@ -15,6 +17,8 @@ export const adminClinicIdentitySchema = z.object({
     .string()
     .trim()
     .max(300, "Keep the address under 300 characters."),
+  /** `ph_locations.id` (kind city/municipality) to assign as the clinic's city/province. */
+  locationId: z.uuid().optional(),
 });
 
 export type AdminClinicIdentityInput = z.infer<
