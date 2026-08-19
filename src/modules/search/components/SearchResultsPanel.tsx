@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Loader2, SearchX } from "lucide-react";
+import { LayoutGroup, m } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { useIsDesktop } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 import { ClinicCard } from "@/modules/clinics/components/ClinicCard";
 import { ClinicPreview, type ClinicPreviewData } from "./ClinicPreview";
+import { SEARCH_RESULT_LAYOUT_TRANSITION } from "../motion";
 import { useSearchUI } from "../search-ui-context";
 
 export interface SearchClinicRow {
@@ -35,7 +37,7 @@ export interface SearchClinicRow {
   logo_url: string | null;
 }
 
-function toCardData(c: SearchClinicRow): ClinicPreviewData {
+export function toClinicPreviewData(c: SearchClinicRow): ClinicPreviewData {
   return {
     id: c.clinic_id,
     slug: c.slug,
@@ -78,7 +80,7 @@ export function SearchResults({
   const selected = selectedId
     ? clinics.find((c) => c.clinic_id === selectedId)
     : undefined;
-  const preview = selected ? toCardData(selected) : null;
+  const preview = selected ? toClinicPreviewData(selected) : null;
   const previewOnly = !!preview && !desktop;
   const previewRef = useRef<HTMLElement>(null);
   // Mobile: the preview replaces the list — start it at the top of the sheet.
@@ -93,7 +95,7 @@ export function SearchResults({
 
   return (
     <>
-      {preview && (
+      {preview && !desktop && (
         <ClinicPreview
           ref={previewRef}
           key={preview.id}
@@ -111,16 +113,25 @@ export function SearchResults({
         )}
         aria-hidden={previewOnly || undefined}
       >
-        {clinics.map((clinic) => (
-          <ClinicCard
-            key={clinic.clinic_id}
-            variant="compact"
-            clinic={toCardData(clinic)}
-            selected={clinic.clinic_id === selectedId}
-            onSelect={select}
-            onHoverChange={desktop ? setHovered : undefined}
-          />
-        ))}
+        <LayoutGroup id="clinic-search-results">
+          {clinics.map((clinic) => (
+            <m.div
+              key={clinic.clinic_id}
+              layout="position"
+              layoutDependency={clinics}
+              data-motion-result="position"
+              transition={SEARCH_RESULT_LAYOUT_TRANSITION}
+            >
+              <ClinicCard
+                variant="compact"
+                clinic={toClinicPreviewData(clinic)}
+                selected={clinic.clinic_id === selectedId}
+                onSelect={select}
+                onHoverChange={desktop ? setHovered : undefined}
+              />
+            </m.div>
+          ))}
+        </LayoutGroup>
         {children}
       </div>
     </>

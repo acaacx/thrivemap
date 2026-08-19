@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { getServices, searchClinics } from "@/modules/clinics/queries";
+import { QA_SEARCH_CLINICS, QA_SEARCH_SERVICES } from "../qa-fixtures";
 import type { SearchParams } from "../schemas";
 import { SearchPageClient } from "./SearchPageClient";
 
@@ -27,6 +28,26 @@ export async function SearchShell({
   selectedId = null,
   tolerateDataErrors = false,
 }: SearchShellProps) {
+  if (process.env.THRIVEMAP_QA_FIXTURES === "1") {
+    return (
+      <>
+        <SiteHeader variant="app" />
+        <main id="main-content" className="flex flex-1 flex-col">
+          <h1 className="sr-only">Find therapy centers near you</h1>
+          <Suspense>
+            <SearchPageClient
+              initialParams={params}
+              initialResult={{ clinics: QA_SEARCH_CLINICS, nextCursor: null }}
+              serviceOptions={QA_SEARCH_SERVICES}
+              initialView={view}
+              initialSelectedId={selectedId}
+            />
+          </Suspense>
+        </main>
+      </>
+    );
+  }
+
   const load = Promise.all([searchClinics(params), getServices()]);
   const [initialResult, services] = tolerateDataErrors
     ? await load.catch(

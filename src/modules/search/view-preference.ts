@@ -13,7 +13,7 @@ export function isShellView(value: unknown): value is ShellView {
 export function resolveInitialView(
   urlView: string | null | undefined,
   storedView: string | null | undefined,
-  fallback: ShellView = "map",
+  fallback: ShellView = "list",
 ): ShellView {
   if (isShellView(urlView)) return urlView;
   if (isShellView(storedView)) return storedView;

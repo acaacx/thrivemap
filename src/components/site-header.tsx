@@ -8,8 +8,9 @@ import { siteConfig } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
 const navLinks: NavLink[] = [
-  { href: "/clinics", label: "Find clinics" },
+  { href: "/clinics", label: "Find support" },
   { href: "/services", label: "Services" },
+  { href: "/how-it-works", label: "How verification works" },
   { href: "/about", label: "About" },
 ];
 
@@ -18,15 +19,26 @@ const secondaryLink: NavLink = {
   label: "Suggest a clinic",
 };
 
-/** Everything that is not the search itself lives behind one menu. */
-const appMenuLinks: NavLink[] = [
-  { href: "/about", label: "About" },
-  { href: "/how-it-works", label: "How verification works" },
+const appPrimaryLinks: NavLink[] = [
+  { href: "/clinics", label: "Find support" },
   { href: "/services", label: "Services" },
-  { href: "/suggest-clinic", label: "Suggest a clinic" },
+  { href: "/how-it-works", label: "How verification works" },
+  { href: "/about", label: "About" },
 ];
 
-const appMenuSecondary: NavLink = { href: "/login", label: "Sign in" };
+/** Everything that is not the search itself lives behind one menu. */
+const appMenuLinks: NavLink[] = [
+  { href: "/clinics", label: "Find support" },
+  { href: "/services", label: "Services" },
+  { href: "/how-it-works", label: "How verification works" },
+  { href: "/suggest-clinic", label: "Suggest a clinic" },
+  { href: "/about", label: "About" },
+];
+
+const appMenuSecondary: NavLink = {
+  href: "/login",
+  label: "Clinic sign in",
+};
 
 interface SiteHeaderProps {
   /**
@@ -82,19 +94,23 @@ export function SiteHeader({ variant = "default" }: SiteHeaderProps) {
           </span>
         </Link>
 
-        {!app && (
-          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-            {navLinks.map((link) => (
-              <Button
-                key={link.href}
-                variant="ghost"
-                render={<Link href={link.href} />}
-              >
-                {link.label}
-              </Button>
-            ))}
-          </nav>
-        )}
+        <nav
+          aria-label={app ? "Primary" : "Main"}
+          className={cn(
+            "hidden items-center gap-1",
+            app ? "xl:flex" : "md:flex",
+          )}
+        >
+          {(app ? appPrimaryLinks : navLinks).map((link) => (
+            <Button
+              key={link.href}
+              variant="ghost"
+              render={<Link href={link.href} />}
+            >
+              {link.label}
+            </Button>
+          ))}
+        </nav>
 
         {app ? (
           <div className="flex items-center gap-1.5">

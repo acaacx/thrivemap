@@ -1,0 +1,62 @@
+import type { SearchClinicRow } from "./components/SearchResultsPanel";
+
+export const QA_SEARCH_CLINICS: SearchClinicRow[] = [
+  {
+    clinic_id: "qa-bright-path",
+    slug: "bright-path-therapy-center",
+    name: "Bright Path Therapy Center",
+    status: "published_verified",
+    address_line1: "Molino Boulevard",
+    barangay: "Molino III",
+    city: "Bacoor",
+    province: "Cavite",
+    latitude: 14.4123,
+    longitude: 120.9754,
+    distance_km: 2.4,
+    is_open_now: false,
+    service_names: [
+      "Occupational Therapy",
+      "Speech & Language Therapy",
+      "Behavioral Therapy",
+      "Early Intervention",
+    ],
+    offers_online_services: true,
+    offers_in_person_services: true,
+    wheelchair_accessible: true,
+    phone: "+63 917 555 0101",
+    website: "https://example.com/bright-path",
+    last_verified_at: "2026-08-01T00:00:00.000Z",
+    logo_url: null,
+  },
+  {
+    clinic_id: "qa-kindred-care",
+    slug: "kindred-care-center",
+    name: "Kindred Care Center",
+    status: "published_unverified",
+    address_line1: "Aguinaldo Highway",
+    barangay: "Talaba II",
+    city: "Bacoor",
+    province: "Cavite",
+    latitude: 14.4451,
+    longitude: 120.9589,
+    distance_km: 4.8,
+    is_open_now: false,
+    service_names: [
+      "Occupational Therapy",
+      "Speech & Language Therapy",
+      "Behavioral Therapy",
+    ],
+    offers_online_services: false,
+    offers_in_person_services: true,
+    wheelchair_accessible: null,
+    phone: "+63 917 555 0102",
+    website: "https://example.com/kindred-care",
+    last_verified_at: null,
+    logo_url: null,
+  },
+];
+
+export const QA_SEARCH_SERVICES = [
+  { slug: "occupational-therapy", name: "Occupational Therapy" },
+  { slug: "speech-language-therapy", name: "Speech & Language Therapy" },
+];

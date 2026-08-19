@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Point } from "geojson";
 import { isReducedMotion } from "@/lib/reduced-motion";
 import type { MapBounds } from "../types";
+import { contextualSelectionZoom } from "../contextual-camera";
 
 // Turbopack doesn't emit the worker chunk MapLibre resolves relative to
 // import.meta.url (the request 404s), so vector tiles never parse. Serve the
@@ -406,17 +407,20 @@ export function ClinicMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markers, cameraKey, markersStale, loaded]);
 
-  // Selection: bring the marker into view only if it is off-screen, and
-  // keep the visitor's zoom either way.
+  // Selection turns the broad results map into a local clinic preview.
+  // Explicit visitor zoom closer than the preview level is preserved.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
     const marker = markers.find((m) => m.id === selectedId);
     if (!marker) return;
     const lngLat: [number, number] = [marker.longitude, marker.latitude];
-    if (map.getBounds().contains(lngLat)) return;
     programmaticMove.current = true;
-    map.easeTo({ center: lngLat, ...motionOptions() });
+    map.easeTo({
+      center: lngLat,
+      zoom: contextualSelectionZoom(map.getZoom()),
+      ...motionOptions(),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 

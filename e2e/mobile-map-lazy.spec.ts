@@ -7,9 +7,8 @@ import { expect, test } from "@playwright/test";
 // Found by /qa on 2026-08-18
 // Report: .gstack/qa-reports/qa-report-localhost-2026-08-18.md
 //
-// The app shell is map-first: `view=map` is the default on phones, so this
-// asserts the gate through `?view=list` (also what the stored List preference
-// resolves to) rather than a bare /clinics.
+// The app shell is list-first on phones. An explicit `view=list` keeps the
+// regression deterministic even when a previous browser run stored Map.
 //
 // Uses the dev-only `window.__thrivemapMap` handle that ClinicMap exposes
 // outside production, so it runs against `next dev` only (as the rest of the

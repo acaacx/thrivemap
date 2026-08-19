@@ -26,6 +26,7 @@ import {
 } from "./ActiveFilterChips";
 import { AppShell } from "./AppShell";
 import { RESULTS_SCROLL_SLOT } from "./ClinicBottomSheet";
+import { ContextualMapPreview } from "./ContextualMapPreview";
 import { FilterBar } from "./FilterBar";
 import { FilterSheet } from "./FilterSheet";
 import { LocationSearch } from "./LocationSearch";
@@ -42,6 +43,7 @@ import {
   LoadMoreButton,
   NoResultsState,
   SearchResults,
+  toClinicPreviewData,
   type SearchClinicRow,
 } from "./SearchResultsPanel";
 import { useSearchUI, type SheetSnap } from "../search-ui-context";
@@ -322,6 +324,12 @@ export function SearchPageClient({
     () => [...(data?.clinics ?? []), ...extraPages],
     [data, extraPages],
   );
+  const selectedClinic = selectedId
+    ? clinics.find((clinic) => clinic.clinic_id === selectedId)
+    : undefined;
+  const selectedPreview = selectedClinic
+    ? toClinicPreviewData(selectedClinic)
+    : null;
 
   const nextCursor =
     moreCursor === undefined ? (data?.nextCursor ?? null) : moreCursor;
@@ -562,6 +570,10 @@ export function SearchPageClient({
           </Button>
         </div>
       )}
+      <ContextualMapPreview
+        preview={selectedPreview}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
 
