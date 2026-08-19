@@ -33,8 +33,8 @@ interface ClinicPreviewProps {
   clinic: ClinicPreviewData;
   /** Dismiss the preview (Back on mobile, × on desktop). */
   onClose: () => void;
-  /** `sheet` = mobile (back button, fills the sheet); `panel` = desktop card. */
-  variant: "sheet" | "panel";
+  /** `sheet` = mobile; `panel` = full desktop card; `map` = compact map overlay. */
+  variant: "sheet" | "panel" | "map";
   className?: string;
   ref?: Ref<HTMLElement>;
 }
@@ -57,10 +57,13 @@ export function ClinicPreview({
   ref,
 }: ClinicPreviewProps) {
   const where = formatCityDistance(clinic.city, clinic.distanceKm);
+  const mapWhere = [clinic.city, clinic.province].filter(Boolean).join(", ");
   const address = [clinic.address, clinic.city, clinic.province]
     .filter(Boolean)
     .join(", ");
   const services = clinic.serviceNames ?? [];
+  const visibleServices = variant === "map" ? services.slice(0, 3) : services;
+  const remainingServices = services.length - visibleServices.length;
   const kinds = accessibilityKinds(clinic);
   const directionsUrl =
     clinic.latitude != null && clinic.longitude != null
@@ -76,32 +79,41 @@ export function ClinicPreview({
       data-clinic-preview-id={clinic.id}
       className={cn(
         "flex flex-col gap-3",
-        variant === "panel" && "rounded-xl border border-primary bg-card p-4",
+        (variant === "panel" || variant === "map") &&
+          "rounded-xl border border-primary bg-card p-4",
+        variant === "map" && "gap-2.5 shadow-sm",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        {variant === "sheet" ? (
-          <Button variant="ghost" size="lg" className="-ml-2" onClick={onClose}>
-            <ArrowLeft aria-hidden />
-            Back to results
-          </Button>
-        ) : (
-          <p className="text-sm font-medium text-muted-foreground">
-            Selected clinic
-          </p>
-        )}
-        {variant === "panel" && (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            aria-label="Close preview"
-            onClick={onClose}
-          >
-            <X aria-hidden />
-          </Button>
-        )}
-      </div>
+      {variant !== "map" && (
+        <div className="flex items-center justify-between gap-2">
+          {variant === "sheet" ? (
+            <Button
+              variant="ghost"
+              size="lg"
+              className="-ml-2"
+              onClick={onClose}
+            >
+              <ArrowLeft aria-hidden />
+              Back to results
+            </Button>
+          ) : (
+            <p className="text-sm font-medium text-muted-foreground">
+              Selected clinic
+            </p>
+          )}
+          {variant === "panel" && (
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              aria-label="Close preview"
+              onClick={onClose}
+            >
+              <X aria-hidden />
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -110,10 +122,14 @@ export function ClinicPreview({
           </h3>
           <VerificationBadge status={clinic.status} />
         </div>
-        {where && <p className="text-sm text-muted-foreground">{where}</p>}
+        {(variant === "map" ? mapWhere : where) && (
+          <p className="text-sm text-muted-foreground">
+            {variant === "map" ? mapWhere : where}
+          </p>
+        )}
       </div>
 
-      {address && (
+      {address && variant !== "map" && (
         <p className="flex items-start gap-2 text-sm text-muted-foreground">
           <MapPin className="mt-0.5 size-4 shrink-0 text-subtle" aria-hidden />
           <span>{address}</span>
@@ -122,13 +138,20 @@ export function ClinicPreview({
 
       {services.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Services">
-          {services.map((service) => (
+          {visibleServices.map((service) => (
             <li key={service}>
               <Badge variant="tint" className="font-normal">
                 {service}
               </Badge>
             </li>
           ))}
+          {remainingServices > 0 && (
+            <li>
+              <Badge variant="outline" className="font-normal">
+                +{remainingServices}
+              </Badge>
+            </li>
+          )}
         </ul>
       )}
 
@@ -160,54 +183,56 @@ export function ClinicPreview({
         >
           View clinic
         </Button>
-        <div className="ml-auto flex items-center gap-1">
-          {directionsUrl && (
-            <Button
-              variant="outline"
-              size="icon-lg"
-              render={
-                <a
-                  href={directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Directions to ${clinic.name} (opens Google Maps)`}
-                />
-              }
-            >
-              <Navigation aria-hidden />
-            </Button>
-          )}
-          {clinic.phone && (
-            <Button
-              variant="outline"
-              size="icon-lg"
-              render={
-                <a
-                  href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
-                  aria-label={`Call ${clinic.name}`}
-                />
-              }
-            >
-              <Phone aria-hidden />
-            </Button>
-          )}
-          {clinic.website && (
-            <Button
-              variant="outline"
-              size="icon-lg"
-              render={
-                <a
-                  href={websiteHref(clinic.website)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Website of ${clinic.name} (opens in a new tab)`}
-                />
-              }
-            >
-              <Globe aria-hidden />
-            </Button>
-          )}
-        </div>
+        {variant !== "map" && (
+          <div className="ml-auto flex items-center gap-1">
+            {directionsUrl && (
+              <Button
+                variant="outline"
+                size="icon-lg"
+                render={
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Directions to ${clinic.name} (opens Google Maps)`}
+                  />
+                }
+              >
+                <Navigation aria-hidden />
+              </Button>
+            )}
+            {clinic.phone && (
+              <Button
+                variant="outline"
+                size="icon-lg"
+                render={
+                  <a
+                    href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
+                    aria-label={`Call ${clinic.name}`}
+                  />
+                }
+              >
+                <Phone aria-hidden />
+              </Button>
+            )}
+            {clinic.website && (
+              <Button
+                variant="outline"
+                size="icon-lg"
+                render={
+                  <a
+                    href={websiteHref(clinic.website)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Website of ${clinic.name} (opens in a new tab)`}
+                  />
+                }
+              >
+                <Globe aria-hidden />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

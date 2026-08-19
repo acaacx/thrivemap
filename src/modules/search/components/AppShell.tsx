@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { Map as MapIcon, PanelRightClose } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MotionProvider } from "@/components/motion-provider";
 import { useIsDesktop } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -109,9 +111,10 @@ function ShellLayout({
   | "initialListScrollTop"
 >) {
   const desktop = useIsDesktop();
-  const { sheetSnap, setSheetSnap } = useSearchUI();
+  const { selectedId, sheetSnap, setSheetSnap } = useSearchUI();
   const mapView = view === "map";
   const sheet = mapView && !desktop;
+  const [desktopMapOpen, setDesktopMapOpen] = useState(true);
   // The map pane is hidden with CSS on phones in list view. Don't mount
   // MapLibre behind it — an invisible 0x0 canvas still costs a WebGL context
   // plus the style, glyph and tile downloads. Once revealed it stays mounted,
@@ -128,16 +131,35 @@ function ShellLayout({
     <div
       data-slot="app-shell"
       data-hydrated={hydrated ? "" : undefined}
-      className="relative flex h-[calc(100dvh-var(--app-header-h))] min-h-0 flex-col overflow-hidden bg-background md:grid md:grid-cols-[minmax(340px,2fr)_3fr]"
+      data-desktop-map={desktopMapOpen ? "open" : "closed"}
+      className={cn(
+        "relative flex h-[calc(100dvh-var(--app-header-h))] min-h-0 flex-col overflow-hidden bg-background md:grid",
+        desktopMapOpen
+          ? "md:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]"
+          : "md:grid-cols-1",
+      )}
     >
       <section
         aria-label="Search"
-        className="flex min-h-0 flex-col md:border-r"
+        className={cn("flex min-h-0 flex-col", desktopMapOpen && "md:border-r")}
       >
         <div className="flex flex-col gap-2 border-b bg-background px-3 pb-3 pt-3 sm:px-4">
           {search}
           {filters}
         </div>
+
+        {!desktopMapOpen && (
+          <div className="hidden shrink-0 justify-end border-b px-4 py-2 md:flex">
+            <Button
+              variant="outline"
+              onClick={() => setDesktopMapOpen(true)}
+              aria-label="Show map"
+            >
+              <MapIcon aria-hidden />
+              Show map
+            </Button>
+          </div>
+        )}
 
         <ClinicBottomSheet
           enabled={sheet}
@@ -152,9 +174,34 @@ function ShellLayout({
 
       <section
         aria-label="Map"
-        className={cn("relative min-h-0 flex-1", !mapView && "hidden md:block")}
+        aria-hidden={!desktopMapOpen && desktop ? true : undefined}
+        className={cn(
+          "relative min-h-0 flex-1 flex-col",
+          mapView ? "flex" : "hidden md:flex",
+          !desktopMapOpen && "md:hidden",
+        )}
       >
-        {mapRevealed ? map : null}
+        <div className="hidden min-h-[4.5rem] shrink-0 items-center justify-between gap-4 border-b bg-background px-5 md:flex">
+          <div className="min-w-0">
+            <h2 className="font-semibold">Map preview</h2>
+            <p className="truncate text-sm text-muted-foreground">
+              {selectedId
+                ? "Showing area around selected clinic"
+                : "Select a clinic to focus the map"}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => setDesktopMapOpen(false)}
+            aria-label="Hide map"
+          >
+            <PanelRightClose aria-hidden />
+            Hide map
+          </Button>
+        </div>
+        <div className="relative min-h-0 flex-1">
+          {mapRevealed ? map : null}
+        </div>
       </section>
     </div>
   );
