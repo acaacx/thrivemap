@@ -81,6 +81,38 @@ describe("adminClinicIdentitySchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("allows an omitted locationId", () => {
+    const result = adminClinicIdentitySchema.safeParse({
+      name: "Bright Steps",
+      address_line1: "",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.locationId).toBeUndefined();
+  });
+
+  it("accepts a valid uuid locationId", () => {
+    const result = adminClinicIdentitySchema.safeParse({
+      name: "Bright Steps",
+      address_line1: "",
+      locationId: "5b1f6e2a-6e3e-4b3a-9b7a-2f6f9f6e2a5b",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.locationId).toBe(
+        "5b1f6e2a-6e3e-4b3a-9b7a-2f6f9f6e2a5b",
+      );
+    }
+  });
+
+  it("rejects a non-uuid locationId", () => {
+    const result = adminClinicIdentitySchema.safeParse({
+      name: "Bright Steps",
+      address_line1: "",
+      locationId: "not-a-uuid",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("placeLookupNameSchema", () => {

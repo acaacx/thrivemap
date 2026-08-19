@@ -105,7 +105,9 @@ admin Places import and go live only after a human publishes them:
    its services (required for service-filtered search), fill the profile, then
    in **Listing status** move `draft → pending review → published unverified`
    (administrator only; a reason is required and audited). The public URL 404s
-   until published.
+   until published. The city/province auto-assigned to a promoted clinic is
+   only the nearest _seeded_ city — if it's wrong (a city outside the seed),
+   correct it with the city/province select in the clinic identity form.
 
 ## Provider activation checklist
 

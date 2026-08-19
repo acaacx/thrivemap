@@ -1270,7 +1270,31 @@ export async function adminUpdateClinicIdentity(
     return { error: "Could not save the clinic name." };
   }
 
-  if (parsed.data.address_line1) {
+  let locationUpdate: {
+    city: string;
+    city_slug: string;
+    province: string;
+    province_slug: string;
+  } | null = null;
+  if (parsed.data.locationId) {
+    const { data: location } = await admin
+      .from("ph_locations")
+      .select("city, city_slug, province, province_slug")
+      .eq("id", parsed.data.locationId)
+      .in("kind", ["city", "municipality"])
+      .maybeSingle();
+    if (!location?.city || !location.city_slug) {
+      return { error: "Pick a valid city." };
+    }
+    locationUpdate = {
+      city: location.city,
+      city_slug: location.city_slug,
+      province: location.province,
+      province_slug: location.province_slug,
+    };
+  }
+
+  if (parsed.data.address_line1 || locationUpdate) {
     const { data: primary } = await admin
       .from("clinic_locations")
       .select("id")
@@ -1280,7 +1304,12 @@ export async function adminUpdateClinicIdentity(
     if (primary) {
       const { error: locError } = await admin
         .from("clinic_locations")
-        .update({ address_line1: parsed.data.address_line1 })
+        .update({
+          ...(parsed.data.address_line1
+            ? { address_line1: parsed.data.address_line1 }
+            : {}),
+          ...(locationUpdate ?? {}),
+        })
         .eq("id", primary.id);
       if (locError) {
         console.error(
@@ -1289,6 +1318,8 @@ export async function adminUpdateClinicIdentity(
         );
         return { error: "Saved the name, but could not save the address." };
       }
+    } else if (locationUpdate) {
+      return { error: "Saved the name, but this clinic has no location yet." };
     }
   }
 
@@ -1301,10 +1332,17 @@ export async function adminUpdateClinicIdentity(
     {
       name: parsed.data.name,
       address_line1: parsed.data.address_line1 || null,
+      ...(locationUpdate
+        ? { city: locationUpdate.city, province: locationUpdate.province }
+        : {}),
     },
   );
   await revalidateAdminClinic(clinic.slug, clinicId);
-  return { message: "Name and address saved." };
+  return {
+    message: locationUpdate
+      ? "Name, address and city saved."
+      : "Name and address saved.",
+  };
 }
 
 export async function adminUpdateClinicProfile(
