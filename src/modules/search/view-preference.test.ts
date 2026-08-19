@@ -8,10 +8,10 @@ import {
 } from "./view-preference";
 
 describe("resolveInitialView", () => {
-  it("prefers the URL, then storage, then the fallback", () => {
+  it("prefers the URL, then storage, then a list-first fallback", () => {
     expect(resolveInitialView("list", "map")).toBe("list");
     expect(resolveInitialView(null, "list")).toBe("list");
-    expect(resolveInitialView("bogus", "nope")).toBe("map");
+    expect(resolveInitialView("bogus", "nope")).toBe("list");
     expect(resolveInitialView(undefined, undefined, "list")).toBe("list");
   });
 });

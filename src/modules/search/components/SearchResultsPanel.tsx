@@ -35,7 +35,7 @@ export interface SearchClinicRow {
   logo_url: string | null;
 }
 
-function toCardData(c: SearchClinicRow): ClinicPreviewData {
+export function toClinicPreviewData(c: SearchClinicRow): ClinicPreviewData {
   return {
     id: c.clinic_id,
     slug: c.slug,
@@ -78,7 +78,7 @@ export function SearchResults({
   const selected = selectedId
     ? clinics.find((c) => c.clinic_id === selectedId)
     : undefined;
-  const preview = selected ? toCardData(selected) : null;
+  const preview = selected ? toClinicPreviewData(selected) : null;
   const previewOnly = !!preview && !desktop;
   const previewRef = useRef<HTMLElement>(null);
   // Mobile: the preview replaces the list — start it at the top of the sheet.
@@ -93,7 +93,7 @@ export function SearchResults({
 
   return (
     <>
-      {preview && (
+      {preview && !desktop && (
         <ClinicPreview
           ref={previewRef}
           key={preview.id}
@@ -115,7 +115,7 @@ export function SearchResults({
           <ClinicCard
             key={clinic.clinic_id}
             variant="compact"
-            clinic={toCardData(clinic)}
+            clinic={toClinicPreviewData(clinic)}
             selected={clinic.clinic_id === selectedId}
             onSelect={select}
             onHoverChange={desktop ? setHovered : undefined}

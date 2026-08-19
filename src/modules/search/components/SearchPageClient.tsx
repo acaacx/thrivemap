@@ -26,6 +26,7 @@ import {
 } from "./ActiveFilterChips";
 import { AppShell } from "./AppShell";
 import { RESULTS_SCROLL_SLOT } from "./ClinicBottomSheet";
+import { ClinicPreview } from "./ClinicPreview";
 import { FilterBar } from "./FilterBar";
 import { FilterSheet } from "./FilterSheet";
 import { LocationSearch } from "./LocationSearch";
@@ -42,6 +43,7 @@ import {
   LoadMoreButton,
   NoResultsState,
   SearchResults,
+  toClinicPreviewData,
   type SearchClinicRow,
 } from "./SearchResultsPanel";
 import { useSearchUI, type SheetSnap } from "../search-ui-context";
@@ -322,6 +324,12 @@ export function SearchPageClient({
     () => [...(data?.clinics ?? []), ...extraPages],
     [data, extraPages],
   );
+  const selectedClinic = selectedId
+    ? clinics.find((clinic) => clinic.clinic_id === selectedId)
+    : undefined;
+  const selectedPreview = selectedClinic
+    ? toClinicPreviewData(selectedClinic)
+    : null;
 
   const nextCursor =
     moreCursor === undefined ? (data?.nextCursor ?? null) : moreCursor;
@@ -560,6 +568,16 @@ export function SearchPageClient({
           >
             Search this area
           </Button>
+        </div>
+      )}
+      {selectedPreview && (
+        <div className="absolute inset-x-3 bottom-3 z-10 hidden md:block">
+          <ClinicPreview
+            clinic={selectedPreview}
+            variant="map"
+            onClose={() => setSelectedId(null)}
+            className="max-h-[45dvh] overflow-y-auto shadow-soft"
+          />
         </div>
       )}
     </div>
